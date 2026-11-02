@@ -605,7 +605,7 @@ export class UIManager {
     this.modalSeq++;
     this.paused = true;
     const cls = extraClass ? `modal ${extraClass}` : 'modal';
-    this.modalHost.innerHTML = `<div class="modal-backdrop"><div class="${cls}">${html}</div></div>`;
+    this.modalHost.innerHTML = `<div class="modal-backdrop"><div class="modal-shell"><div class="${cls}">${html}</div></div></div>`;
     const m = this.modalHost.querySelector('.modal') as HTMLElement;
     // Only add the top close control to panels that already allow closing.
     // Story/mandatory interactions without data-close remain protected.
@@ -617,7 +617,7 @@ export class UIManager {
       closeTop.title = 'Đóng bảng';
       closeTop.textContent = '×';
       closeTop.addEventListener('click', () => this.closeModal());
-      m.prepend(closeTop);
+      (m.parentElement as HTMLElement).append(closeTop);
     }
     m.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => this.closeModal()));
     if (onMount) onMount(m);
