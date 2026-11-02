@@ -69,8 +69,15 @@ export class UIManager {
     this.root = container;
     this.buildShell();
     this.checkOrientation();
-    window.addEventListener('resize', () => this.checkOrientation());
-    window.addEventListener('orientationchange', () => this.checkOrientation());
+    const onOrient = () => {
+      this.checkOrientation();
+      setTimeout(() => this.checkOrientation(), 120);
+      setTimeout(() => this.checkOrientation(), 280);
+      setTimeout(() => this.checkOrientation(), 500);
+    };
+    window.addEventListener('resize', onOrient);
+    window.addEventListener('orientationchange', onOrient);
+    window.visualViewport?.addEventListener('resize', onOrient);
   }
 
   private isTouchDevice(): boolean {
@@ -82,7 +89,7 @@ export class UIManager {
   }
 
   private checkOrientation() {
-    const isPortrait = window.innerHeight > window.innerWidth;
+    const isPortrait = window.matchMedia?.('(orientation: portrait)')?.matches ?? (window.innerHeight > window.innerWidth);
     const isTouch = this.isTouchDevice();
 
     if (isPortrait && isTouch) {
@@ -350,10 +357,11 @@ export class UIManager {
     }
   }
 
-  private showModal(html: string, onMount?: (el: HTMLElement) => void) {
+  private showModal(html: string, onMount?: (el: HTMLElement) => void, extraClass = '') {
     this.modalSeq++;
     this.paused = true;
-    this.modalHost.innerHTML = `<div class="modal-backdrop"><div class="modal">${html}</div></div>`;
+    const cls = extraClass ? `modal ${extraClass}` : 'modal';
+    this.modalHost.innerHTML = `<div class="modal-backdrop"><div class="${cls}">${html}</div></div>`;
     const m = this.modalHost.querySelector('.modal') as HTMLElement;
     m.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => this.closeModal()));
     if (onMount) onMount(m);
@@ -363,11 +371,11 @@ export class UIManager {
   showCharacterCreation(onDone: (profile: CharacterProfile) => void) {
     let name = (this.g.s.profile?.name || 'Minh').trim();
     let preset = 0;
-    let skin = 0xe2b48d;
+    let skin: number = this.g.s.profile?.skin ?? 0xe2b48d;
     let hair = 0x18181b;
-    let hairStyle: 'short' | 'buzz' | 'bald' = 'short';
-    let background: BackgroundId = 'mechanic';
-    let difficulty: Difficulty = 'normal';
+    let hairStyle: 'short' | 'buzz' | 'bald' = (this.g.s.profile?.hairStyle as any) || 'short';
+    let background: BackgroundId = this.g.s.profile?.background ?? 'mechanic';
+    let difficulty: Difficulty = this.g.s.profile?.difficulty ?? 'normal';
 
     const presets = [
       { name: 'Mẫu 1: Trẻ trung', skin: 0xf5d0b0, hairStyle: 'short' as const, desc: 'Dáng nhanh nhẹn, mắt sáng, tóc ngắn gọn gàng.' },
@@ -375,162 +383,209 @@ export class UIManager {
       { name: 'Mẫu 3: Trầm tĩnh', skin: 0xba8c63, hairStyle: 'bald' as const, desc: 'Dáng cao gầy, đầu đinh, ánh mắt kiên định.' },
     ];
 
-    const renderModal = () => {
-      const html = `
-        <h2>TẠO NHÂN VẬT & KHỞI ĐẦU</h2>
-        <div class="hud-sub" style="margin-bottom:12px">Thiết lập hồ sơ trước khi bước vào Trại giam An Phú</div>
-        
-        <div class="cc-container">
-          <div class="card-row">
-            <label style="font-weight:700;display:block;margin-bottom:6px">1. Tên nhân vật (2–20 ký tự):</label>
-            <input type="text" id="cc-input-name" class="text-input" value="${name}" maxlength="20" placeholder="Nhập tên nhân vật..."/>
-          </div>
+    const html = `
+      <div class="cc-header">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h2>TẠO NHÂN VẬT & KHỞI ĐẦU</h2>
+          <span class="tag good">Mốc 3 · 24 ngày</span>
+        </div>
+        <div class="hud-sub">Thiết lập hồ sơ trước khi bước vào Trại giam An Phú</div>
+      </div>
 
-          <div class="card-row">
-            <label style="font-weight:700;display:block;margin-bottom:6px">2. Mẫu ngoại hình cơ sở:</label>
-            <div class="cc-grid">
-              ${presets.map((p, idx) => `
-                <div class="cc-card ${preset === idx ? 'selected' : ''}" data-preset="${idx}">
-                  <b>${p.name}</b>
-                  <div class="hud-sub" style="margin-top:4px">${p.desc}</div>
-                </div>
-              `).join('')}
-            </div>
-            <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
-              <div>
-                <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Kiểu tóc:</label>
-                <div style="display:flex;gap:6px">
-                  <button class="btn btn-sm ${hairStyle === 'short' ? 'btn-accent' : ''}" data-hair="short">Ngắn</button>
-                  <button class="btn btn-sm ${hairStyle === 'buzz' ? 'btn-accent' : ''}" data-hair="buzz">Húi cua</button>
-                  <button class="btn btn-sm ${hairStyle === 'bald' ? 'btn-accent' : ''}" data-hair="bald">Đầu trọc</button>
-                </div>
+      <div class="cc-body" id="cc-scroll-body">
+        <div class="card-row">
+          <label style="font-weight:700;display:block;margin-bottom:6px">1. Tên nhân vật (2–20 ký tự):</label>
+          <input type="text" id="cc-input-name" class="text-input" value="${name}" maxlength="20" placeholder="Nhập tên nhân vật..." autocomplete="off" autocapitalize="words" spellcheck="false"/>
+        </div>
+
+        <div class="card-row">
+          <label style="font-weight:700;display:block;margin-bottom:6px">2. Mẫu ngoại hình cơ sở:</label>
+          <div class="cc-grid" id="cc-presets-grid">
+            ${presets.map((p, idx) => `
+              <div class="cc-card ${preset === idx ? 'selected' : ''}" data-preset="${idx}">
+                <b>${p.name}</b>
+                <div class="hud-sub" style="margin-top:4px">${p.desc}</div>
               </div>
-              <div>
-                <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Tông da:</label>
-                <div style="display:flex;gap:6px">
-                  <button class="btn btn-sm ${skin === 0xf5d0b0 ? 'btn-accent' : ''}" data-skin="light">Sáng</button>
-                  <button class="btn btn-sm ${skin === 0xe2b48d ? 'btn-accent' : ''}" data-skin="med">Bánh mật</button>
-                  <button class="btn btn-sm ${skin === 0xba8c63 ? 'btn-accent' : ''}" data-skin="dark">Ngăm</button>
-                </div>
+            `).join('')}
+          </div>
+          <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
+            <div>
+              <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Kiểu tóc:</label>
+              <div style="display:flex;gap:6px" id="cc-hair-btns">
+                <button class="btn btn-sm ${hairStyle === 'short' ? 'btn-accent' : ''}" data-hair="short">Ngắn</button>
+                <button class="btn btn-sm ${hairStyle === 'buzz' ? 'btn-accent' : ''}" data-hair="buzz">Húi cua</button>
+                <button class="btn btn-sm ${hairStyle === 'bald' ? 'btn-accent' : ''}" data-hair="bald">Đầu trọc</button>
               </div>
             </div>
-          </div>
-
-          <div class="card-row">
-            <label style="font-weight:700;display:block;margin-bottom:6px">3. Chọn xuất thân (Quá khứ vụ án Kho số 7):</label>
-            <div class="cc-grid" style="grid-template-columns:1fr">
-              ${(Object.keys(BACKGROUNDS) as BackgroundId[]).map((bId) => {
-                const b = BACKGROUNDS[bId];
-                const isSel = background === bId;
-                return `
-                  <div class="cc-card cc-bg-card ${isSel ? 'selected' : ''}" data-bg="${bId}">
-                    <div style="display:flex;justify-content:space-between;align-items:center">
-                      <b style="font-size:14px;color:#fde68a">${b.name}</b>
-                      <span class="hud-sub">${b.tagline}</span>
-                    </div>
-                    <div style="font-size:12.5px;color:#cbd5e1;margin:5px 0">${b.desc}</div>
-                    <div class="cc-attr-row">
-                      <span class="cc-attr-tag">Ưu điểm: ${b.pros}</span>
-                      <span class="cc-attr-tag" style="color:#f87171">Hạn chế: ${b.cons}</span>
-                    </div>
-                  </div>
-                `;
-              }).join('')}
-            </div>
-          </div>
-
-          <div class="card-row">
-            <label style="font-weight:700;display:block;margin-bottom:6px">4. Mức độ thử thách:</label>
-            <div class="cc-grid">
-              ${(Object.keys(DIFFICULTIES) as Difficulty[]).map((dId) => {
-                const d = DIFFICULTIES[dId];
-                return `
-                  <div class="cc-card ${difficulty === dId ? 'selected' : ''}" data-diff="${dId}">
-                    <b>${d.name}</b>
-                    <div class="hud-sub" style="margin-top:4px">${d.desc}</div>
-                  </div>
-                `;
-              }).join('')}
+            <div>
+              <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Tông da:</label>
+              <div style="display:flex;gap:6px" id="cc-skin-btns">
+                <button class="btn btn-sm ${skin === 0xf5d0b0 ? 'btn-accent' : ''}" data-skin="light">Sáng</button>
+                <button class="btn btn-sm ${skin === 0xe2b48d ? 'btn-accent' : ''}" data-skin="med">Bánh mật</button>
+                <button class="btn btn-sm ${skin === 0xba8c63 ? 'btn-accent' : ''}" data-skin="dark">Ngăm</button>
+              </div>
             </div>
           </div>
         </div>
 
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1)">
-          <div class="hud-sub">Bản án ban đầu: <b>24 ngày</b> · Mục tiêu: Cải tạo & Tìm lại sự thật</div>
-          <button class="btn btn-accent" id="btn-cc-submit">Xác nhận & Bắt đầu hành trình ⏭</button>
+        <div class="card-row">
+          <label style="font-weight:700;display:block;margin-bottom:6px">3. Chọn xuất thân (Quá khứ vụ án Kho số 7):</label>
+          <div class="cc-grid" style="grid-template-columns:1fr" id="cc-bg-grid">
+            ${(Object.keys(BACKGROUNDS) as BackgroundId[]).map((bId) => {
+              const b = BACKGROUNDS[bId];
+              const isSel = background === bId;
+              return `
+                <div class="cc-card cc-bg-card ${isSel ? 'selected' : ''}" data-bg="${bId}">
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <b style="font-size:14px;color:#fde68a">${b.name}</b>
+                    <span class="hud-sub">${b.tagline}</span>
+                  </div>
+                  <div style="font-size:12.5px;color:#cbd5e1;margin:5px 0">${b.desc}</div>
+                  <div class="cc-attr-row">
+                    <span class="cc-attr-tag">Ưu điểm: ${b.pros}</span>
+                    <span class="cc-attr-tag" style="color:#f87171">Hạn chế: ${b.cons}</span>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
         </div>
-      `;
 
-      this.showModal(html, (el) => {
-        const inputName = el.querySelector('#cc-input-name') as HTMLInputElement;
-        inputName?.addEventListener('input', (e) => {
-          name = (e.target as HTMLInputElement).value;
-        });
+        <div class="card-row">
+          <label style="font-weight:700;display:block;margin-bottom:6px">4. Mức độ thử thách:</label>
+          <div class="cc-grid" id="cc-diff-grid">
+            ${(Object.keys(DIFFICULTIES) as Difficulty[]).map((dId) => {
+              const d = DIFFICULTIES[dId];
+              return `
+                <div class="cc-card ${difficulty === dId ? 'selected' : ''}" data-diff="${dId}">
+                  <b>${d.name}</b>
+                  <div class="hud-sub" style="margin-top:4px">${d.desc}</div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
 
-        el.querySelectorAll('[data-preset]').forEach((btn) => {
-          btn.addEventListener('click', () => {
-            preset = Number((btn as HTMLElement).dataset.preset);
-            const p = presets[preset];
-            skin = p.skin;
-            hairStyle = p.hairStyle;
-            this.hooks.onUpdateAppearance?.({ skin, hair, hairStyle, preset });
-            renderModal();
+        <div class="cc-bottom-spacer"></div>
+      </div>
+
+      <div class="cc-footer">
+        <div class="cc-footer-info">
+          <div>Bản án: <b>24 ngày</b></div>
+          <div class="hud-sub" style="font-size:11px">Kỳ xét giảm: 4 ngày/lần (0–2 ngày)</div>
+        </div>
+        <button class="btn btn-accent btn-cc-submit" id="btn-cc-submit">
+          BẮT ĐẦU HÀNH TRÌNH ⏭
+        </button>
+      </div>
+    `;
+
+    this.showModal(html, (el) => {
+      const inputName = el.querySelector('#cc-input-name') as HTMLInputElement;
+      inputName?.addEventListener('input', (e) => {
+        name = (e.target as HTMLInputElement).value;
+      });
+      inputName?.addEventListener('focus', () => {
+        setTimeout(() => {
+          inputName.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 120);
+      });
+
+      // Đổi mẫu ngoại hình cơ sở in-place (không re-render làm mất tên hay nhảy cuộn)
+      el.querySelectorAll('[data-preset]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          preset = Number((btn as HTMLElement).dataset.preset);
+          el.querySelectorAll('[data-preset]').forEach((b) => b.classList.remove('selected'));
+          btn.classList.add('selected');
+
+          const p = presets[preset];
+          skin = p.skin;
+          hairStyle = p.hairStyle;
+
+          // Cập nhật nút kiểu tóc & tông da tương ứng
+          el.querySelectorAll('[data-hair]').forEach((b) => {
+            b.classList.toggle('btn-accent', (b as HTMLElement).dataset.hair === hairStyle);
           });
-        });
-
-        el.querySelectorAll('[data-hair]').forEach((btn) => {
-          btn.addEventListener('click', () => {
-            hairStyle = (btn as HTMLElement).dataset.hair as any;
-            this.hooks.onUpdateAppearance?.({ skin, hair, hairStyle, preset });
-            renderModal();
+          el.querySelectorAll('[data-skin]').forEach((b) => {
+            const skVal = (b as HTMLElement).dataset.skin === 'light' ? 0xf5d0b0 : (b as HTMLElement).dataset.skin === 'med' ? 0xe2b48d : 0xba8c63;
+            b.classList.toggle('btn-accent', skVal === skin);
           });
-        });
 
-        el.querySelectorAll('[data-skin]').forEach((btn) => {
-          btn.addEventListener('click', () => {
-            const sk = (btn as HTMLElement).dataset.skin;
-            skin = sk === 'light' ? 0xf5d0b0 : sk === 'med' ? 0xe2b48d : 0xba8c63;
-            this.hooks.onUpdateAppearance?.({ skin, hair, hairStyle, preset });
-            renderModal();
-          });
-        });
-
-        el.querySelectorAll('[data-bg]').forEach((btn) => {
-          btn.addEventListener('click', () => {
-            background = (btn as HTMLElement).dataset.bg as BackgroundId;
-            renderModal();
-          });
-        });
-
-        el.querySelectorAll('[data-diff]').forEach((btn) => {
-          btn.addEventListener('click', () => {
-            difficulty = (btn as HTMLElement).dataset.diff as Difficulty;
-            renderModal();
-          });
-        });
-
-        el.querySelector('#btn-cc-submit')?.addEventListener('click', () => {
-          const finalName = (inputName ? inputName.value : name).replace(/[<>"'&]/g, '').trim();
-          if (finalName.length < 2 || finalName.length > 20) {
-            this.toast('Tên nhân vật phải từ 2 đến 20 ký tự.', 'warn');
-            return;
-          }
-          this.closeModal();
-          onDone({
-            name: finalName,
-            preset,
-            skin,
-            hair,
-            hairStyle,
-            background,
-            difficulty,
-            introSeen: false,
-          });
+          this.hooks.onUpdateAppearance?.({ skin, hair, hairStyle, preset });
         });
       });
-    };
 
-    renderModal();
+      // Đổi kiểu tóc in-place
+      el.querySelectorAll('[data-hair]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          hairStyle = (btn as HTMLElement).dataset.hair as any;
+          el.querySelectorAll('[data-hair]').forEach((b) => b.classList.remove('btn-accent'));
+          btn.classList.add('btn-accent');
+          this.hooks.onUpdateAppearance?.({ skin, hair, hairStyle, preset });
+        });
+      });
+
+      // Đổi tông da in-place
+      el.querySelectorAll('[data-skin]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const sk = (btn as HTMLElement).dataset.skin;
+          skin = sk === 'light' ? 0xf5d0b0 : sk === 'med' ? 0xe2b48d : 0xba8c63;
+          el.querySelectorAll('[data-skin]').forEach((b) => b.classList.remove('btn-accent'));
+          btn.classList.add('btn-accent');
+          this.hooks.onUpdateAppearance?.({ skin, hair, hairStyle, preset });
+        });
+      });
+
+      // Đổi xuất thân in-place
+      el.querySelectorAll('[data-bg]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          background = (btn as HTMLElement).dataset.bg as BackgroundId;
+          el.querySelectorAll('[data-bg]').forEach((b) => b.classList.remove('selected'));
+          btn.classList.add('selected');
+        });
+      });
+
+      // Đổi độ khó in-place
+      el.querySelectorAll('[data-diff]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          difficulty = (btn as HTMLElement).dataset.diff as Difficulty;
+          el.querySelectorAll('[data-diff]').forEach((b) => b.classList.remove('selected'));
+          btn.classList.add('selected');
+        });
+      });
+
+      // Nút xác nhận & bắt đầu hành trình: kiểm tra hợp lệ, chống bấm lặp (double-click)
+      let isSubmitting = false;
+      const btnSubmit = el.querySelector('#btn-cc-submit') as HTMLButtonElement;
+      btnSubmit?.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (isSubmitting) return;
+
+        const raw = inputName ? inputName.value : name;
+        const finalName = raw.replace(/[<>"'&]/g, '').trim();
+        if (finalName.length < 2 || finalName.length > 20) {
+          this.toast('Tên nhân vật phải từ 2 đến 20 ký tự (hỗ trợ tiếng Việt).', 'warn');
+          inputName?.focus();
+          return;
+        }
+
+        isSubmitting = true;
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = 'ĐANG VÀO TRẠI...';
+
+        this.closeModal();
+        onDone({
+          name: finalName,
+          preset,
+          skin,
+          hair,
+          hairStyle,
+          background,
+          difficulty,
+          introSeen: false,
+        });
+      });
+    }, 'modal-cc');
   }
 
   // ───────────── Menu Chính Trung Tâm ─────────────

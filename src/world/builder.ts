@@ -378,7 +378,7 @@ export class PrisonWorld {
         frame.position.y = 1.6;
         const face = new THREE.Mesh(
           new THREE.PlaneGeometry(p.w - 0.06, 0.88),
-          new THREE.MeshBasicMaterial({ map: tex, side: THREE.FrontSide }),
+          new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }),
         );
         face.position.set(0, 1.6, 0.025);
         g0.add(frame, face);

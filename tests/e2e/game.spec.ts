@@ -291,3 +291,106 @@ test('trải nghiệm điện thoại: xoay dọc/ngang, HUD gọn không đè, 
 
   await ctx.close();
 });
+
+test('màn tạo nhân vật: thanh nút cố định đáy, chiều cao >= 48px, không cuộn lồng, giữ tên khi đổi tùy chọn ở 956x440 & 844x390', async ({ browser }) => {
+  const ctx = await browser.newContext({
+    viewport: { width: 956, height: 440 },
+    hasTouch: true,
+    isMobile: true,
+  });
+  const page = await ctx.newPage();
+  await page.goto('/');
+
+  const modalCc = page.locator('.modal.modal-cc');
+  const btnSubmit = page.locator('#btn-cc-submit');
+  const inputName = page.locator('#cc-input-name');
+  const scrollBody = page.locator('#cc-scroll-body');
+
+  // 1. Kiểm tra màn tạo nhân vật hiển thị với thanh nút cố định ở đáy
+  await expect(modalCc).toBeVisible();
+  await expect(btnSubmit).toBeVisible();
+  await expect(btnSubmit).toContainText('BẮT ĐẦU HÀNH TRÌNH');
+
+  // Nút cao tối thiểu 48px
+  const box956 = await btnSubmit.boundingBox();
+  expect(box956).not.toBeNull();
+  expect(box956!.height).toBeGreaterThanOrEqual(48);
+
+  // 2. Kiểm tra chỉ 1 vùng cuộn duy nhất: modal-cc không cuộn (overflow: hidden), chỉ có cc-scroll-body cuộn
+  const overflowStyles = await page.evaluate(() => {
+    const m = document.querySelector('.modal.modal-cc') as HTMLElement;
+    const b = document.querySelector('#cc-scroll-body') as HTMLElement;
+    return {
+      modalOverflow: window.getComputedStyle(m).overflowY,
+      bodyOverflow: window.getComputedStyle(b).overflowY,
+    };
+  });
+  expect(overflowStyles.modalOverflow).toBe('hidden');
+  expect(['auto', 'scroll']).toContain(overflowStyles.bodyOverflow);
+
+  // 3. Nhập tên nhân vật hỗ trợ tiếng Việt
+  await inputName.fill('Minh Tuấn');
+  await expect(inputName).toHaveValue('Minh Tuấn');
+
+  // 4. Đổi ngoại hình, kiểu tóc, tông da, xuất thân, độ khó: KHÔNG làm mất tên và KHÔNG nhảy cuộn
+  await page.locator('[data-preset="1"]').click();
+  await expect(inputName).toHaveValue('Minh Tuấn');
+
+  await page.locator('[data-hair="buzz"]').click();
+  await expect(inputName).toHaveValue('Minh Tuấn');
+
+  await page.locator('[data-skin="dark"]').click();
+  await expect(inputName).toHaveValue('Minh Tuấn');
+
+  await page.locator('[data-bg="courier"]').click();
+  await expect(inputName).toHaveValue('Minh Tuấn');
+
+  // Cuộn thân modal xuống một đoạn rồi chọn độ khó
+  await page.locator('[data-diff="hard"]').scrollIntoViewIfNeeded();
+  const scrollBefore = await scrollBody.evaluate((el) => el.scrollTop);
+  expect(scrollBefore).toBeGreaterThan(0);
+
+  await page.locator('[data-diff="hard"]').click();
+  await expect(inputName).toHaveValue('Minh Tuấn');
+  const scrollAfter = await scrollBody.evaluate((el) => el.scrollTop);
+  expect(scrollAfter).toBe(scrollBefore); // không bị reset về 0 (đỉnh)!
+
+  // 5. Kiểm tra ở kích thước 844x390 (iPhone landscape thông dụng)
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.waitForTimeout(100);
+  await expect(btnSubmit).toBeVisible();
+  const box844 = await btnSubmit.boundingBox();
+  expect(box844).not.toBeNull();
+  expect(box844!.height).toBeGreaterThanOrEqual(48);
+
+  // 6. Mô phỏng bàn phím iPhone mở (chiều cao viewport thu nhỏ còn 240px)
+  await page.setViewportSize({ width: 844, height: 240 });
+  await page.waitForTimeout(100);
+  await expect(btnSubmit).toBeVisible();
+
+  // Khôi phục kích thước bình thường
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.waitForTimeout(100);
+
+  // 7. Thử xóa tên để dưới 2 ký tự -> bấm bắt đầu phải hiện cảnh báo & không submit
+  await inputName.fill('M');
+  await btnSubmit.click();
+  await expect(page.locator('.toast')).toContainText('Tên nhân vật phải từ 2 đến 20 ký tự');
+  await expect(modalCc).toBeVisible();
+
+  // 8. Nhập tên hợp lệ và bấm bắt đầu: chống bấm 2 lần, chuyển sang cutscene rồi vào game
+  await inputName.fill('Minh Tuấn');
+  await btnSubmit.click();
+
+  // Modal đóng ngay và Cutscene khởi chạy
+  const cutsceneOverlay = page.locator('#cutscene-overlay');
+  await expect(cutsceneOverlay).toBeVisible();
+  await expect(modalCc).toHaveCount(0);
+
+  // Bỏ qua cutscene và vào game
+  await page.locator('#btn-cutscene-skip').click();
+  await expect(cutsceneOverlay).not.toBeVisible();
+  await expect(page.locator('#hud-clock')).toBeVisible();
+
+  await ctx.close();
+});

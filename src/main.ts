@@ -45,9 +45,11 @@ class App {
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    this.renderer.setSize(window.innerWidth, window.innerHeight, false);
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
+    this.renderer.setSize(window.innerWidth, window.innerHeight, true);
+    canvas.style.width = '100vw';
+    canvas.style.height = '100vh';
+    canvas.style.width = '100dvw';
+    canvas.style.height = '100dvh';
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.world = new PrisonWorld();
@@ -153,9 +155,11 @@ class App {
       const w = Math.max(window.innerWidth, document.documentElement.clientWidth || 0);
       const h = Math.max(window.innerHeight, document.documentElement.clientHeight || 0);
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-      this.renderer.setSize(w, h, false);
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
+      this.renderer.setSize(w, h, true);
+      canvas.style.width = '100vw';
+      canvas.style.height = '100vh';
+      canvas.style.width = '100dvw';
+      canvas.style.height = '100dvh';
       this.tpCam.cam.aspect = w / h;
       this.tpCam.cam.updateProjectionMatrix();
       this.input.reset();
@@ -164,7 +168,8 @@ class App {
     window.addEventListener('orientationchange', () => {
       onResize();
       setTimeout(onResize, 120);
-      setTimeout(onResize, 320);
+      setTimeout(onResize, 280);
+      setTimeout(onResize, 500);
     });
     window.visualViewport?.addEventListener('resize', onResize);
     onResize();

@@ -181,7 +181,7 @@ for (const cx of CELL_CENTERS) {
   P.push({ kind: 'bunk', x: cx + 1.65, z: -29.6, w: 0.95, d: 2.0, collide: true });
 }
 P.push(
-  { kind: 'board', x: -27.88, z: -21.5, w: 1.4, d: 0.05, rot: Math.PI / 2, label: 'NỘI QUY' },
+  { kind: 'board', x: -27.81, z: -21.5, w: 1.4, d: 0.05, rot: Math.PI / 2, label: 'NỘI QUY' },
   { kind: 'basin', x: -6.5, z: -22.5, w: 0.6, d: 3, collide: true },
   { kind: 'bench', x: -21, z: -19.2, w: 2.4, d: 0.5, collide: true },
   // Đồ đạc bổ sung hành lang buồng giam (bớt trống trải)
@@ -201,7 +201,7 @@ P.push(
   { kind: 'workbench', x: 20, z: -1, w: 2.4, d: 1.0, collide: true },
   { kind: 'workbench', x: 16, z: 4, w: 2.4, d: 1.0, collide: true },
   { kind: 'workbench', x: 20, z: 4, w: 2.4, d: 1.0, collide: true },
-  { kind: 'board', x: 12.12, z: -6, w: 1.3, d: 0.05, rot: Math.PI / 2, label: 'CHẤM CÔNG' },
+  { kind: 'board', x: 12.19, z: -6, w: 1.3, d: 0.05, rot: Math.PI / 2, label: 'CHẤM CÔNG' },
   { kind: 'bench', x: 14.2, z: 7.2, w: 2.4, d: 0.5, collide: true },
   { kind: 'crate', x: 13.5, z: 6.5, w: 1.2, d: 1.2, collide: true },
   { kind: 'crate', x: 15.0, z: 6.5, w: 1.0, d: 1.0, collide: true },
@@ -215,7 +215,7 @@ P.push(
   { kind: 'cabinet', x: -10.8, z: 18.8, w: 2, d: 0.7, collide: true },
   { kind: 'cabinet', x: 2.6, z: 18.8, w: 2, d: 0.7, collide: true },
   { kind: 'chair', x: -4.6, z: 14.5, w: 0.5, d: 0.5 },
-  { kind: 'board', x: -11.88, z: 14, w: 1.4, d: 0.05, rot: Math.PI / 2, label: 'KỶ LUẬT' },
+  { kind: 'board', x: -11.81, z: 14, w: 1.4, d: 0.05, rot: Math.PI / 2, label: 'KỶ LUẬT' },
   // Sân
   { kind: 'pullup', x: -22.5, z: 5.2, w: 2.2, d: 0.3, collide: true },
   { kind: 'stonetable', x: -10, z: 4.6, w: 1.3, d: 1.3, collide: true },
@@ -239,7 +239,7 @@ P.push(
   { kind: 'desk', x: -18, z: 13, w: 2.4, d: 1.0, collide: true },
   { kind: 'desk', x: -21.5, z: 17.5, w: 2.6, d: 1.0, collide: true },
   { kind: 'shelf', x: -26.8, z: 16.5, w: 0.8, d: 3.2, collide: true },
-  { kind: 'board', x: -27.75, z: 12, w: 0.15, d: 1.8, rot: Math.PI / 2, label: 'LỚP HỌC NGHỀ' },
+  { kind: 'board', x: -27.81, z: 12, w: 1.4, d: 0.05, rot: Math.PI / 2, label: 'LỚP HỌC NGHỀ' },
   // Phòng Thăm gặp
   { kind: 'counter', x: -24, z: -9.5, w: 6.8, d: 0.8, collide: true },
   { kind: 'chair', x: -22.5, z: -8, w: 0.5, d: 0.5 },
