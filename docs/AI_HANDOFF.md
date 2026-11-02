@@ -8,6 +8,14 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-02 — ChatGPT — Sửa nút X không hiển thị trên iPhone
+- Người dùng gửi ảnh bảng Nhân vật & Kỹ năng không có nút X sau bản sửa trước.
+- `src/ui/manager.ts`: bọc modal trong `.modal-shell`, gắn nút X làm phần tử cùng cấp với modal, thay vì nằm trong vùng cuộn.
+- `src/ui/styles.css`: `.modal-shell` làm mốc định vị; nút X `position:absolute` ở góc trên phải và z-index cao, nội dung bảng chừa khoảng bên phải.
+- Commit: `9b27c0c9656b48d6afa34eb97cb75ee8d0a13391`, `a8006599e59a8e136ac18e1983fbbf6991210f5b`.
+- Chưa kiểm thử Safari thực tế; cần kiểm tra trên iPhone và xác nhận bản Pages mới được deploy.
+- Antigravity: giữ `.modal-shell` và nút X bên ngoài `.modal`; không hoàn tác thành `m.prepend(closeTop)`.
+
 ### 2026-11-02 — ChatGPT — Nút X đóng bảng ở góc trên
 - Yêu cầu: đóng nhanh các bảng dài như Nhiệm vụ/Nội quy trên iPhone mà không cần cuộn xuống cuối.
 - `src/ui/manager.ts`: trong `showModal`, thêm nút × ở đầu những modal đã có `[data-close]`; sử dụng `closeModal()` sẵn có. Modal bắt buộc không có nút đóng được giữ nguyên.
