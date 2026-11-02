@@ -8,6 +8,14 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-02 — ChatGPT — Nút X đóng bảng ở góc trên
+- Yêu cầu: đóng nhanh các bảng dài như Nhiệm vụ/Nội quy trên iPhone mà không cần cuộn xuống cuối.
+- `src/ui/manager.ts`: trong `showModal`, thêm nút × ở đầu những modal đã có `[data-close]`; sử dụng `closeModal()` sẵn có. Modal bắt buộc không có nút đóng được giữ nguyên.
+- `src/ui/styles.css`: nút 40×40, `position: sticky; top: 0`, nổi trên nội dung khi cuộn, có nhãn accessibility và focus style.
+- Commit code: `85b80d26590c16245db4fd11b980f5fe3f70f650`; CSS: `96c94360a6e977a59db3d657577260a7307456cf`.
+- Kiểm thử: chưa chạy build, unit hay Safari runtime trong môi trường hiện tại. Cần xác nhận trực tiếp trên iPhone, đặc biệt các bảng dài và modal tạo nhân vật.
+- Antigravity: giữ phần `modal-close-top` và logic thêm nút trong `showModal`; không thay `manager.ts`/`styles.css` bằng bản cũ.
+
 ### 2026-11-02 — ChatGPT — Thiết lập phối hợp AI
 - Mục tiêu: tạo quy tắc và nhật ký bàn giao để ChatGPT và Antigravity không vô tình ghi đè thay đổi của nhau.
 - File thêm: `AGENTS.md`, `docs/AI_HANDOFF.md`.
