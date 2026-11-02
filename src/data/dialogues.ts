@@ -403,7 +403,7 @@ function lamDialogue(g: GameLogic): DNode {
                     label: '[Giao tiếp] Phân tích: Ép nợ rùm beng Quản giáo Lan sẽ sờ gáy buồng 2, anh mất nhiều hơn được.',
                     run: () => {
                       g.chooseBranch('mon_no', 'negotiate');
-                      g.finishQuest('mon_no', 'done', 'Thương lượng thành công');
+                       g.completeObjective('mon_no', 'dam_phan');
                       g.changeRel('lam', 10, 'Nể phục tài đàm phán của Minh');
                       g.s.flags.huy_debt_cleared = true;
                       return {
@@ -422,13 +422,17 @@ function lamDialogue(g: GameLogic): DNode {
   }
 
   // Trả tiền nợ cho Lâm
-  if (g.qBranch('mon_no') === 'pay' && g.s.stats.money >= 40) {
+  if (g.qStatus('mon_no') === 'active' && g.qBranch('mon_no') === 'pay' && g.s.stats.money >= 40) {
     choices.push({
       label: 'Đây là 40.000đ trả dứt nợ cho Huy. Đưa giấy nợ đây.',
       important: true,
       run: () => {
+        if (!g.qObj('mon_no', 'du_tien')) g.completeObjective('mon_no', 'du_tien');
+        if (!g.completeObjective('mon_no', 'tra_lam')) return {
+          speaker: 'Lâm', text: 'Chưa hoàn thành các bước giải quyết nợ. Hãy làm theo mục tiêu đang hiển thị.',
+          choices: [{ label: 'Tôi sẽ quay lại.', run: () => null }],
+        };
         g.addStat('money', -40);
-        g.finishQuest('mon_no', 'done', 'Trả nợ bằng tiền');
         g.s.flags.huy_debt_cleared = true;
         return {
           speaker: 'Lâm',
@@ -440,14 +444,17 @@ function lamDialogue(g: GameLogic): DNode {
   }
 
   // Giao hộp mũi khoan cho Lâm
-  if (g.qBranch('mon_no') === 'steal' && g.has('hop_mui_khoan')) {
+  if (g.qStatus('mon_no') === 'active' && g.qBranch('mon_no') === 'steal' && g.has('hop_mui_khoan') {
     choices.push({
       label: 'Hộp mũi khoan lấy trong kho đây.',
       important: true,
       risk: 'Rủi ro: Tang vật trộm cắp',
       run: () => {
+        if (!g.completeObjective('mon_no', 'giao_lam')) return {
+          speaker: 'Lâm', text: 'Cần hoàn thành các bước trước khi giao hàng.',
+          choices: [{ label: 'Được.', run: () => null }],
+        };
         g.takeItem('hop_mui_khoan');
-        g.finishQuest('mon_no', 'done', 'Trộm đồ giúp Lâm');
         g.s.flags.stole_for_lam = true;
         g.s.flags.huy_debt_cleared = true;
         return {
@@ -519,12 +526,15 @@ function lanDialogue(g: GameLogic, openAppeal: () => void): DNode {
   const choices: DChoice[] = [];
 
   // Báo cáo món nợ của Huy
-  if (g.qBranch('mon_no') === 'report' || (g.qStatus('mon_no') === 'active' && g.s.flags.report_with_note)) {
+  if (g.qStatus('mon_no') === 'active' && g.qBranch('mon_no') === 'report') {
     choices.push({
       label: 'Báo cáo Quản giáo về tình trạng cho vay nặng lãi và đe dọa trong trại.',
       important: true,
       run: () => {
-        g.finishQuest('mon_no', 'done', 'Báo cáo quản giáo');
+        if (!g.completeObjective('mon_no', 'bao_lan')) return {
+          speaker: 'Quản giáo Lan', text: 'Bạn cần hoàn thành các bước giải quyết món nợ theo thứ tự trước.',
+          choices: [{ label: 'Rõ, thưa cán bộ.', run: () => null }],
+        };
         g.addReform(6, 'Tố giác vi phạm nội quy');
         g.changeRel('lan', 15, 'Minh tố giác vi phạm dũng cảm');
         g.s.flags.huy_debt_cleared = true;
@@ -749,18 +759,17 @@ function anDialogue(g: GameLogic): DNode {
     });
   }
 
-  // Phụ việc y tế
-  if (g.qStatus('phu_y_te') === 'active' && !g.qObj('phu_y_te', 'hoan_thanh')) {
+  // Phụ việc y tế: phải nhận hướng dẫn từ Y sĩ trước khi mở tủ thuốc.
+  if (g.qStatus('phu_y_te') === 'active' && !g.qObj('phu_y_te', 'nhan_viec')) {
     choices.push({
-      label: 'Cháu sắp xếp xong tủ thuốc và phân loại bông băng rồi ạ.',
+      label: 'Cháu xin nhận hướng dẫn để phụ phân loại tủ thuốc.',
       important: true,
       run: () => {
-        g.completeObjective('phu_y_te', 'hoan_thanh');
-        g.finishQuest('phu_y_te', 'done');
+        g.completeObjective('phu_y_te', 'nhan_viec');
         return {
           speaker: 'Y sĩ An',
-          text: 'Rất ngăn nắp và sạch sẽ! Cậu cẩn thận lắm. Đây là vỉ thuốc cảm dự phòng, cầm lấy phòng khi trái gió trở trời.',
-          choices: [{ label: 'Cháu cảm ơn y sĩ.', run: () => null }],
+          text: 'Qua tủ thuốc bên cạnh và phân loại từng nhóm thuốc theo đúng nhãn rồi báo lại nhé.',
+          choices: [{ label: 'Dạ, cháu sẽ làm theo.', run: () => null }],
         };
       },
     });
