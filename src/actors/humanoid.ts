@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type { Appearance, Pose } from '../data/npcs';
 
 function stripedTex(c1: string, c2: string): THREE.CanvasTexture {
@@ -17,6 +18,24 @@ function stripedTex(c1: string, c2: string): THREE.CanvasTexture {
 
 let inmateStripe: THREE.CanvasTexture | null = null;
 
+/** Shared GLB cache: one network request per skin, cloned nodes per actor.
+ *  The GLB keeps its relative Textures/texture-X.png references under public/models.
+ */
+const characterLoader = new GLTFLoader();
+const characterCache = new Map<string, Promise<{ scene: THREE.Group; animations: THREE.AnimationClip[] }>>();
+function loadCharacter(skin: string) {
+  let promise = characterCache.get(skin);
+  if (!promise) {
+    promise = characterLoader.loadAsync(`${import.meta.env.BASE_URL}models/characters/character-${skin}.glb`)
+      .then((gltf) => ({ scene: gltf.scene, animations: gltf.animations }));
+    characterCache.set(skin, promise);
+  }
+  return promise;
+}
+let nextInmateSkin = 0;
+let nextOfficerSkin = 0;
+
+
 export class HumanoidRig {
   root = new THREE.Group();
   body = new THREE.Group();
@@ -28,6 +47,11 @@ export class HumanoidRig {
   pose: Pose = 'stand';
   phase = Math.random() * 10;
   labelSprite: THREE.Sprite | null = null;
+  private glbModel: THREE.Group | null = null;
+  private mixer: THREE.AnimationMixer | null = null;
+  private actions = new Map<string, THREE.AnimationAction>();
+  private activeClip = '';
+
 
   constructor(look: Appearance, labelText?: string) {
     this.root.scale.set(look.build, look.height, look.build);
@@ -146,6 +170,37 @@ export class HumanoidRig {
     this.legR.position.set(0.1, 0.62, 0);
     this.body.add(this.legL, this.legR);
 
+    // Character assets are loaded asynchronously; keep the procedural rig as a
+    // visual fallback only until a valid GLB and its animation clips arrive.
+    const skin = look.uniform === 'officer'
+      ? ['j', 'q', 'j', 'i'][nextOfficerSkin++ % 4]
+      : ['g', 'a', 'b', 'c', 'd', 'e', 'f', 'h', 'k', 'l', 'm', 'o', 'p', 'r'][nextInmateSkin++ % 14];
+    void loadCharacter(skin).then(({ scene, animations }) => {
+      if (!this.root.parent) return;
+      const model = scene.clone(true);
+      const bounds = new THREE.Box3().setFromObject(model);
+      const height = bounds.max.y - bounds.min.y;
+      if (!Number.isFinite(height) || height <= 0.01) return;
+      // Root already applies appearance.height; model local height stays 1.7m.
+      const scale = 1.7 / height;
+      model.scale.setScalar(scale);
+      model.position.y = -bounds.min.y * scale;
+      model.traverse((obj) => {
+        if (obj instanceof THREE.Mesh) obj.castShadow = true;
+      });
+      this.body.visible = false;
+      this.root.add(model);
+      this.glbModel = model;
+      this.mixer = new THREE.AnimationMixer(model);
+      for (const clip of animations) {
+        this.actions.set(clip.name.toLowerCase(), this.mixer.clipAction(clip));
+      }
+      this.activeClip = '';
+      this.update(0, 0);
+    }).catch((err) => {
+      console.warn('[Character GLB] Fallback to procedural rig:', skin, err);
+    });
+
     if (labelText) {
       this.labelSprite = makeLabel(labelText, look.accent);
       this.labelSprite.position.set(0, 1.92, 0);
@@ -154,6 +209,24 @@ export class HumanoidRig {
   }
 
   update(dt: number, speed = 0) {
+    if (this.mixer) {
+      const clip = this.pose === 'walk' ? 'walk'
+        : this.pose === 'sit' ? 'sit'
+        : this.pose === 'work' ? 'interact-right'
+        : this.pose === 'talk' ? 'emote-yes' : 'idle';
+      if (this.activeClip !== clip) {
+        const next = this.actions.get(clip) ?? this.actions.get('idle');
+        const prev = this.actions.get(this.activeClip);
+        if (prev && prev !== next) prev.fadeOut(0.18);
+        if (next) {
+          next.reset().fadeIn(0.18).play();
+          next.setEffectiveTimeScale(clip === 'walk' ? Math.max(0.7, Math.min(1.6, speed / 3.2)) : 1);
+        }
+        this.activeClip = clip;
+      }
+      this.mixer.update(Math.min(Math.max(dt, 0), 0.1));
+      return;
+    }
     this.phase += dt * (this.pose === 'walk' ? Math.max(4, speed * 2.2) : 2.5);
     const p = this.phase;
     this.body.position.y = 0;
