@@ -1,8 +1,30 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import {
   BUILDINGS, DOORS, PROPS, WALLS, ZONES, propBox, type Box, type PropDef, type WallDef,
 } from './layout';
 import { Collision } from './collision';
+
+// Keep the original PROPS footprints, collisions and NPC navigation unchanged.
+// GLBs replace visuals only. This guarantees no new path blockers without nav review.
+const propLoader = new GLTFLoader();
+const propAssets: Record<string, string> = {
+  bunk: 'furniture/bedBunk.glb',
+  desk: 'furniture/desk.glb',
+  chair: 'furniture/chair.glb',
+  table: 'furniture/table.glb',
+  tree: 'nature/tree_detailed.glb',
+  cabinet: 'furniture/cabinetBed.glb',
+};
+const propCache = new Map<string, Promise<THREE.Group>>();
+function loadProp(path: string) {
+  let pending = propCache.get(path);
+  if (!pending) {
+    pending = propLoader.loadAsync(`${import.meta.env.BASE_URL}models/${path}`).then((gltf) => gltf.scene);
+    propCache.set(path, pending);
+  }
+  return pending;
+}
 
 function checkerTex(c1: string, c2: string, cells = 8): THREE.CanvasTexture {
   const cv = document.createElement('canvas');
@@ -273,6 +295,38 @@ export class PrisonWorld {
     for (const p of PROPS) {
       if (p.collide) this.collision.boxes.push(propBox(p));
       const obj = this.makePropMesh(p);
+      // Load each unique GLB once, clone its geometry hierarchy per prop.
+      // Preserve existing fallback geometry until the model is ready.
+      const asset = propAssets[p.kind];
+      if (asset) {
+        void loadProp(asset).then((template) => {
+          const model = template.clone(true);
+          const bounds = new THREE.Box3().setFromObject(model);
+          const width = bounds.max.x - bounds.min.x;
+          const depth = bounds.max.z - bounds.min.z;
+          const height = bounds.max.y - bounds.min.y;
+          if (!Number.isFinite(width * depth * height) ||
+              Math.min(width, depth, height) <= 0.001) return;
+          // Uniform scale avoids stretched models; fit within the existing
+          // collision footprint and cap height for indoor clearance.
+          const maxHeight = p.kind === 'tree' ? 4.5 : p.kind === 'bunk' ? 2.0 : 1.9;
+          const factor = Math.min(p.w / width, p.d / depth, maxHeight / height);
+          model.scale.setScalar(factor);
+          model.position.set(
+            -(bounds.min.x + bounds.max.x) * 0.5 * factor,
+            -bounds.min.y * factor,
+            -(bounds.min.z + bounds.max.z) * 0.5 * factor,
+          );
+          model.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
+          obj.clear();
+          obj.add(model);
+        }).catch((err) => console.warn('[Prop GLB] Procedural fallback:', asset, err));
+      }
       obj.position.set(p.x, 0, p.z);
       if (p.rot) obj.rotation.y = p.rot;
       this.scene.add(obj);
