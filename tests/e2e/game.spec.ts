@@ -258,20 +258,20 @@ test('trải nghiệm điện thoại: xoay dọc/ngang, HUD gọn không đè, 
   await expect(page.locator('#menu-build-tag')).toContainText('v0.4.0');
   await expect(page.locator('.menu-card-btn')).toHaveCount(8);
   // Đóng menu
-  await page.locator('.modal [data-close]').click();
+  await page.locator('.modal-shell > .modal-close-top').click();
   await expect(page.locator('.modal')).toHaveCount(0);
 
   // 5. Mở chi tiết mục tiêu khi chạm thanh quest bar
   await page.locator('#hud-quest-bar').click();
   await expect(page.locator('.modal h2')).toContainText('MỤC TIÊU & NHIỆM VỤ');
-  await page.locator('.modal [data-close]').click();
+  await page.locator('.modal-shell > .modal-close-top').click();
 
   // 6. Mở chi tiết chỉ số khi chạm thanh stats mini (thống nhất 0-100: Độ no & Tinh thần)
   await page.locator('#hud-stats-mini').click();
   await expect(page.locator('.modal h2')).toContainText('CHỈ SỐ SINH HOẠT');
   await expect(page.locator('.modal')).toContainText('Độ no');
   await expect(page.locator('.modal')).toContainText('Tinh thần');
-  await page.locator('.modal [data-close]').click();
+  await page.locator('.modal-shell > .modal-close-top').click();
 
   // Kiểm tra Minimap 2D cố định hướng Bắc
   await expect(page.locator('#minimap-canvas')).toBeVisible();
