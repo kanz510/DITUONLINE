@@ -14,6 +14,7 @@ import { HumanoidRig } from './actors/humanoid';
 import { NpcActor } from './actors/npc';
 import { InputController, ThirdPersonCamera } from './core/controls';
 import { SoundEngine } from './core/audio';
+import { CutsceneController } from './core/cutscene';
 import { UIManager, type PromptTarget } from './ui/manager';
 import { fetchLiveRelease } from './version';
 
@@ -23,6 +24,7 @@ class App {
   tpCam = new ThirdPersonCamera();
   input = new InputController();
   sfx = new SoundEngine();
+  cutscene!: CutsceneController;
   saves = new SaveManager(typeof localStorage !== 'undefined' ? localStorage : null);
   g!: GameLogic;
   ui!: UIManager;
@@ -42,21 +44,28 @@ class App {
     if (this.g.qStatus('nhap_trai') === 'locked') this.g.startQuest('nhap_trai');
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setSize(window.innerWidth, window.innerHeight, true);
-    canvas.style.width = '100vw';
-    canvas.style.height = '100vh';
-    canvas.style.width = '100dvw';
-    canvas.style.height = '100dvh';
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.renderer.setSize(window.innerWidth, window.innerHeight, false);
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.world = new PrisonWorld();
     this.world.setQuality(this.g.s.settings.quality, this.renderer);
     this.sfx.volume = this.g.s.settings.volume;
+    this.cutscene = new CutsceneController(this.tpCam.cam, this.sfx);
 
-    // Nhân vật người chơi: Minh (không gắn nhãn chữ thường trực trên đầu)
-    this.playerRig = new HumanoidRig(
-      { uniform: 'inmate', skin: 0xe2b48d, hair: 0x18181b, hairStyle: 'short', accent: 0x22c55e, height: 1.0, build: 1.0 },
-    );
+    // Nhân vật người chơi theo profile khởi tạo
+    const prof = this.g.s.profile;
+    this.playerRig = new HumanoidRig({
+      uniform: 'inmate',
+      skin: prof.skin ?? 0xe2b48d,
+      hair: prof.hair ?? 0x18181b,
+      hairStyle: prof.hairStyle ?? 'short',
+      accent: 0x22c55e,
+      height: 1.0,
+      build: 1.0,
+    });
     this.world.scene.add(this.playerRig.root);
 
     // Các NPC
@@ -88,6 +97,29 @@ class App {
         this.world.setQuality(this.g.s.settings.quality, this.renderer);
         this.sfx.volume = this.g.s.settings.volume;
       },
+      onRewatchIntro: () => {
+        this.cutscene.play(this.g.s.profile.name, this.g.s.profile.background, () => {});
+      },
+      onUpdateAppearance: (p) => {
+        this.g.s.profile.skin = p.skin;
+        this.g.s.profile.hair = p.hair;
+        this.g.s.profile.hairStyle = p.hairStyle;
+        this.g.s.profile.preset = p.preset;
+        this.rebuildPlayerRig(p);
+        this.saves.save(this.g.s);
+      },
+      onRestoreBackup: () => {
+        const b = this.saves.loadBackup();
+        if (b) {
+          this.g = new GameLogic(b);
+          this.rebuildPlayerRig(this.g.s.profile);
+          this.saves.save(this.g.s);
+          this.ui.toast('Đã phục hồi bản sao lưu thành công.', 'good');
+          window.location.reload();
+        } else {
+          this.ui.toast('Không tìm thấy bản sao lưu hợp lệ.', 'warn');
+        }
+      },
     });
 
     fetchLiveRelease().then((rel) => this.ui.updateReleaseInfo(rel));
@@ -95,12 +127,12 @@ class App {
     this.bindEvents();
     this.input.bind(canvas, this.ui.joyZone, this.ui.joyKnob);
     this.input.onInteract = () => {
-      if (!this.ui.paused) this.currentPrompt?.run();
+      if (!this.ui.paused && !this.cutscene.isActive()) this.currentPrompt?.run();
     };
     this.input.onKeyCommand = (code) => this.handleKey(code);
 
     this.ui.btnInteract.addEventListener('click', () => {
-      if (!this.ui.paused) this.currentPrompt?.run();
+      if (!this.ui.paused && !this.cutscene.isActive()) this.currentPrompt?.run();
     });
     const sprintBtn = this.ui.btnSprint;
     const startSprint = (e?: Event) => {
@@ -118,21 +150,37 @@ class App {
     sprintBtn.addEventListener('mouseleave', endSprint);
 
     const onResize = () => {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      this.renderer.setSize(w, h, true);
-      canvas.style.width = '100vw';
-      canvas.style.height = '100vh';
-      canvas.style.width = '100dvw';
-      canvas.style.height = '100dvh';
+      const w = Math.max(window.innerWidth, document.documentElement.clientWidth || 0);
+      const h = Math.max(window.innerHeight, document.documentElement.clientHeight || 0);
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      this.renderer.setSize(w, h, false);
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
       this.tpCam.cam.aspect = w / h;
       this.tpCam.cam.updateProjectionMatrix();
       this.input.reset();
     };
     window.addEventListener('resize', onResize);
-    window.addEventListener('orientationchange', onResize);
+    window.addEventListener('orientationchange', () => {
+      onResize();
+      setTimeout(onResize, 120);
+      setTimeout(onResize, 320);
+    });
     window.visualViewport?.addEventListener('resize', onResize);
     onResize();
+
+    // Mở màn tạo nhân vật & xem đoạn phim mở đầu nếu là lượt chơi mới
+    if (!this.g.s.profile.introSeen) {
+      this.ui.showCharacterCreation((createdProfile) => {
+        this.g.applyProfile(createdProfile);
+        this.rebuildPlayerRig(createdProfile);
+        this.cutscene.play(createdProfile.name, createdProfile.background, (choice) => {
+          this.g.applyFlashbackChoice(choice);
+          this.g.s.profile.introSeen = true;
+          this.saves.save(this.g.s);
+        });
+      });
+    }
 
     // Lưu định kỳ & khi đóng tab
     window.addEventListener('beforeunload', () => this.saves.save(this.g.s));
@@ -217,7 +265,32 @@ class App {
     };
   }
 
+  rebuildPlayerRig(look: { skin?: number; hair?: number; hairStyle?: 'short' | 'buzz' | 'bald'; preset?: number }) {
+    if (this.playerRig) {
+      this.world.scene.remove(this.playerRig.root);
+    }
+    this.playerRig = new HumanoidRig({
+      uniform: 'inmate',
+      skin: look.skin ?? 0xe2b48d,
+      hair: look.hair ?? 0x18181b,
+      hairStyle: look.hairStyle ?? 'short',
+      accent: 0x22c55e,
+      height: 1.0,
+      build: 1.0,
+    });
+    this.world.scene.add(this.playerRig.root);
+    const p = this.g.s.player;
+    this.playerRig.root.position.set(p.x, 0, p.z);
+    this.playerRig.root.rotation.y = p.rot;
+  }
+
   private step(dt: number) {
+    if (this.cutscene.isActive()) {
+      this.cutscene.update(dt);
+      this.renderer.render(this.world.scene, this.tpCam.cam);
+      return;
+    }
+
     const p = this.g.s.player;
 
     if (!this.ui.paused) {

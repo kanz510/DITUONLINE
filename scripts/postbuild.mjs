@@ -4,8 +4,8 @@ import path from 'node:path';
 
 const dist = 'dist';
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-const version = pkg.version || '0.2.0';
-const milestone = 2;
+const version = pkg.version || '0.3.0';
+const milestone = 3;
 
 // 1. Quét toàn bộ tệp assets được Vite xuất ra trong dist/ (loại bỏ release.json và sw.js cũ nếu có)
 const assetFiles = [];

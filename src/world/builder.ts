@@ -444,11 +444,22 @@ export class PrisonWorld {
       { title: 'KHU KỶ LUẬT', sub: 'Khu biệt giam', x: 10, y: 3.05, z: 9.75, ry: Math.PI },
     ];
     for (const s of signs) {
+      const isZ = s.ry === -Math.PI / 2 || s.ry === Math.PI / 2;
+      const plate = new THREE.Mesh(
+        isZ ? new THREE.BoxGeometry(0.04, 0.40, 1.22) : new THREE.BoxGeometry(1.22, 0.40, 0.04),
+        new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.6 }),
+      );
+      plate.position.set(s.x, s.y, s.z);
+      this.scene.add(plate);
+
       const m = new THREE.Mesh(
-        new THREE.PlaneGeometry(1.3, 0.42),
+        new THREE.PlaneGeometry(1.18, 0.36),
         new THREE.MeshBasicMaterial({ map: signTex(s.title, s.sub), side: THREE.DoubleSide }),
       );
-      m.position.set(s.x, s.y, s.z);
+      const offset = 0.025;
+      const px = s.x + (s.ry === -Math.PI / 2 ? -offset : s.ry === Math.PI / 2 ? offset : 0);
+      const pz = s.z + (s.ry === 0 ? offset : s.ry === Math.PI ? -offset : 0);
+      m.position.set(px, s.y, pz);
       if (s.ry) m.rotation.y = s.ry;
       this.scene.add(m);
     }

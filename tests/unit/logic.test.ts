@@ -36,32 +36,32 @@ describe('Án & xét giảm án', () => {
     const g = new GameLogic();
     expect(serveDay(g.s, 1)).toBe(true);
     expect(serveDay(g.s, 1)).toBe(false);
-    expect(g.s.sentence.remaining).toBe(29);
+    expect(g.s.sentence.remaining).toBe(23);
   });
 
   it('kỳ xét giảm án không áp dụng trùng và không làm án âm', () => {
     const g = new GameLogic();
-    g.s.day = 5;
+    g.s.day = 4;
     g.s.stats.reform = 90;
     g.s.sentence.remaining = 1;
-    const r1 = applyReview(g.s, 5);
+    const r1 = applyReview(g.s, 4);
     expect(r1).not.toBeNull();
     expect(g.s.sentence.remaining).toBeGreaterThanOrEqual(0);
-    const r2 = applyReview(g.s, 5);
+    const r2 = applyReview(g.s, 4);
     expect(r2).toBeNull();
-    expect(applyReview(g.s, 4)).toBeNull();
+    expect(applyReview(g.s, 3)).toBeNull();
   });
 
-  it('giảm án 0–3 ngày tùy hồ sơ', () => {
+  it('giảm án 0–2 ngày tùy hồ sơ', () => {
     const g = new GameLogic();
     for (let i = 0; i < 4; i++) g.simulateGoodDay();
-    const r = computeReview(g.s, 5);
+    const r = computeReview(g.s, 4);
     expect(r.reduction).toBeGreaterThanOrEqual(0);
-    expect(r.reduction).toBeLessThanOrEqual(3);
+    expect(r.reduction).toBeLessThanOrEqual(2);
     const bad = new GameLogic();
-    bad.s.day = 5;
+    bad.s.day = 4;
     bad.recordViolation('fight', 'x', 'test');
-    expect(computeReview(bad.s, 5).reduction).toBe(0);
+    expect(computeReview(bad.s, 4).reduction).toBe(0);
   });
 
   it('cộng án có trần tổng', () => {
@@ -75,9 +75,9 @@ describe('Án & xét giảm án', () => {
   it('dự kiến ngày ra tù hợp lý', () => {
     const g = new GameLogic();
     const p = project(g.s);
-    expect(p.releaseNoReduction).toBe(30);
-    expect(p.releaseEstimated).toBeLessThanOrEqual(30);
-    expect(p.nextReview).toBe(5);
+    expect(p.releaseNoReduction).toBe(24);
+    expect(p.releaseEstimated).toBeLessThanOrEqual(24);
+    expect(p.nextReview).toBe(4);
   });
 });
 
@@ -267,11 +267,87 @@ describe('Lưu / tải', () => {
 
   it('di chuyển dữ liệu không có version', () => {
     const g = deserialize(JSON.stringify({ day: 4, stats: { money: 99 } }))!;
-    expect(g.version).toBe(1);
+    expect(g.version).toBe(2);
     expect(g.day).toBe(4);
     expect(g.stats.money).toBe(99);
     expect(g.stats.reform).toBe(40);
     expect(deserialize(JSON.stringify({ version: 999, state: {} }))).toBeNull();
+  });
+});
+
+describe('Hệ thống Cấp độ, Điểm kỹ năng & Xuất thân', () => {
+  it('công thức XP và tăng cấp chính xác', () => {
+    const g = new GameLogic();
+    expect(g.s.progression.level).toBe(1);
+    expect(g.s.progression.xp).toBe(0);
+    expect(g.s.progression.skillPoints).toBe(0);
+
+    // Level 1 cần 80 XP để lên Level 2
+    g.gainXp(50);
+    expect(g.s.progression.level).toBe(1);
+    expect(g.s.progression.xp).toBe(50);
+    expect(g.s.progression.skillPoints).toBe(0);
+
+    g.gainXp(35); // Tổng 85 >= 80 -> lên Level 2, dư 5 XP
+    expect(g.s.progression.level).toBe(2);
+    expect(g.s.progression.xp).toBe(5);
+    expect(g.s.progression.skillPoints).toBe(1);
+  });
+
+  it('cộng điểm chỉ số có giới hạn tối đa là 5', () => {
+    const g = new GameLogic();
+    g.s.progression.skillPoints = 2;
+    g.s.progression.attrs.endurance = 4;
+
+    expect(g.spendSkillPoint('endurance')).toBe(true);
+    expect(g.s.progression.attrs.endurance).toBe(5);
+    expect(g.s.progression.skillPoints).toBe(1);
+
+    // Đạt trần 5 -> không thể tăng tiếp
+    expect(g.spendSkillPoint('endurance')).toBe(false);
+    expect(g.s.progression.attrs.endurance).toBe(5);
+    expect(g.s.progression.skillPoints).toBe(1);
+
+    // Tăng chỉ số khác
+    expect(g.spendSkillPoint('charisma')).toBe(true);
+    expect(g.s.progression.attrs.charisma).toBe(2);
+    expect(g.s.progression.skillPoints).toBe(0);
+
+    // Hết điểm kỹ năng
+    expect(g.spendSkillPoint('charisma')).toBe(false);
+  });
+
+  it('khởi tạo thuộc tính theo từng xuất thân nhân vật', () => {
+    const mech = new GameLogic();
+    mech.applyProfile({ name: 'Minh', background: 'mechanic', difficulty: 'normal', skin: 0xe2b48d, hair: 0x18181b, hairStyle: 'short', preset: 0, introSeen: true });
+    expect(mech.s.progression.attrs.endurance).toBe(2);
+    expect(mech.s.progression.attrs.agility).toBe(2);
+
+    const cou = new GameLogic();
+    cou.applyProfile({ name: 'Minh', background: 'courier', difficulty: 'normal', skin: 0xe2b48d, hair: 0x18181b, hairStyle: 'short', preset: 0, introSeen: true });
+    expect(cou.s.progression.attrs.endurance).toBe(2);
+    expect(cou.s.progression.attrs.perception).toBe(2);
+
+    const clk = new GameLogic();
+    clk.applyProfile({ name: 'Minh', background: 'clerk', difficulty: 'normal', skin: 0xe2b48d, hair: 0x18181b, hairStyle: 'short', preset: 0, introSeen: true });
+    expect(clk.s.progression.attrs.perception).toBe(2);
+    expect(clk.s.progression.attrs.charisma).toBe(2);
+  });
+
+  it('lựa chọn hồi tưởng kho số 7 ban phát thưởng tương ứng', () => {
+    const g1 = new GameLogic();
+    g1.applyFlashbackChoice('keep_doc');
+    expect(g1.s.clues).toContain('chung_tu_goc_kho_7');
+
+    const g2 = new GameLogic();
+    const stressBefore = g2.s.stats.stress;
+    g2.applyFlashbackChoice('help_victim');
+    expect(g2.s.stats.stress).toBeLessThan(stressBefore);
+    expect(g2.rel('bay')).toBeGreaterThan(0);
+
+    const g3 = new GameLogic();
+    g3.applyFlashbackChoice('chase_contact');
+    expect(g3.s.clues).toContain('nhan_dang_ke_cam_dau');
   });
 });
 

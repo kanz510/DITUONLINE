@@ -1,6 +1,37 @@
-import { DAY_START, START_SENTENCE } from './constants';
+import { BACKGROUNDS, DAY_START, START_SENTENCE, type BackgroundId, type Difficulty } from './constants';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
+
+export interface CharacterProfile {
+  name: string;
+  preset: number;
+  skin: number;
+  hair: number;
+  hairStyle: 'short' | 'buzz' | 'bald';
+  background: BackgroundId;
+  difficulty: Difficulty;
+  flashbackChoice?: 'keep_doc' | 'help_victim' | 'chase_contact';
+  introSeen: boolean;
+}
+
+export interface Attributes {
+  endurance: number;  // Bền bỉ: 1..5
+  agility: number;    // Khéo léo: 1..5
+  perception: number; // Quan sát: 1..5
+  charisma: number;   // Giao tiếp: 1..5
+}
+
+export interface Progression {
+  level: number;       // 1..10
+  xp: number;
+  skillPoints: number;
+  attrs: Attributes;
+}
+
+export function xpForNextLevel(level: number): number {
+  if (level >= 10) return Infinity;
+  return 80 + 30 * (level - 1);
+}
 
 export type NpcId = 'bay' | 'huy' | 'lam' | 'lan' | 'tung' | 'tu' | 'son' | 'khai' | 'phuc' | 'an' | 'mai';
 export const STORY_NPCS: NpcId[] = ['bay', 'huy', 'lam', 'lan', 'tung', 'phuc', 'an', 'mai'];
@@ -119,6 +150,8 @@ export interface Hearing {
 export interface GameState {
   version: number;
   createdAt: number;
+  profile: CharacterProfile;
+  progression: Progression;
   day: number;
   minute: number;
   chapter: number;
@@ -166,7 +199,35 @@ export function makeDaily(stats: Stats, relations: Record<string, Relation>): Da
   };
 }
 
-export function createInitialState(): GameState {
+export function createInitialState(customProfile?: Partial<CharacterProfile>): GameState {
+  const profile: CharacterProfile = {
+    name: 'Minh',
+    preset: 0,
+    skin: 0xe2b48d,
+    hair: 0x18181b,
+    hairStyle: 'short',
+    background: 'mechanic',
+    difficulty: 'normal',
+    introSeen: false,
+    ...customProfile,
+  };
+
+  // Áp dụng điểm khởi đầu thuộc tính dựa theo Xuất thân
+  const bgDef = BACKGROUNDS[profile.background] || BACKGROUNDS.mechanic;
+  const attrs: Attributes = {
+    endurance: 1 + (bgDef.bonusAttrs.endurance || 0),
+    agility: 1 + (bgDef.bonusAttrs.agility || 0),
+    perception: 1 + (bgDef.bonusAttrs.perception || 0),
+    charisma: 1 + (bgDef.bonusAttrs.charisma || 0),
+  };
+
+  const progression: Progression = {
+    level: 1,
+    xp: 0,
+    skillPoints: 0,
+    attrs,
+  };
+
   const stats: Stats = { health: 90, stamina: 85, hunger: 35, stress: 45, money: 20, reform: 40, suspicion: 0 };
   const relations: Record<string, Relation> = {};
   const base: Record<NpcId, number> = { bay: 5, huy: 0, lam: 0, lan: 0, tung: 0, tu: 0, son: 0, khai: 0, phuc: 0, an: 0, mai: 20 };
@@ -176,6 +237,8 @@ export function createInitialState(): GameState {
   return {
     version: SAVE_VERSION,
     createdAt: Date.now(),
+    profile,
+    progression,
     day: 1,
     minute: DAY_START,
     chapter: 1,

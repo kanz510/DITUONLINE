@@ -242,13 +242,14 @@ html, body {
   pointer-events: none;
 }
 
-/* ───────────── Thông báo nổi (không đè lên nút tương tác bên dưới) ───────────── */
+/* ───────────── Thông báo nổi (đặt ở trung tâm trên cùng, không che nút góc phải) ───────────── */
 .toasts {
   position: absolute;
-  right: max(10px, env(safe-area-inset-right));
-  top: 72px;
-  width: min(300px, 45vw);
-  max-height: 140px;
+  top: max(8px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(380px, 86vw);
+  max-height: 95px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -459,4 +460,246 @@ html, body {
   max-width: 310px;
   line-height: 1.5;
   margin-bottom: 20px;
+}
+
+/* ───────────── Cấp độ & Thanh XP trên HUD ───────────── */
+.hud-level-badge {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #0f172a;
+  font-weight: 800;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  letter-spacing: 0.5px;
+  display: inline-block;
+}
+.hud-progression-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+.hud-xp-bar {
+  flex: 1;
+  height: 5px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  overflow: hidden;
+  min-width: 55px;
+}
+.hud-xp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #38bdf8, #818cf8);
+  transition: width 0.3s ease;
+}
+
+/* ───────────── 3D Cutscene Mở đầu ───────────── */
+.cutscene-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 450;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: env(safe-area-inset-top, 16px) env(safe-area-inset-right, 24px) env(safe-area-inset-bottom, 20px) env(safe-area-inset-left, 24px);
+  background: radial-gradient(circle at center, transparent 30%, rgba(11, 17, 32, 0.75) 100%);
+  pointer-events: auto;
+}
+.cutscene-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cutscene-title {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #fde68a;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+.btn-skip {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid var(--accent);
+  color: #fde68a;
+  padding: 6px 14px;
+  font-size: 13px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.cutscene-subtitles {
+  max-width: 720px;
+  margin: 0 auto 12px;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 10px 18px;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #f8fafc;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+}
+.cutscene-choice-host {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(580px, 90vw);
+  background: rgba(15, 23, 42, 0.96);
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+}
+.cutscene-choice-card h3 {
+  color: #fde68a;
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-size: 16px;
+  text-align: center;
+}
+.cutscene-choice-card p {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  margin-bottom: 12px;
+}
+.cutscene-choices-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.choice-btn {
+  text-align: left;
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #f8fafc;
+}
+.choice-btn:hover {
+  border-color: var(--accent);
+  background: rgba(51, 65, 85, 0.95);
+}
+.choice-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #38bdf8;
+  margin-bottom: 3px;
+}
+.choice-desc {
+  font-size: 12px;
+  color: #cbd5e1;
+  margin-bottom: 3px;
+}
+.choice-gain {
+  font-size: 11.5px;
+  color: #86efac;
+}
+
+/* ───────────── Tạo nhân vật & Kỹ năng ───────────── */
+.cc-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 72vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.cc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+.cc-card {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 10px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+  color: #cbd5e1;
+}
+.cc-card.selected {
+  border-color: var(--accent);
+  background: rgba(51, 65, 85, 0.9);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+  color: #fff;
+}
+.cc-bg-card {
+  text-align: left;
+  padding: 10px 14px;
+}
+.cc-attr-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.cc-attr-tag {
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fde68a;
+}
+.text-input {
+  width: 100%;
+  padding: 9px 12px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 15px;
+  box-sizing: border-box;
+}
+.text-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.skill-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  margin-bottom: 6px;
+}
+.skill-info {
+  flex: 1;
+}
+.skill-title {
+  font-weight: 700;
+  font-size: 13.5px;
+  color: #f8fafc;
+}
+.skill-desc {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.skill-val {
+  font-size: 14px;
+  font-weight: 800;
+  color: #fde68a;
+  margin: 0 10px;
+}
+.journal-section {
+  margin-bottom: 14px;
+}
+.journal-section h3 {
+  font-size: 14px;
+  color: #38bdf8;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 4px;
+  margin-top: 10px;
+  margin-bottom: 8px;
 }

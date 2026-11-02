@@ -2,6 +2,17 @@ import { expect, test } from '@playwright/test';
 
 test('khởi chạy 3D, chuỗi nhiệm vụ → lựa chọn → hậu quả, lưu/tải và kết thúc ra tù', async ({ page }) => {
   await page.goto('/');
+
+  // Nếu hiển thị màn tạo nhân vật (lượt chơi mới), xác nhận & bỏ qua đoạn phim mở đầu
+  const ccBtn = page.locator('#btn-cc-submit');
+  if (await ccBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await ccBtn.click();
+    const skipCutscene = page.locator('#btn-cutscene-skip');
+    if (await skipCutscene.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await skipCutscene.click();
+    }
+  }
+
   await expect(page.locator('#hud-clock')).toContainText('Ngày 1');
   await expect(page.locator('#hud-quest-bar')).toContainText('Giường của bạn');
 
@@ -212,12 +223,22 @@ test('trải nghiệm điện thoại: xoay dọc/ngang, HUD gọn không đè, 
     expect(dims.height).toBe(dims.winH);
   }
 
+  // Nếu có màn tạo nhân vật thì hoàn tất tạo nhân vật & skip mở đầu để HUD lộ diện
+  const ccSubmit = page.locator('#btn-cc-submit');
+  if (await ccSubmit.isVisible({ timeout: 1500 }).catch(() => false)) {
+    await ccSubmit.click();
+    const skipBtn = page.locator('#btn-cutscene-skip');
+    if (await skipBtn.isVisible({ timeout: 1500 }).catch(() => false)) {
+      await skipBtn.click();
+    }
+  }
+
   // Kiểm tra các phần tử HUD hiển thị độc lập, không che đè
   await expect(page.locator('#hud-clock')).toBeVisible();
   await expect(page.locator('#hud-quest-bar')).toBeVisible();
   await expect(page.locator('#hud-sentence')).toBeVisible();
   await expect(page.locator('#hud-version')).toBeVisible();
-  await expect(page.locator('#hud-version')).toContainText('v0.2.0');
+  await expect(page.locator('#hud-version')).toContainText('v0.3.0');
   await expect(page.locator('#btn-fullscreen')).toBeVisible();
   await expect(page.locator('#btn-menu')).toBeVisible();
   await expect(page.locator('#hud-stats-mini')).toBeVisible();
@@ -231,8 +252,8 @@ test('trải nghiệm điện thoại: xoay dọc/ngang, HUD gọn không đè, 
   // 4. Mở menu trung tâm
   await page.locator('#btn-menu').click();
   await expect(page.locator('.modal h2')).toContainText('MENU TRÒ CHƠI');
-  await expect(page.locator('#menu-build-tag')).toContainText('v0.2.0');
-  await expect(page.locator('.menu-card-btn')).toHaveCount(7);
+  await expect(page.locator('#menu-build-tag')).toContainText('v0.3.0');
+  await expect(page.locator('.menu-card-btn')).toHaveCount(8);
   // Đóng menu
   await page.locator('.modal [data-close]').click();
   await expect(page.locator('.modal')).toHaveCount(0);

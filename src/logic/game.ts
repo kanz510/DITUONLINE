@@ -1,9 +1,9 @@
 import {
-  CURFEW_CHECK, DAILY_REFORM_CAP, DAY_END, DAY_START, GAME_MIN_PER_SEC, ROLLCALL_ON_TIME_END,
-  SCHEDULE, WORK_CLOCKIN_DEADLINE, blockAt, fmtMoney, fmtTime, isOpen, nextBlock, type ScheduleBlock,
+  BACKGROUNDS, CURFEW_CHECK, DAILY_REFORM_CAP, DAY_END, DAY_START, GAME_MIN_PER_SEC, ROLLCALL_ON_TIME_END,
+  SCHEDULE, WORK_CLOCKIN_DEADLINE, blockAt, fmtMoney, fmtTime, isOpen, nextBlock, type AttributeId, type ScheduleBlock,
 } from './constants';
 import {
-  clampStat, createInitialState, makeDaily, type DaySummary, type GameState, type Hearing, type Stats, type Violation,
+  clampStat, createInitialState, makeDaily, xpForNextLevel, type CharacterProfile, type DaySummary, type GameState, type Hearing, type Stats, type Violation,
 } from './state';
 import { addSentence, applyReview, serveDay } from './sentence';
 import { VIOLATIONS } from '../data/violations';
@@ -93,6 +93,82 @@ export class GameLogic {
       this.event(`Thu thập manh mối: ${text}`);
       this.commit();
     }
+  }
+
+  // ───────────── Tiến trình Level & Kỹ năng ─────────────
+  gainXp(amount: number, reason?: string): { leveledUp: boolean; newLevel: number } {
+    if (amount <= 0) return { leveledUp: false, newLevel: this.s.progression.level };
+    this.s.progression.xp += amount;
+    let leveledUp = false;
+    while (this.s.progression.level < 10) {
+      const needed = xpForNextLevel(this.s.progression.level);
+      if (this.s.progression.xp >= needed) {
+        this.s.progression.xp -= needed;
+        this.s.progression.level += 1;
+        this.s.progression.skillPoints += 1;
+        leveledUp = true;
+        this.notify(`Chúc mừng! Bạn đã đạt Cấp ${this.s.progression.level}! (+1 điểm kỹ năng)`, 'good');
+        this.emit('levelUp', this.s.progression.level);
+      } else {
+        break;
+      }
+    }
+    if (reason) {
+      this.notify(`+${amount} XP (${reason})`, 'info');
+    }
+    this.commit();
+    return { leveledUp, newLevel: this.s.progression.level };
+  }
+
+  spendSkillPoint(attr: AttributeId): boolean {
+    if (this.s.progression.skillPoints <= 0) {
+      this.notify('Không đủ điểm kỹ năng để nâng cấp.', 'warn');
+      return false;
+    }
+    if (this.s.progression.attrs[attr] >= 5) {
+      this.notify('Thuộc tính này đã đạt cấp tối đa (5/5).', 'warn');
+      return false;
+    }
+    this.s.progression.skillPoints -= 1;
+    this.s.progression.attrs[attr] += 1;
+    const names: Record<AttributeId, string> = {
+      endurance: 'Bền bỉ',
+      agility: 'Khéo léo',
+      perception: 'Quan sát',
+      charisma: 'Giao tiếp',
+    };
+    this.notify(`Đã tăng ${names[attr]} lên ${this.s.progression.attrs[attr]}/5!`, 'good');
+    this.commit();
+    return true;
+  }
+
+  applyFlashbackChoice(choice: 'keep_doc' | 'help_victim' | 'chase_contact') {
+    this.s.profile.flashbackChoice = choice;
+    if (choice === 'keep_doc') {
+      this.addClue('chung_tu_goc_kho_7', 'Mảnh chứng từ gốc nhặt được trước khi Kho số 7 bốc cháy, có chữ ký người gửi.');
+      this.giveItem('manh_chung_tu_kho_7', 1);
+      this.notify('Đã cất giữ Mảnh chứng từ xuất kho số 7.', 'quest');
+    } else if (choice === 'help_victim') {
+      this.changeRel('bay', 10, 'Chú Bảy biết chuyện Minh từng cứu người trong đám cháy kho');
+      this.addStat('stress', -15);
+      this.notify('Hành động cứu người trong đám cháy giúp bạn giữ được lương tri và giảm bớt dằn vặt.', 'good');
+    } else if (choice === 'chase_contact') {
+      this.addClue('nhan_dang_ke_cam_dau', 'Nhìn rõ bóng kẻ thuê chở hàng có vết sẹo ở cổ và đi chiếc xe tải màu xanh rêu.');
+      this.notify('Đã ghi nhớ nhân dạng kẻ cầm đầu vụ việc.', 'quest');
+    }
+    this.commit();
+  }
+
+  applyProfile(profile: CharacterProfile) {
+    this.s.profile = { ...profile };
+    const bg = BACKGROUNDS[profile.background] || BACKGROUNDS.mechanic;
+    this.s.progression.attrs = {
+      endurance: 1 + (bg.bonusAttrs.endurance || 0),
+      agility: 1 + (bg.bonusAttrs.agility || 0),
+      perception: 1 + (bg.bonusAttrs.perception || 0),
+      charisma: 1 + (bg.bonusAttrs.charisma || 0),
+    };
+    this.commit();
   }
 
   // ───────────── Chỉ số ─────────────
@@ -388,16 +464,27 @@ export class GameLogic {
 
   private grantQuestResult(q: string, status: 'done' | 'failed') {
     const st = this.s.quests[q];
+    const def = QUESTS[q];
+    if (def?.xp && status === 'done') {
+      this.gainXp(def.xp, def.title);
+    }
+
     switch (q) {
       case 'nhap_trai':
         this.addReform(3, 'Hoàn thành nhập trại');
         this.changeRel('lan', 5);
         this.startQuest('ca_dau');
+        this.startQuest('dep_bay');
+        this.startQuest('mi_cho_huy');
+        this.startQuest('lao_dong_phu');
         break;
+
       case 'ca_dau':
         this.addReform(4, 'Ca lao động đầu tiên');
         this.changeRel('bay', 8, 'Minh làm tròn ca đầu tiên như chú dặn');
+        this.startQuest('mon_no');
         break;
+
       case 'mon_no': {
         const b = this.qBranch(q);
         if (status === 'failed') {
@@ -436,6 +523,11 @@ export class GameLogic {
             this.changeRel('huy', -8, 'Minh làm lớn chuyện khi chưa hỏi ý');
           }
           this.s.flags.lam_revenge_day = this.s.day + 1;
+        } else if (b === 'negotiate') {
+          st.outcome = 'Thương lượng thành công với Lâm';
+          this.addReform(4, 'Dùng kỹ năng đàm phán giải quyết tranh chấp');
+          this.changeRel('huy', 20, 'Minh giải quyết êm đẹp món nợ cho mình');
+          this.changeRel('lam', 10, 'Nể phục bản lĩnh đàm phán của Minh');
         } else if (b === 'fight') {
           st.outcome = 'Dùng bạo lực với Lâm';
           this.changeRel('huy', 5, 'Minh ra tay vì mình — nhưng Huy sợ liên lụy');
@@ -446,9 +538,10 @@ export class GameLogic {
         this.startQuest('lop_nghe_dau');
         this.startQuest('nghi_an_thuoc');
         this.startQuest('phong_tham_gap');
-        this.notify('Bắt đầu Chương 2 — Chọn cách sống! (Mở Lớp học nghề, Phòng y tế & Thăm gặp)', 'quest');
+        this.notify('Bắt đầu Chương 2 — Chọn chỗ đứng! (Mở Lớp học nghề, Phòng y tế & Thăm gặp)', 'quest');
         break;
       }
+
       case 'lop_nghe_dau':
         this.addReform(4, 'Bài học nghề đầu tiên');
         this.giveItem('chung_chi_nghe');
@@ -456,35 +549,137 @@ export class GameLogic {
         this.s.skills.vocationalExam++;
         this.startQuest('sach_thu_vien');
         break;
+
       case 'nghi_an_thuoc':
         this.addReform(6, 'Tìm lại thuốc hen cứu Chú Bảy');
         this.changeRel('bay', 15, 'Minh tìm lại lọ thuốc hen cứu mạng chú');
         this.changeRel('an', 12, 'Minh hỗ trợ tìm ra vật chứng y tế');
         this.addClue('thuoc_hen_sau_xuong', 'Lọ thuốc hen của Chú Bảy rơi gần góc sau xưởng nơi đàn em Lâm tụ tập.');
+        this.startQuest('manh_moi_kho_7');
+        this.startQuest('phu_y_te');
         break;
+
+      case 'manh_moi_kho_7':
+        this.addReform(4, 'Tìm ra manh mối kho số 7');
+        this.addClue('van_don_kho_7', 'Mảnh vận đơn dán trên kiện hàng cũ ở kho xưởng mang mã KHO-07-AP.');
+        this.giveItem('manh_van_don_kho_7', 1);
+        this.s.chapter = Math.max(this.s.chapter, 3);
+        this.startQuest('doi_chieu_chung_tu');
+        this.startQuest('la_thu_que_nha');
+        this.startQuest('ren_luyen_the_chat');
+        this.notify('Bắt đầu Chương 3 — Giá của sự thật! (Mở điều tra sổ sách & thử thách)', 'quest');
+        break;
+
       case 'phong_tham_gap':
         this.changeRel('mai', 15, 'Minh hứa với chị sẽ cải tạo tốt để về sớm');
         this.addStat('stress', -20);
         this.addStat('money', 25);
         this.addReform(3, 'Được gia đình động viên cải tạo');
         break;
+
       case 'sach_thu_vien':
         this.addReform(2, 'Chăm chỉ đọc sách pháp luật');
         this.addStat('stress', -10);
         this.changeRel('phuc', 5, 'Minh tự giác mượn sách cẩm nang');
         break;
+
       case 'phu_y_te':
         this.addReform(3, 'Hỗ trợ việc phòng y tế');
         this.giveItem('thuoc_cam', 1);
         this.changeRel('an', 8, 'Minh nhiệt tình giúp phân loại thuốc');
         break;
+
       case 'dep_bay':
         this.changeRel('bay', 10, 'Minh tìm lại đôi dép con gái gửi cho chú');
         this.addStat('stress', -5);
         break;
+
       case 'mi_cho_huy':
         if (status === 'done') this.changeRel('huy', 8, 'Minh giữ lời mua mì cho Huy');
         else this.changeRel('huy', -8, 'Minh hứa mua mì rồi quên');
+        break;
+
+      case 'lao_dong_phu':
+        this.addReform(2, 'Tăng cường lao động ca chiều');
+        this.addStat('money', 10);
+        break;
+
+      case 'doi_chieu_chung_tu':
+        this.addReform(5, 'Đối chiếu làm rõ chữ ký chứng từ');
+        this.changeRel('phuc', 10, 'Thầy Phúc khen Minh tinh mắt và cẩn trọng');
+        this.addClue('chu_ky_nguoi_nhan', 'Chữ ký trên vận đơn kho 7 trùng khớp chữ ký người liên hệ với Lâm.');
+        this.startQuest('cam_do_im_lang');
+        this.startQuest('sua_quat_phong_hoc');
+        break;
+
+      case 'cam_do_im_lang':
+        this.startQuest('bay_vat_cam');
+        break;
+
+      case 'bay_vat_cam':
+        this.addReform(8, 'Minh oan bẫy vật cấm buồng giam');
+        this.changeRel('lan', 10, 'Quản giáo Lan ghi nhận Minh bình tĩnh giải trình hợp lệ');
+        this.changeRel('tung', 15, 'Cán bộ Tùng đánh giá cao sự trung thực');
+        this.s.chapter = Math.max(this.s.chapter, 4);
+        this.startQuest('ho_so_giai_trinh');
+        this.startQuest('loi_hua_chu_bay');
+        this.startQuest('truyen_nghe_cho_huy');
+        this.startQuest('chia_tay_thay_phuc');
+        this.startQuest('kiem_tra_suc_khoe');
+        this.notify('Bắt đầu Chương 4 — Ngày trở về! (Chuẩn bị hồ sơ đặc xá & hoàn tất lời hứa)', 'quest');
+        break;
+
+      case 'la_thu_que_nha':
+        this.changeRel('mai', 15, 'Minh gửi thư hồi âm ấm áp cho mẹ và chị');
+        this.addStat('stress', -20);
+        break;
+
+      case 'ren_luyen_the_chat':
+        this.changeRel('bay', 5, 'Chú Bảy khen Minh chịu khó rèn luyện');
+        this.addStat('stress', -15);
+        this.addStat('health', 5);
+        this.addStat('stamina', 10);
+        break;
+
+      case 'sua_quat_phong_hoc':
+        this.addReform(4, 'Sửa chữa quạt phòng học công ích');
+        this.addStat('money', 15);
+        this.changeRel('phuc', 15, 'Thầy Phúc cảm kích tay nghề sửa máy của Minh');
+        break;
+
+      case 'ho_so_giai_trinh':
+        this.addReform(10, 'Hoàn thành hồ sơ giải trình minh oan kho số 7');
+        this.changeRel('lan', 20, 'Quản giáo Lan chính thức tiếp nhận kiến nghị');
+        this.s.flags.ho_so_kho_7_cleared = true;
+        break;
+
+      case 'loi_hua_chu_bay':
+        this.addReform(8, 'Giúp Chú Bảy hoàn thành kỷ vật gửi về quê');
+        this.changeRel('bay', 30, 'Chú Bảy xúc động trước lòng tốt của Minh');
+        this.s.flags.loi_hua_chu_bay_done = true;
+        this.startQuest('ky_xet_cuoi_cung');
+        break;
+
+      case 'ky_xet_cuoi_cung':
+        this.addReform(10, 'Hội đồng trại quyết định đặc xá');
+        this.s.ending = this.computeEnding();
+        this.notify('Bạn đã hoàn thành quá trình cải tạo và bước tới ngưỡng cửa tự do!', 'good');
+        this.emit('ending', this.s.ending);
+        break;
+
+      case 'truyen_nghe_cho_huy':
+        this.addReform(5, 'Giúp đỡ bạn cùng phòng học nghề');
+        this.changeRel('huy', 25, 'Huy biết ơn Minh chỉ dạy nghề');
+        break;
+
+      case 'chia_tay_thay_phuc':
+        this.changeRel('phuc', 20, 'Thầy Phúc gửi gắm niềm tin vào Minh');
+        break;
+
+      case 'kiem_tra_suc_khoe':
+        this.addStat('health', 15);
+        this.addStat('stamina', 10);
+        this.changeRel('an', 10, 'Y sĩ An xác nhận thể lực hoàn hảo');
         break;
     }
   }
@@ -548,7 +743,7 @@ export class GameLogic {
   }
 
   wage(avgQ: number) {
-    return Math.round(10 + 6 * (avgQ / 100));
+    return Math.round(12 + 6 * (avgQ / 100));
   }
 
   finishWorkUnit(quality: number, manual = true) {
@@ -569,6 +764,10 @@ export class GameLogic {
       this.addStat('money', 4);
       this.notify(`Ca chiều: +${fmtMoney(4)} (${d.extraShiftUnits}/${EXTRA_SHIFT_MAX})`, 'good');
       if (d.extraShiftUnits % 2 === 0) this.addReform(1, 'Lao động tự nguyện', true);
+      if (d.extraShiftUnits >= 2) {
+        this.completeObjective('lao_dong_phu', 'lap_phu');
+        if (d.extraShiftUnits >= EXTRA_SHIFT_MAX) this.finishQuest('lao_dong_phu', 'done');
+      }
     }
     this.checkMoneyObjective();
     this.commit();
@@ -585,7 +784,8 @@ export class GameLogic {
       this.addStat('money', pay);
       this.notify(`Đủ chỉ tiêu! Tiền công ${fmtMoney(pay)} (chất lượng TB ${Math.round(avg)}%).`, 'good');
     }
-    this.addReform(auto ? 2 : avg >= 85 ? 4 : 3, auto ? 'Lao động (tự động)' : 'Lao động đủ chỉ tiêu', true);
+    this.gainXp(20, 'Lao động đủ chỉ tiêu');
+    this.addReform(auto ? 2 : 3, auto ? 'Lao động (tự động)' : 'Lao động đủ chỉ tiêu', true);
     if (manual && !auto) this.s.skills.workShifts++;
     this.completeObjective('ca_dau', 'lap_rap');
     this.checkMoneyObjective();
