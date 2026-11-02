@@ -67,7 +67,9 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  max-width: min(340px, 48vw);
+  width: min(320px, 44vw);
+  max-width: min(320px, 44vw);
+  min-width: 0;
 }
 
 .hud-right {
@@ -107,7 +109,9 @@ html, body {
 /* Bảng nhiệm vụ chi tiết và có thể thu gọn */
 .hud-quest-bar {
   cursor: pointer;
-  background: rgba(15, 23, 42, 0.94);
+  background: rgba(10, 19, 37, 0.54);
+  -webkit-backdrop-filter: blur(15px) saturate(1.12);
+  backdrop-filter: blur(15px) saturate(1.12);
   border: 1px solid rgba(245, 158, 11, 0.45);
   border-radius: 9px;
   padding: 6px 10px;
@@ -115,12 +119,14 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-width: min(440px, 56vw);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.23);
   transition: background 0.15s, border-color 0.15s, max-height 0.2s ease;
 }
 .hud-quest-bar:hover {
-  background: rgba(30, 41, 59, 0.96);
+  background: rgba(18, 31, 51, 0.64);
   border-color: var(--accent);
 }
 .hud-quest-bar.collapsed {
@@ -507,6 +513,81 @@ html, body {
 @media (hover: hover) and (pointer: fine) {
   .joy-zone, .touch-right { opacity: 0.35; }
   .joy-zone:hover, .touch-right:hover { opacity: 1; }
+}
+
+/* Glass HUD: more of the world remains visible behind the time/quest cards. */
+#hud-clock {
+  width: 100%;
+  min-width: 0;
+  background: rgba(10, 19, 37, 0.54);
+  -webkit-backdrop-filter: blur(15px) saturate(1.12);
+  backdrop-filter: blur(15px) saturate(1.12);
+  border-color: rgba(148, 163, 184, 0.29);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.23);
+}
+#hud-quest-bar .quest-row-header > div { min-width: 0; }
+#hud-quest-bar .quest-title-text { min-width: 0; }
+
+/* Compact landscape HUD, tailored to iPhone Safari while retaining actions. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .hud-left {
+    width: min(294px, 41vw);
+    max-width: min(294px, 41vw);
+    gap: 4px;
+  }
+  #hud-clock {
+    padding: 5px 8px;
+    border-radius: 10px;
+    font-size: 10.5px;
+    line-height: 1.22;
+  }
+  #hud-clock .hud-clock {
+    font-size: 12px;
+    line-height: 1.2;
+  }
+  #hud-clock .hud-sub { font-size: 10px; }
+  #hud-quest-bar {
+    padding: 5px 8px;
+    gap: 3px;
+    border-radius: 10px;
+    font-size: 11px;
+  }
+  #hud-quest-bar.collapsed { padding: 5px 8px; }
+  #hud-quest-bar .quest-tag { font-size: 10px; padding: 2px 4px; }
+  #hud-quest-bar .quest-row-desc {
+    font-size: 10.5px;
+    line-height: 1.28;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+  #hud-quest-bar .quest-row-footer {
+    font-size: 10px;
+    gap: 4px;
+    padding-top: 2px;
+  }
+  #hud-quest-bar .quest-dest-info { font-size: 10px; gap: 3px; }
+  #hud-quest-bar .quest-toggle-icon {
+    min-width: 26px;
+    min-height: 26px;
+    display: inline-grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+  #hud-quest-bar .btn-auto-walk { min-height: 28px; }
+  /* Alerts must never grow into a third permanent HUD card. */
+  .hud-left .toasts { max-height: 72px; gap: 3px; }
+  .hud-left .toast {
+    padding: 4px 7px;
+    font-size: 10.5px;
+    line-height: 1.2;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    background: rgba(10, 19, 37, 0.69);
+  }
 }
 
 /* ───────────── Modal & Menu ───────────── */
