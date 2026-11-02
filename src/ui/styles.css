@@ -103,20 +103,20 @@ html, body {
   font-size: 11px;
 }
 
-/* Thanh mục tiêu gọn gàng */
+/* Thanh mục tiêu gọn gàng không cắt chữ */
 .hud-quest-bar {
   cursor: pointer;
   background: rgba(15, 23, 42, 0.92);
   border: 1px solid rgba(245, 158, 11, 0.45);
   border-radius: 8px;
-  padding: 5px 8px;
+  padding: 5px 9px;
   font-size: 12px;
   display: flex;
   align-items: center;
   gap: 6px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  max-width: min(440px, 56vw);
+  white-space: normal;
+  line-height: 1.35;
   transition: background 0.15s, border-color 0.15s;
 }
 .hud-quest-bar:active, .hud-quest-bar:hover {
@@ -129,9 +129,7 @@ html, body {
   flex-shrink: 0;
 }
 .quest-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-break: break-word;
 }
 .quest-arrow {
   color: #38bdf8;
@@ -231,12 +229,14 @@ html, body {
   pointer-events: none;
 }
 
-/* ───────────── Thông báo nổi ───────────── */
+/* ───────────── Thông báo nổi (không đè lên nút tương tác bên dưới) ───────────── */
 .toasts {
   position: absolute;
   right: max(10px, env(safe-area-inset-right));
-  top: 76px;
-  width: min(280px, 80vw);
+  top: 72px;
+  width: min(300px, 45vw);
+  max-height: 140px;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 5px;

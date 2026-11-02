@@ -179,24 +179,44 @@ test('trải nghiệm điện thoại: xoay dọc/ngang, HUD gọn không đè, 
   const page = await ctx.newPage();
   await page.goto('/');
 
-  // Máy đang dọc -> Hiện overlay nhắc xoay ngang
+  // Máy đang dọc -> BẮT BUỘC hiện overlay nhắc xoay ngang, KHÔNG CÓ nút bỏ qua
   const overlay = page.locator('#orientation-overlay');
   await expect(overlay).toBeVisible();
   await expect(overlay).toContainText('Xoay ngang điện thoại');
-
-  // Thử bấm "Tiếp tục màn hình dọc"
-  await page.locator('#btn-ignore-portrait').click();
-  await expect(overlay).not.toBeVisible();
+  await expect(page.locator('#btn-ignore-portrait')).toHaveCount(0);
 
   // 2. Xoay sang ngang: iPhone 16 Pro Max landscape (956 x 440)
   await page.setViewportSize({ width: 956, height: 440 });
   await page.waitForTimeout(200);
   await expect(overlay).not.toBeVisible();
 
+  // Kiểm tra canvas lấp đầy 100% màn hình, không bị đen nửa màn hình
+  const canvasDims = await page.evaluate(() => {
+    const c = document.getElementById('game-canvas') as HTMLCanvasElement;
+    return { width: c.clientWidth, height: c.clientHeight, winW: window.innerWidth, winH: window.innerHeight };
+  });
+  expect(canvasDims.width).toBe(canvasDims.winW);
+  expect(canvasDims.height).toBe(canvasDims.winH);
+
+  // 3. Xoay dọc rồi xoay ngang lại 3 lần vẫn đảm bảo đầy màn hình
+  for (let i = 0; i < 3; i++) {
+    await page.setViewportSize({ width: 440, height: 956 });
+    await expect(overlay).toBeVisible();
+    await page.setViewportSize({ width: 956, height: 440 });
+    await expect(overlay).not.toBeVisible();
+    const dims = await page.evaluate(() => {
+      const c = document.getElementById('game-canvas') as HTMLCanvasElement;
+      return { width: c.clientWidth, height: c.clientHeight, winW: window.innerWidth, winH: window.innerHeight };
+    });
+    expect(dims.width).toBe(dims.winW);
+    expect(dims.height).toBe(dims.winH);
+  }
+
   // Kiểm tra các phần tử HUD hiển thị độc lập, không che đè
   await expect(page.locator('#hud-clock')).toBeVisible();
   await expect(page.locator('#hud-quest-bar')).toBeVisible();
   await expect(page.locator('#hud-sentence')).toBeVisible();
+  await expect(page.locator('#btn-fullscreen')).toBeVisible();
   await expect(page.locator('#btn-menu')).toBeVisible();
   await expect(page.locator('#hud-stats-mini')).toBeVisible();
   await expect(page.locator('#joy-zone')).toBeVisible();
@@ -206,7 +226,7 @@ test('trải nghiệm điện thoại: xoay dọc/ngang, HUD gọn không đè, 
   await expect(page.locator('#btn-bag')).toHaveText('🎒 Túi');
   await expect(page.locator('#btn-menu')).toHaveText('☰ Menu');
 
-  // 3. Mở menu trung tâm
+  // 4. Mở menu trung tâm
   await page.locator('#btn-menu').click();
   await expect(page.locator('.modal h2')).toContainText('MENU TRÒ CHƠI');
   await expect(page.locator('.menu-card-btn')).toHaveCount(7);
@@ -214,24 +234,36 @@ test('trải nghiệm điện thoại: xoay dọc/ngang, HUD gọn không đè, 
   await page.locator('.modal [data-close]').click();
   await expect(page.locator('.modal')).toHaveCount(0);
 
-  // 4. Mở chi tiết mục tiêu khi chạm thanh quest bar
+  // 5. Mở chi tiết mục tiêu khi chạm thanh quest bar
   await page.locator('#hud-quest-bar').click();
   await expect(page.locator('.modal h2')).toContainText('MỤC TIÊU & NHIỆM VỤ');
   await page.locator('.modal [data-close]').click();
 
-  // 5. Mở chi tiết chỉ số khi chạm thanh stats mini
+  // 6. Mở chi tiết chỉ số khi chạm thanh stats mini
   await page.locator('#hud-stats-mini').click();
   await expect(page.locator('.modal h2')).toContainText('CHỈ SỐ SINH HOẠT');
   await page.locator('.modal [data-close]').click();
 
-  // 6. Kiểm tra màn hình nhỏ hơn: iPhone tiêu chuẩn landscape (844 x 390)
-  await page.setViewportSize({ width: 844, height: 390 });
-  await page.waitForTimeout(100);
-  await expect(page.locator('#hud-quest-bar')).toBeVisible();
-  await expect(page.locator('#btn-menu')).toBeVisible();
+  // 7. Chụp screenshot tại 4 vị trí kiểm tra theo yêu cầu:
+  // Vị trí 1: Khu buồng giam (cellblock)
+  await page.evaluate(() => (window as any).__DITU__.teleport(-14.25, -27.3));
+  await page.waitForTimeout(150);
+  await page.screenshot({ path: 'docs/screenshots/1_cellblock.png' });
 
-  // 7. Chụp screenshot làm tư liệu giao diện ngang
-  await page.screenshot({ path: 'docs/screenshots/landscape_gameplay.png' });
+  // Vị trí 2: Xưởng lao động (workshop)
+  await page.evaluate(() => (window as any).__DITU__.teleport(16, 0.15));
+  await page.waitForTimeout(150);
+  await page.screenshot({ path: 'docs/screenshots/2_workshop.png' });
+
+  // Vị trí 3: Nhà ăn (mess hall)
+  await page.evaluate(() => (window as any).__DITU__.teleport(6, -24));
+  await page.waitForTimeout(150);
+  await page.screenshot({ path: 'docs/screenshots/3_messhall.png' });
+
+  // Vị trí 4: Phòng y tế (medical)
+  await page.evaluate(() => (window as any).__DITU__.teleport(23, -22));
+  await page.waitForTimeout(150);
+  await page.screenshot({ path: 'docs/screenshots/4_medical.png' });
 
   await ctx.close();
 });

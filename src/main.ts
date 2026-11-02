@@ -7,7 +7,8 @@ import { createInitialState, type NpcId } from './logic/state';
 import { NPCS } from './data/npcs';
 import { VIOLATIONS } from './data/violations';
 import { buildDialogue } from './data/dialogues';
-import { DOORS, SPOTS, ZONES, inBox, zonesAt } from './world/layout';
+import { DOORS, NODES, SPOTS, ZONES, inBox, zonesAt } from './world/layout';
+import { findPath, nearestNode } from './world/nav';
 import { PrisonWorld } from './world/builder';
 import { HumanoidRig } from './actors/humanoid';
 import { NpcActor } from './actors/npc';
@@ -40,7 +41,11 @@ class App {
     if (this.g.qStatus('nhap_trai') === 'locked') this.g.startQuest('nhap_trai');
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.setSize(window.innerWidth, window.innerHeight, true);
+    canvas.style.width = '100vw';
+    canvas.style.height = '100vh';
+    canvas.style.width = '100dvw';
+    canvas.style.height = '100dvh';
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.world = new PrisonWorld();
@@ -112,7 +117,11 @@ class App {
     const onResize = () => {
       const w = window.innerWidth;
       const h = window.innerHeight;
-      this.renderer.setSize(w, h, false);
+      this.renderer.setSize(w, h, true);
+      canvas.style.width = '100vw';
+      canvas.style.height = '100vh';
+      canvas.style.width = '100dvw';
+      canvas.style.height = '100dvh';
       this.tpCam.cam.aspect = w / h;
       this.tpCam.cam.updateProjectionMatrix();
       this.input.reset();
@@ -525,58 +534,84 @@ class App {
     return null;
   }
 
+  /** Điều hướng thông minh qua cửa & hành lang bằng đồ thị A* pathfinding (không trỏ xuyên tường). */
+  private guideTo(label: string, tx: number, tz: number, isDuty: boolean): { label: string; dist: number; angle: number; isDuty: boolean } {
+    const p = this.g.s.player;
+    const directD = Math.hypot(tx - p.x, tz - p.z);
+    const pZones = zonesAt(p.x, p.z);
+    const tZones = zonesAt(tx, tz);
+    const sameZone = pZones.length > 0 && tZones.length > 0 && pZones.some((z) => tZones.includes(z));
+
+    // Nếu rất gần hoặc ở cùng khu vực mở: trỏ trực tiếp
+    if (directD < 2.0 || (directD < 3.8 && sameZone)) {
+      const dx = tx - p.x;
+      const dz = tz - p.z;
+      return {
+        label,
+        dist: directD,
+        angle: Math.atan2(dx, -dz) - this.input.yaw,
+        isDuty,
+      };
+    }
+
+    // Tìm đường qua các cửa và hành lang
+    const pNode = nearestNode(p.x, p.z);
+    const tNode = nearestNode(tx, tz);
+    const path = findPath(pNode, tNode);
+
+    let nextNodeId = path[0];
+    const [n0x, n0z] = NODES[nextNodeId];
+    const distToFirst = Math.hypot(n0x - p.x, n0z - p.z);
+    if (distToFirst < 1.3 && path.length > 1) {
+      nextNodeId = path[1];
+    }
+
+    const [wx, wz] = NODES[nextNodeId];
+    const targetDx = wx - p.x;
+    const targetDz = wz - p.z;
+
+    let totalDist = Math.hypot(targetDx, targetDz);
+    const startIdx = Math.max(0, path.indexOf(nextNodeId));
+    for (let i = startIdx; i < path.length - 1; i++) {
+      const [ax, az] = NODES[path[i]];
+      const [bx, bz] = NODES[path[i + 1]];
+      totalDist += Math.hypot(ax - bx, az - bz);
+    }
+    const [lastX, lastZ] = NODES[path[path.length - 1]];
+    totalDist += Math.hypot(tx - lastX, tz - lastZ);
+
+    return {
+      label,
+      dist: totalDist,
+      angle: Math.atan2(targetDx, -targetDz) - this.input.yaw,
+      isDuty,
+    };
+  }
+
   /** Tìm mục tiêu tiếp theo để vẽ mũi tên chỉ đường trên HUD (phân biệt nghĩa vụ vs nhiệm vụ). */
   private computeGuide(): { label: string; dist: number; angle: number; isDuty?: boolean } | null {
     const g = this.g;
     const p = g.s.player;
     const curBlock = blockAt(g.s.minute);
 
-    // 1. ƯU TIÊN NGHĨA VỤ LỊCH TRÌNH BẮT BUỘC
+    // 1. ƯU TIÊN NGHĨA VỤ LỊCH TRÌNH BẮT BUỘC (chỉ hiện 1 mục tiêu duy nhất)
     if (curBlock.id === 'rollcall' && g.s.daily.rollcall === 'pending') {
-      const dx = -9 - p.x;
-      const dz = -9 - p.z;
-      return {
-        label: 'Ô điểm danh sáng sân trại',
-        dist: Math.hypot(dx, dz),
-        angle: Math.atan2(dx, -dz) - this.input.yaw,
-        isDuty: true,
-      };
+      return this.guideTo('Ô điểm danh sáng sân trại', -9, -9, true);
     }
 
     if (curBlock.id === 'work') {
       if (!g.s.daily.workClockedIn) {
-        const dx = 13.1 - p.x;
-        const dz = -6 - p.z;
-        return {
-          label: 'Bảng chấm công xưởng (trước 08:30)',
-          dist: Math.hypot(dx, dz),
-          angle: Math.atan2(dx, -dz) - this.input.yaw,
-          isDuty: true,
-        };
+        return this.guideTo('Bảng chấm công xưởng (trước 08:30)', 13.1, -6, true);
       }
       if (g.s.daily.workUnits === 0) {
-        const dx = 16 - p.x;
-        const dz = 0.15 - p.z;
-        return {
-          label: 'Bàn xưởng: hoàn thành ca lao động sáng',
-          dist: Math.hypot(dx, dz),
-          angle: Math.atan2(dx, -dz) - this.input.yaw,
-          isDuty: true,
-        };
+        return this.guideTo('Bàn xưởng: hoàn thành ca lao động sáng', 16, 0.15, true);
       }
     }
 
     if (curBlock.id === 'curfew') {
       const inCell = zonesAt(p.x, p.z).includes('cellblock');
       if (!inCell) {
-        const dx = -14.9 - p.x;
-        const dz = -28.6 - p.z;
-        return {
-          label: 'Về buồng giam 3 điểm danh tối & ngủ',
-          dist: Math.hypot(dx, dz),
-          angle: Math.atan2(dx, -dz) - this.input.yaw,
-          isDuty: true,
-        };
+        return this.guideTo('Về buồng giam 3 điểm danh tối & ngủ', -14.9, -28.6, true);
       }
     }
 
@@ -646,14 +681,7 @@ class App {
     }
 
     if (!label) return null;
-    const dx = tx - p.x;
-    const dz = tz - p.z;
-    return {
-      label,
-      dist: Math.hypot(dx, dz),
-      angle: Math.atan2(dx, -dz) - this.input.yaw,
-      isDuty: false,
-    };
+    return this.guideTo(label, tx, tz, false);
   }
 }
 

@@ -42,7 +42,6 @@ export class UIManager {
   paused = false;
   private modalSeq = 0;
   private activeMinigameCancel: (() => void) | null = null;
-  private dismissedPortrait = false;
   private pausedByOrientation = false;
 
   constructor(
@@ -77,7 +76,7 @@ export class UIManager {
     const isPortrait = window.innerWidth < window.innerHeight;
     const isTouch = this.isTouchDevice();
 
-    if (isPortrait && isTouch && !this.dismissedPortrait) {
+    if (isPortrait && isTouch) {
       this.orientOverlay.style.display = 'flex';
       if (!this.paused) {
         this.pausedByOrientation = true;
@@ -103,6 +102,7 @@ export class UIManager {
         <div class="hud-right">
           <div class="hud-action-row interactive">
             <div class="sentence-tag" id="hud-sentence">Án: 30n</div>
+            <button class="btn" id="btn-fullscreen" title="Toàn màn hình">⛶</button>
             <button class="btn" id="btn-bag">${isTouch ? '🎒 Túi' : '🎒 Túi (B)'}</button>
             <button class="btn btn-accent" id="btn-menu">${isTouch ? '☰ Menu' : '☰ Menu (Esc)'}</button>
           </div>
@@ -125,8 +125,7 @@ export class UIManager {
           <polyline points="15 5 19 5 19 9"></polyline>
         </svg>
         <div class="rotate-title">Xoay ngang điện thoại để chơi</div>
-        <div class="rotate-desc">Trò chơi 3D “Đi Tù Online” tối ưu tốt nhất ở màn hình ngang giúp quan sát rộng và di chuyển thuận tiện.</div>
-        <button class="btn" id="btn-ignore-portrait">Tiếp tục màn hình dọc</button>
+        <div class="rotate-desc">ĐI TÙ ONLINE bắt buộc chơi ở màn hình ngang để đảm bảo góc nhìn 3D bao quát và điều khiển thuận tiện.</div>
       </div>
     `;
 
@@ -169,13 +168,16 @@ export class UIManager {
       this.showStatsDetail();
     });
 
-    this.root.querySelector('#btn-ignore-portrait')?.addEventListener('click', () => {
+    this.root.querySelector('#btn-fullscreen')?.addEventListener('click', () => {
       this.sfx.click();
-      this.dismissedPortrait = true;
-      this.orientOverlay.style.display = 'none';
-      if (this.pausedByOrientation) {
-        if (!this.hasOpenModal()) this.paused = false;
-        this.pausedByOrientation = false;
+      if (!document.fullscreenElement && !(document as unknown as { webkitFullscreenElement?: Element }).webkitFullscreenElement) {
+        const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> };
+        if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      } else {
+        const doc = document as Document & { webkitExitFullscreen?: () => Promise<void> };
+        if (doc.exitFullscreen) doc.exitFullscreen().catch(() => {});
+        else if (doc.webkitExitFullscreen) doc.webkitExitFullscreen();
       }
     });
 
@@ -197,8 +199,8 @@ export class UIManager {
     d.className = `toast ${kind}`;
     d.textContent = text;
     this.toastsEl.appendChild(d);
-    while (this.toastsEl.children.length > 4) this.toastsEl.firstElementChild?.remove();
-    setTimeout(() => d.remove(), 4800);
+    while (this.toastsEl.children.length > 2) this.toastsEl.firstElementChild?.remove();
+    setTimeout(() => d.remove(), 3200);
   }
 
   updateHUD(

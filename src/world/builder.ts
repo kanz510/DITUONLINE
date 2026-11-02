@@ -113,13 +113,13 @@ export class PrisonWorld {
     rcMesh.position.set((rc.x1 + rc.x2) / 2, 0.015, (rc.z1 + rc.z2) / 2);
     this.scene.add(rcMesh);
 
-    // Vạch đỏ trước cửa kho cấm
+    // Vạch đỏ trước cửa kho cấm (thẳng tắp, khớp chuẩn xác với khung cửa kho 1.6m)
     const warnLine = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.35, 3.2),
+      new THREE.PlaneGeometry(0.25, 1.6),
       new THREE.MeshBasicMaterial({ color: 0xef4444 }),
     );
     warnLine.rotation.x = -Math.PI / 2;
-    warnLine.position.set(21.6, 0.02, -7);
+    warnLine.position.set(21.75, 0.02, -7.0);
     this.scene.add(warnLine);
   }
 
@@ -162,6 +162,52 @@ export class PrisonWorld {
         this.scene.add(low, hi);
         this.cameraObstacles.push(low, hi);
       }
+    }
+
+    // ─── BỊT KHOẢNG HỞ TRÊN CỬA (Lanh-tô cửa từ 2.5m đến 3.6m) ───
+    const lintelH = 1.1; // 3.6m - 2.5m
+    const lintelY = 2.5 + lintelH / 2; // 3.05m
+    for (const d of DOORS) {
+      const sx = Math.max(d.box.x2 - d.box.x1, 0.3);
+      const sz = Math.max(d.box.z2 - d.box.z1, 0.3);
+      const lintel = new THREE.Mesh(new THREE.BoxGeometry(sx, lintelH, sz), outerUpper);
+      lintel.position.set((d.box.x1 + d.box.x2) / 2, lintelY, (d.box.z1 + d.box.z2) / 2);
+      lintel.castShadow = lintel.receiveShadow = true;
+      this.scene.add(lintel);
+      this.cameraObstacles.push(lintel);
+    }
+
+    // Lanh-tô phía trên 4 cửa buồng giam song sắt (z = -25)
+    const cellDoors = [
+      [-26.05, -24.45],
+      [-20.55, -18.95],
+      [-15.05, -13.45],
+      [-7.95, -6.35],
+    ];
+    for (const [x1, x2] of cellDoors) {
+      const sx = x2 - x1;
+      const lintel = new THREE.Mesh(new THREE.BoxGeometry(sx, lintelH, 0.2), outerUpper);
+      lintel.position.set((x1 + x2) / 2, lintelY, -25);
+      lintel.castShadow = lintel.receiveShadow = true;
+      this.scene.add(lintel);
+      this.cameraObstacles.push(lintel);
+    }
+
+    // ─── THÊM TRẦN / MÁI NHÀ CHO TẤT CẢ CÁC TÒA NHÀ TRONG NHÀ ───
+    const ceilMat = new THREE.MeshStandardMaterial({
+      color: 0x1f2937,
+      roughness: 0.95,
+      side: THREE.DoubleSide,
+    });
+    for (const b of Object.values(BUILDINGS)) {
+      const bw = b.x2 - b.x1;
+      const bd = b.z2 - b.z1;
+      const ceil = new THREE.Mesh(new THREE.PlaneGeometry(bw, bd), ceilMat);
+      ceil.rotation.x = Math.PI / 2; // mặt nhìn xuống sàn
+      ceil.position.set((b.x1 + b.x2) / 2, 3.6, (b.z1 + b.z2) / 2);
+      ceil.receiveShadow = true;
+      this.scene.add(ceil);
+      this.cameraObstacles.push(ceil);
     }
   }
 
@@ -324,9 +370,19 @@ export class PrisonWorld {
       }
       case 'board': {
         const tex = signTex(p.label ?? 'THÔNG BÁO', 'Nhấn E để xem');
-        const bd = new THREE.Mesh(new THREE.BoxGeometry(p.w, 1.1, p.d), new THREE.MeshStandardMaterial({ map: tex }));
-        bd.position.y = 1.55;
-        g.add(bd);
+        const g0 = new THREE.Group();
+        const frame = new THREE.Mesh(
+          new THREE.BoxGeometry(p.w, 1.0, 0.04),
+          new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 }),
+        );
+        frame.position.y = 1.6;
+        const face = new THREE.Mesh(
+          new THREE.PlaneGeometry(p.w - 0.06, 0.88),
+          new THREE.MeshBasicMaterial({ map: tex, side: THREE.FrontSide }),
+        );
+        face.position.set(0, 1.6, 0.025);
+        g0.add(frame, face);
+        g.add(g0);
         break;
       }
       case 'pullup': {
@@ -377,19 +433,19 @@ export class PrisonWorld {
 
   private buildSignsAndMarkers() {
     const signs: { title: string; sub: string; x: number; y: number; z: number; ry?: number }[] = [
-      { title: 'KHU BUỒNG GIAM A', sub: 'Giờ về buồng: 21:00', x: -17, y: 3.1, z: -17.7, ry: 0 },
-      { title: 'NHÀ ĂN & CĂN TIN', sub: '07:00 · 11:30 · 16:30', x: 6.25, y: 3.1, z: -17.7, ry: 0 },
-      { title: 'XƯỞNG LAO ĐỘNG', sub: 'Ca sáng 08:00–11:30', x: 11.7, y: 3.1, z: -2.75, ry: -Math.PI / 2 },
-      { title: 'KHO VẬT Tư — CẤM VÀO', sub: 'Khu vực có camera', x: 21.7, y: 2.8, z: -7, ry: -Math.PI / 2 },
-      { title: 'PHÒNG QUẢN GIÁO', sub: 'Tiếp nhận 07:00–17:00', x: -4, y: 3.1, z: 9.7, ry: Math.PI },
-      { title: 'PHÒNG Y TẾ', sub: '07:30–11:30 · 13:30–17:00', x: 22.25, y: 3.1, z: -17.7, ry: 0 },
-      { title: 'LỚP HỌC NGHỀ & THƯ VIỆN', sub: '14:00–16:30 · 19:00–21:00', x: -20.75, y: 3.1, z: 9.7, ry: Math.PI },
-      { title: 'PHÒNG THĂM GẶP', sub: 'Tiếp đón người nhà', x: -19.7, y: 3.1, z: -10.25, ry: Math.PI / 2 },
-      { title: 'KHU KỶ LUẬT', sub: 'Khu biệt giam', x: 10, y: 3.1, z: 9.7, ry: Math.PI },
+      { title: 'KHU BUỒNG GIAM A', sub: 'Giờ về buồng: 21:00', x: -17, y: 3.05, z: -17.75, ry: 0 },
+      { title: 'NHÀ ĂN & CĂN TIN', sub: '07:00 · 11:30 · 16:30', x: 6.25, y: 3.05, z: -17.75, ry: 0 },
+      { title: 'XƯỞNG LAO ĐỘNG', sub: 'Ca sáng 08:00–11:30', x: 11.75, y: 3.05, z: -2.75, ry: -Math.PI / 2 },
+      { title: 'KHO VẬT TƯ — CẤM VÀO', sub: 'Khu vực có camera', x: 21.75, y: 3.05, z: -7.0, ry: -Math.PI / 2 },
+      { title: 'PHÒNG QUẢN GIÁO', sub: 'Tiếp nhận 07:00–17:00', x: -4, y: 3.05, z: 9.75, ry: Math.PI },
+      { title: 'PHÒNG Y TẾ', sub: '07:30–11:30 · 13:30–17:00', x: 22.25, y: 3.05, z: -17.75, ry: 0 },
+      { title: 'LỚP HỌC NGHỀ & THƯ VIỆN', sub: '14:00–16:30 · 19:00–21:00', x: -20.75, y: 3.05, z: 9.75, ry: Math.PI },
+      { title: 'PHÒNG THĂM GẶP', sub: 'Tiếp đón người nhà', x: -19.75, y: 3.05, z: -10.25, ry: Math.PI / 2 },
+      { title: 'KHU KỶ LUẬT', sub: 'Khu biệt giam', x: 10, y: 3.05, z: 9.75, ry: Math.PI },
     ];
     for (const s of signs) {
       const m = new THREE.Mesh(
-        new THREE.PlaneGeometry(2.6, 0.9),
+        new THREE.PlaneGeometry(1.3, 0.42),
         new THREE.MeshBasicMaterial({ map: signTex(s.title, s.sub), side: THREE.DoubleSide }),
       );
       m.position.set(s.x, s.y, s.z);
@@ -397,14 +453,14 @@ export class PrisonWorld {
       this.scene.add(m);
     }
 
-    // Số buồng 1..4
+    // Số buồng 1..4 (treo trên lanh-tô cửa buồng cao 3.05m)
     for (let i = 0; i < 4; i++) {
       const x = -25.25 + i * 5.5;
       const m = new THREE.Mesh(
-        new THREE.PlaneGeometry(1.1, 0.5),
+        new THREE.PlaneGeometry(0.95, 0.38),
         new THREE.MeshBasicMaterial({ map: signTex(`BUỒNG ${i + 1}`, i === 2 ? 'Minh · Bảy · Huy' : ''), side: THREE.DoubleSide }),
       );
-      m.position.set(x, 2.75, -24.85);
+      m.position.set(x, 3.05, -24.88);
       this.scene.add(m);
     }
   }

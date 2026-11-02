@@ -181,9 +181,14 @@ for (const cx of CELL_CENTERS) {
   P.push({ kind: 'bunk', x: cx + 1.65, z: -29.6, w: 0.95, d: 2.0, collide: true });
 }
 P.push(
-  { kind: 'board', x: -27.75, z: -21.5, w: 0.15, d: 1.8, rot: Math.PI / 2, label: 'NỘI QUY' },
+  { kind: 'board', x: -27.88, z: -21.5, w: 1.4, d: 0.05, rot: Math.PI / 2, label: 'NỘI QUY' },
   { kind: 'basin', x: -6.5, z: -22.5, w: 0.6, d: 3, collide: true },
   { kind: 'bench', x: -21, z: -19.2, w: 2.4, d: 0.5, collide: true },
+  // Đồ đạc bổ sung hành lang buồng giam (bớt trống trải)
+  { kind: 'bench', x: -24.5, z: -18.7, w: 2.2, d: 0.5, collide: true },
+  { kind: 'cabinet', x: -13.5, z: -18.7, w: 1.6, d: 0.55, collide: true },
+  { kind: 'desk', x: -8.0, z: -19.6, w: 1.8, d: 0.8, collide: true },
+  { kind: 'chair', x: -8.0, z: -20.3, w: 0.5, d: 0.5 },
   // Nhà ăn
   { kind: 'counter', x: 5, z: -30, w: 10, d: 1, collide: true },
   { kind: 'canteen', x: 13.5, z: -31.2, w: 3, d: 0.8, collide: true },
@@ -196,8 +201,10 @@ P.push(
   { kind: 'workbench', x: 20, z: -1, w: 2.4, d: 1.0, collide: true },
   { kind: 'workbench', x: 16, z: 4, w: 2.4, d: 1.0, collide: true },
   { kind: 'workbench', x: 20, z: 4, w: 2.4, d: 1.0, collide: true },
-  { kind: 'board', x: 12.25, z: -6, w: 0.15, d: 1.4, rot: Math.PI / 2, label: 'CHẤM CÔNG' },
+  { kind: 'board', x: 12.12, z: -6, w: 1.3, d: 0.05, rot: Math.PI / 2, label: 'CHẤM CÔNG' },
   { kind: 'bench', x: 14.2, z: 7.2, w: 2.4, d: 0.5, collide: true },
+  { kind: 'crate', x: 13.5, z: 6.5, w: 1.2, d: 1.2, collide: true },
+  { kind: 'crate', x: 15.0, z: 6.5, w: 1.0, d: 1.0, collide: true },
   { kind: 'press', x: 25.5, z: 4.5, w: 1.6, d: 1.6, collide: true },
   { kind: 'crate', x: 25.8, z: 0, w: 1.2, d: 1.2, collide: true },
   { kind: 'shelf', x: 27.3, z: -9, w: 0.8, d: 4.5, collide: true },
@@ -208,7 +215,7 @@ P.push(
   { kind: 'cabinet', x: -10.8, z: 18.8, w: 2, d: 0.7, collide: true },
   { kind: 'cabinet', x: 2.6, z: 18.8, w: 2, d: 0.7, collide: true },
   { kind: 'chair', x: -4.6, z: 14.5, w: 0.5, d: 0.5 },
-  { kind: 'board', x: -11.75, z: 14, w: 0.15, d: 1.6, rot: Math.PI / 2, label: 'KỶ LUẬT' },
+  { kind: 'board', x: -11.88, z: 14, w: 1.4, d: 0.05, rot: Math.PI / 2, label: 'KỶ LUẬT' },
   // Sân
   { kind: 'pullup', x: -22.5, z: 5.2, w: 2.2, d: 0.3, collide: true },
   { kind: 'stonetable', x: -10, z: 4.6, w: 1.3, d: 1.3, collide: true },
@@ -320,8 +327,8 @@ export function rollcallSlot(i: number): [number, number] {
 }
 export const LAN_ROLLCALL: [number, number] = [-9, -11.6];
 
-/** Chỗ ngồi nhà ăn: [x, z, hướng] */
+/** Chỗ ngồi nhà ăn: [x, z, hướng] (đặt ngoài mép bàn để không bị xuyên) */
 export const MESS_SEATS: [number, number, number][] = [
-  [0.6, -25.2, Math.PI], [2.4, -25.2, Math.PI], [0.6, -27.2, 0], [2.4, -27.2, 0],
-  [9.6, -25.2, Math.PI], [11.4, -25.2, Math.PI], [9.6, -21.2, Math.PI], [0.6, -21.2, Math.PI],
+  [0.6, -24.7, Math.PI], [2.4, -24.7, Math.PI], [0.6, -27.7, 0], [2.4, -27.7, 0],
+  [9.6, -24.7, Math.PI], [11.4, -24.7, Math.PI], [9.6, -20.7, Math.PI], [0.6, -20.7, Math.PI],
 ];

@@ -1,0 +1,9 @@
+{
+  "name": "ĐI TÙ ONLINE",
+  "short_name": "Đi Tù",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0b1120",
+  "theme_color": "#0f172a"
+}
