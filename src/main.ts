@@ -18,6 +18,13 @@ import { CutsceneController } from './core/cutscene';
 import { UIManager, type PromptTarget, type GuideTarget } from './ui/manager';
 import { fetchLiveRelease } from './version';
 
+/** Keep the player model tied to the saved appearance preset across reloads. */
+function playerModelSkin(preset?: number): string {
+  const skins = ['g', 'f', 'd', 'e'];
+  const index = Number.isFinite(preset) ? Math.abs(Math.trunc(preset!)) % skins.length : 0;
+  return skins[index];
+}
+
 const AREA_EXIT_MAP: Record<string, { doorId: string; name: string; safeNode: [number, number]; insideBox: Box }> = {
   workshop: {
     doorId: 'door_workshop',
@@ -111,7 +118,7 @@ class App {
       accent: 0x22c55e,
       height: 1.0,
       build: 1.0,
-    });
+    }, undefined, playerModelSkin(prof.preset));
     this.world.scene.add(this.playerRig.root);
 
     // Các NPC
@@ -310,6 +317,7 @@ class App {
 
   rebuildPlayerRig(look: { skin?: number; hair?: number; hairStyle?: 'short' | 'buzz' | 'bald'; preset?: number }) {
     if (this.playerRig) {
+      this.playerRig.dispose(); // old async GLB load must not attach to a discarded rig
       this.world.scene.remove(this.playerRig.root);
     }
     this.playerRig = new HumanoidRig({
@@ -320,7 +328,7 @@ class App {
       accent: 0x22c55e,
       height: 1.0,
       build: 1.0,
-    });
+    }, undefined, playerModelSkin(look.preset));
     this.world.scene.add(this.playerRig.root);
     const p = this.g.s.player;
     this.playerRig.root.position.set(p.x, 0, p.z);
