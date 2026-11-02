@@ -460,7 +460,7 @@ function lamDialogue(g: GameLogic): DNode {
   }
 
   // Giao hộp mũi khoan cho Lâm
-  if (g.qStatus('mon_no') === 'active' && g.qBranch('mon_no') === 'steal' && g.has('hop_mui_khoan') {
+  if (g.qStatus('mon_no') === 'active' && g.qBranch('mon_no') === 'steal' && g.has('hop_mui_khoan')) {
     choices.push({
       label: 'Hộp mũi khoan lấy trong kho đây.',
       important: true,
@@ -494,7 +494,8 @@ function lamDialogue(g: GameLogic): DNode {
           {
             label: 'Tôi từ chối. Sự thật phải được làm rõ.',
             run: () => {
-              g.completeObjective('cam_do_im_lang', 'quyet_dinh_im_lang');
+              if (!g.qObj('cam_do_im_lang', 'gap_lam_ch3')) g.completeObjective('cam_do_im_lang', 'gap_lam_ch3');
+               g.completeObjective('cam_do_im_lang', 'quyet_dinh_im_lang');
               g.finishQuest('cam_do_im_lang', 'done', 'Từ chối mua chuộc');
               g.changeRel('lam', -30, 'Minh từ chối lời đề nghị im lặng');
               g.addReform(6, 'Kiên quyết giữ vững sự thật');
@@ -509,7 +510,8 @@ function lamDialogue(g: GameLogic): DNode {
           {
             label: 'Được rồi, tôi cầm tiền và không nhắc tới nữa.',
             run: () => {
-              g.completeObjective('cam_do_im_lang', 'quyet_dinh_im_lang');
+              if (!g.qObj('cam_do_im_lang', 'gap_lam_ch3')) g.completeObjective('cam_do_im_lang', 'gap_lam_ch3');
+               g.completeObjective('cam_do_im_lang', 'quyet_dinh_im_lang');
               g.finishQuest('cam_do_im_lang', 'done', 'Nhận tiền im lặng');
               g.addStat('money', 50);
               g.s.flags.accepted_lam_bribe = true;
@@ -569,6 +571,12 @@ function lanDialogue(g: GameLogic, openAppeal: () => void): DNode {
       label: 'Nộp Hồ sơ giải trình vụ án Kho số 7 và các chứng cứ mới thu thập được.',
       important: true,
       run: () => {
+        const reason = g.objectiveBlockReason('ho_so_giai_trinh', 'nop_ho_so');
+        if (reason) return {
+          speaker: 'Quản giáo Lan',
+          text: reason,
+          choices: [{ label: 'Cháu sẽ làm đúng bước.', run: () => null }],
+        };
         g.completeObjective('ho_so_giai_trinh', 'nop_ho_so');
         g.completeObjective('ho_so_giai_trinh', 'ket_luan_lan');
         g.s.flags.ho_so_kho_7_cleared = true;
@@ -588,6 +596,9 @@ function lanDialogue(g: GameLogic, openAppeal: () => void): DNode {
       label: 'Nghe kết luận của Hội đồng xét giảm án đặc xá.',
       important: true,
       run: () => {
+        // Hoàn tất trình tự phiên xét: có mặt, nghe kết luận rồi nhận quyết định.
+        g.completeObjective('ky_xet_cuoi_cung', 'den_hoi_truong');
+        g.completeObjective('ky_xet_cuoi_cung', 'nhan_quyet_dinh');
         g.finishQuest('ky_xet_cuoi_cung', 'done');
         // Kích hoạt kết thúc phân nhánh
         const endCode = g.computeEnding();
@@ -688,20 +699,15 @@ function phucDialogue(g: GameLogic, openVocational?: () => void): DNode {
     });
   }
 
-  // Nhiệm vụ phụ Chương 3: Sửa quạt phòng học
+  // Quạt phải được kiểm tra và sửa tại chỗ, không được báo khống để nhận thưởng.
   if (g.qStatus('sua_quat_phong_hoc') === 'active' && !g.qObj('sua_quat_phong_hoc', 'thay_vong_bi')) {
     choices.push({
-      label: 'Cháu sửa xong quạt trần lớp học rồi thầy ạ.',
-      important: true,
-      run: () => {
-        g.completeObjective('sua_quat_phong_hoc', 'thay_vong_bi');
-        g.finishQuest('sua_quat_phong_hoc', 'done');
-        return {
-          speaker: 'Thầy Phúc',
-          text: 'Giỏi lắm! Quạt chạy êm ru lại rồi. Đúng là có tay nghề có khác. Thầy cộng điểm công ích cho cậu.',
-          choices: [{ label: 'Dạ, cảm ơn thầy.', run: () => null }],
-        };
-      },
+      label: 'Thưa thầy, chiếc quạt hỏng phải xử lý thế nào ạ?',
+      run: () => ({
+        speaker: 'Thầy Phúc',
+        text: 'Cháu hãy tới chiếc quạt trong lớp, kiểm tra hộp số trước rồi mới thay vòng bi và siết ốc nhé.',
+        choices: [{ label: 'Dạ, cháu sẽ kiểm tra đúng thứ tự.', run: () => null }],
+      }),
     });
   }
 
@@ -842,7 +848,8 @@ function maiDialogue(g: GameLogic): DNode {
     });
   }
 
-  if (g.qStatus('la_thu_que_nha') === 'active' && !g.qObj('la_thu_que_nha', 'hoi_am')) {
+  if (g.qStatus('la_thu_que_nha') === 'active' &&
+      g.qObj('la_thu_que_nha', 'nhan_thu') && !g.qObj('la_thu_que_nha', 'hoi_am')) {
     choices.push({
       label: 'Em đã nhận được thư mẹ gửi rồi chị à.',
       important: true,
