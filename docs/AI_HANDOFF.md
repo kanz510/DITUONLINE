@@ -8,6 +8,15 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-03 — ChatGPT — HUD Ngày/giờ + Mục tiêu kiểu kính mờ, giảm che màn hình iPhone
+- Lý do: người dùng gửi ảnh iPhone landscape; ô Ngày 1 và Mục tiêu bên trái quá đặc, rộng, xếp chồng làm che cảnh 3D; toast cảnh báo cũng chiếm khoảng lớn.
+- `src/ui/styles.css`: riêng `#hud-clock` và `.hud-quest-bar` dùng nền rgba(10,19,37,0.54), blur 15px và shadow nhẹ để nhìn xuyên qua nhưng còn rõ chữ; hover mission không tăng quá tối. `.hud-left` căn cố định chiều rộng hợp lý, `.hud-quest-bar` dùng 100% chiều rộng cột; xử lý min-width cho header để không tràn.
+- Responsive `@media (orientation:landscape) and (max-height:500px)`: cột trái tối đa 294px/41vw, padding, font/line-height thu gọn; mô tả quest giới hạn 2 dòng chỉ trong HUD mini (bấm bảng nhiệm vụ vẫn xem nội dung đầy đủ); footer giữ nút tự đi và nút thu gọn với diện tích chạm; toast giới hạn max-height 72px và tối đa 2 dòng mỗi toast.
+- Không thay gameplay, dữ liệu lưu, cơ chế hoàn thành nhiệm vụ hay chức năng tự đi. Không ẩn mục tiêu đang hoạt động, vẫn mở chi tiết bằng bấm vào bảng.
+- `tests/e2e/hotfix.spec.ts`: thêm case đo computed background alpha, chiều rộng HUD trên 956×440 và 844×390, kiểm tra toggle thu gọn. E2E mới chỉ được thêm vào mã nguồn; CI mặc định chạy unit + build, chưa chạy Playwright/Safari thật trong phiên này.
+- Commit: `891e1a0e08972aae05c884faffedc8c7e7fce9ad` (CSS), `0729c365908673a0e74bf7dd8a4e6e4c640db82f` (E2E), `c9e92e0ce5e6cb7a5309f7ed1517589513243234` (E2E ổn định).
+- Antigravity / agent kế tiếp: giữ cơ chế glass + layout compact. Đọc diff `src/ui/styles.css` trước khi can thiệp để không khôi phục opacity 0.94. Kiểm tra GitHub Pages thực sự đang phục vụ build mới; kiểm thử trực tiếp iPhone khi có thể.
+
 ### 2026-11-03 — ChatGPT — Bỏ nút Đóng trùng và cân lại giao diện modal
 - Người dùng xác nhận X đã hiện trên iPhone, yêu cầu xóa nút "Đóng" dư phía dưới trên mọi bảng, chỉnh nội dung trải đều và không lệch.
 - `src/ui/manager.ts`: xử lý tập trung tại `showModal()`. Chỉ với modal đã có `button[data-close]` thì thêm X, đặt class `has-top-close`, xóa các nút có chữ chính xác "Đóng" hoặc "Đóng Menu" và wrapper footer rỗng. Giữ các nút hành động có nghĩa riêng: "Hủy", "Thoát", "Đã hiểu", "Tiếp tục chơi", "Bắt đầu lượt chơi mới" và những nút xác nhận. Đăng ký listener đóng cho các `data-close` còn lại. Không mở thêm cách thoát modal bắt buộc vốn không có `data-close`.
