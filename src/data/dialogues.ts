@@ -202,6 +202,24 @@ function bayDialogue(g: GameLogic): DNode {
     });
   }
 
+  // Sau khi đã đánh bóng hộp gỗ tại xưởng mới được hứa giao quà.
+  if (g.qStatus('loi_hua_chu_bay') === 'active' &&
+      g.qObj('loi_hua_chu_bay', 'danh_bong_hop') &&
+      !g.qObj('loi_hua_chu_bay', 'hua_gui_ve')) {
+    choices.push({
+      label: 'Cháu đã đánh bóng và lắp khóa hộp gỗ. Cháu hứa sẽ mang về cho con gái chú.',
+      important: true,
+      run: () => {
+        g.completeObjective('loi_hua_chu_bay', 'hua_gui_ve');
+        return {
+          speaker: 'Chú Bảy',
+          text: 'Chú cảm ơn cậu. Chú gửi cậu cuốn cẩm nang làm hành trang ngày ra trại.',
+          choices: [{ label: 'Cháu sẽ giữ lời.', run: () => null }],
+        };
+      },
+    });
+  }
+
   // Nhiệm vụ Chương 4: Lời hứa Chú Bảy
   if (g.qStatus('loi_hua_chu_bay') === 'active' && !g.qObj('loi_hua_chu_bay', 'nghe_loi_hua')) {
     choices.push({
@@ -216,10 +234,12 @@ function bayDialogue(g: GameLogic): DNode {
             {
               label: 'Cháu hứa chắc chắn sẽ giúp chú!',
               run: () => {
-                g.completeObjective('loi_hua_chu_bay', 'danh_bong_hop');
-                g.completeObjective('loi_hua_chu_bay', 'hua_gui_ve');
-                g.s.flags.loi_hua_chu_bay_done = true;
-                g.finishQuest('loi_hua_chu_bay', 'done');
+                // The hands-on step takes place at the workshop bench, not in dialogue.
+                return {
+                  speaker: 'Chú Bảy',
+                  text: 'Vậy hãy giúp chú đánh bóng chiếc hộp tại bàn xưởng trước nhé. Làm xong rồi quay lại hứa với chú.',
+                  choices: [{ label: 'Dạ, cháu sẽ ra bàn xưởng.', run: () => null }],
+                };
                 return {
                   speaker: 'Chú Bảy',
                   text: 'Được lời hứa của cậu là chú yên tâm rồi. Đây là cuốn cẩm nang sống chú ghi chép bao năm nay, tặng lại cho cậu làm hành trang ngày về.',
