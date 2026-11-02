@@ -440,20 +440,56 @@ export class GameLogic {
     return true;
   }
 
-  completeObjective(q: string, obj: string) {
-    if (this.qStatus(q) !== 'active') return;
+  /** Shared guard for EVERY quest objective, including optional and branch objectives.
+   *  No future objective can advance while an earlier required step is incomplete. */
+  objectiveBlockReason(q: string, obj: string): string | null {
+    const def = QUESTS[q];
+    if (!def) return 'Mục tiêu không tồn tại.';
+    if (this.qStatus(q) !== 'active') {
+      return this.qStatus(q) === 'done'
+        ? `Nhiệm vụ "${def.title}" đã hoàn thành.`
+        : `Chưa mở nhiệm vụ "${def.title}". ${def.requirement}`;
+    }
+    const targetIndex = def.objectives.findIndex((o) => o.id === obj);
+    if (targetIndex < 0) return 'Bước nhiệm vụ không tồn tại.';
+    const target = def.objectives[targetIndex];
+    const branch = this.qBranch(q);
+    if (target.branch && target.branch !== branch) {
+      return branch
+        ? 'Bước này không thuộc phương án bạn đã chọn.'
+        : 'Hãy gặp người giao nhiệm vụ để lựa chọn phương án trước.';
+    }
+    for (let i = 0; i < targetIndex; i++) {
+      const prev = def.objectives[i];
+      if (prev.optional || (prev.branch && prev.branch !== branch)) continue;
+      if (!this.s.flags[`${q}:${prev.id}`]) {
+        return `Cần hoàn thành bước trước: ${prev.text}`;
+      }
+    }
+    return null;
+  }
+
+  completeObjective(q: string, obj: string): boolean {
     const k = `${q}:${obj}`;
-    if (this.s.flags[k]) return;
+    if (this.s.flags[k] || this.qStatus(q) === 'done') return false;
+    const reason = this.objectiveBlockReason(q, obj);
+    if (reason) {
+      this.notify(reason, 'warn');
+      return false;
+    }
     this.s.flags[k] = true;
     const def = QUESTS[q];
     const o = def.objectives.find((x) => x.id === obj);
     if (o) this.notify(`✔ ${o.text}`, 'quest');
     this.checkQuest(q);
     this.commit();
+    return true;
   }
 
   chooseBranch(q: string, branch: string) {
-    if (this.qBranch(q)) return false;
+    if (this.qStatus(q) !== 'active' || this.qBranch(q) || !QUESTS[q]?.branches?.[branch]) return false;
+    const reason = this.objectiveBlockReason(q, 'quyet_dinh');
+    if (reason) { this.notify(reason, 'warn'); return false; }
     this.s.flags[`${q}:branch`] = branch;
     this.s.quests[q]?.choices.push(QUESTS[q].branches?.[branch] ?? branch);
     this.event(`Quyết định: ${QUESTS[q].branches?.[branch] ?? branch}`);
@@ -473,6 +509,18 @@ export class GameLogic {
   finishQuest(q: string, status: 'done' | 'failed', outcome?: string) {
     const st = this.s.quests[q];
     if (!st || st.status !== 'active') return;
+    if (status === 'done') {
+      const def = QUESTS[q];
+      const branch = this.qBranch(q);
+      const incomplete = def.objectives.find((o) =>
+        !o.optional && (!o.branch || o.branch === branch) && !this.s.flags[`${q}:${o.id}`]);
+      if (incomplete || (def.branches && !branch)) {
+        this.notify(incomplete
+          ? `Chưa thể hoàn thành "${def.title}". Cần làm trước: ${incomplete.text}`
+          : 'Cần lựa chọn phương án giải quyết nhiệm vụ trước.', 'warn');
+        return;
+      }
+    }
     st.status = status;
     st.outcome = outcome ?? st.outcome;
     if (!st.rewarded) {
@@ -740,8 +788,12 @@ export class GameLogic {
       this.completeObjective('ca_dau', 'cham_cong');
       this.event('Chấm công ca sáng');
     } else {
+      if (this.qStatus('ca_dau') === 'active') {
+        return 'Cần hoàn thành ca đầu tiên theo thứ tự: chấm công sáng → lắp đủ 3 ổ cắm → báo Chú Bảy, rồi mới đăng ký ca chiều.';
+      }
       if (this.s.flags[`extra:${this.s.day}`]) return 'Bạn đã đăng ký ca chiều.';
       this.s.flags[`extra:${this.s.day}`] = true;
+      this.completeObjective('lao_dong_phu', 'dang_ky');
       this.notify('Đăng ký ca chiều tự nguyện: 4.000đ/sản phẩm, tối đa 4.', 'good');
     }
     this.commit();
@@ -757,6 +809,14 @@ export class GameLogic {
 
   canWorkReason(): string | null {
     const mode = this.workMode();
+    if (this.qStatus('ca_dau') === 'active') {
+      if (!this.qObj('ca_dau', 'cham_cong') || !this.s.daily.workClockedIn) {
+        return 'Chưa thể lắp ráp: hãy chấm công tại bảng cạnh cửa xưởng trước (ca sáng 08:00–11:30).';
+      }
+      if (mode !== 'morning') {
+        return 'Ca đầu tiên phải hoàn thành trong ca sáng. Hãy trở lại xưởng vào 08:00–11:30.';
+      }
+    }
     if (!mode) return 'Cần chấm công ở bảng cạnh cửa xưởng trước (ca sáng 08:00–11:30, ca chiều 13:30–16:30).';
     if (mode === 'morning' && this.s.daily.workUnits >= WORK_QUOTA && this.s.daily.work === 'ok') return 'Đã đủ chỉ tiêu ca sáng. Có thể nghỉ hoặc ra về.';
     if (mode === 'afternoon' && this.s.daily.extraShiftUnits >= EXTRA_SHIFT_MAX) return 'Đã làm tối đa ca chiều hôm nay.';
@@ -771,7 +831,7 @@ export class GameLogic {
   finishWorkUnit(quality: number, manual = true) {
     const d = this.s.daily;
     const mode = this.workMode();
-    if (!mode) return;
+    if (!mode || this.canWorkReason()) return;
     const q = Math.max(0, Math.min(100, Math.round(quality)));
     if (mode === 'morning') {
       if (d.workUnits >= WORK_QUOTA) return;
@@ -788,7 +848,6 @@ export class GameLogic {
       if (d.extraShiftUnits % 2 === 0) this.addReform(1, 'Lao động tự nguyện', true);
       if (d.extraShiftUnits >= 2) {
         this.completeObjective('lao_dong_phu', 'lap_phu');
-        if (d.extraShiftUnits >= EXTRA_SHIFT_MAX) this.finishQuest('lao_dong_phu', 'done');
       }
     }
     this.checkMoneyObjective();
@@ -951,7 +1010,10 @@ export class GameLogic {
       if (this.s.day === 1) {
         d.rollcall = 'excused';
         this.recordViolation('missed_rollcall', `d${this.s.day}`, 'Không có mặt ở ô điểm danh 06:30–07:00.', { grace: true });
-        this.completeObjective('nhap_trai', 'diem_danh');
+        // An absence is not an achieved rollcall objective: attend a later morning to progress.
+        if (this.qStatus('nhap_trai') === 'active' && !this.qObj('nhap_trai', 'diem_danh')) {
+          this.notify('Bạn bỏ lỡ điểm danh. Hãy có mặt ở ô vàng vào 06:30–07:00 ngày mai để hoàn thành bước này.', 'warn');
+        }
       } else {
         d.rollcall = 'missed';
         this.recordViolation('missed_rollcall', `d${this.s.day}`, 'Quản giáo Lan điểm danh 06:30–07:00, không có mặt.');
