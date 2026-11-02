@@ -184,3 +184,45 @@ test('top-right toolbar and labeled mini-map stay usable on iPhone landscape', a
   const interactWidth = await page.locator('#btn-interact').evaluate((el) => el.getBoundingClientRect().width);
   expect(interactWidth).toBeLessThanOrEqual(160);
 });
+
+
+test('gameplay actions cannot bypass clock-in or skip medical/vocational quest steps', async ({ page }) => {
+  await page.evaluate(() => {
+    const d = (window as any).__DITU__;
+    d.logic.startQuest('ca_dau');
+    d.logic.s.minute = 500; // 08:20
+    d.app.ui.showWorkbenchMinigame();
+  });
+  await expect(page.locator('#wg-hit')).toHaveCount(0);
+  await expect(page.locator('#hud-toasts')).toContainText('chấm công');
+
+  await page.evaluate(() => {
+    const d = (window as any).__DITU__;
+    d.logic.clockIn();
+    d.app.ui.showWorkbenchMinigame();
+  });
+  await expect(page.locator('#wg-hit')).toBeVisible();
+  await page.evaluate(() => (window as any).__DITU__.app.ui.closeModal());
+
+  await page.evaluate(() => {
+    const d = (window as any).__DITU__;
+    d.logic.startQuest('lop_nghe_dau');
+    d.app.ui.showVocationalMinigame();
+  });
+  await expect(page.locator('[data-voc-btn]')).toHaveCount(0);
+  await expect(page.locator('#hud-toasts')).toContainText('Thầy Phúc');
+
+  await page.evaluate(() => {
+    const d = (window as any).__DITU__;
+    d.logic.startQuest('phu_y_te');
+    d.app.ui.showMedicineSortingMinigame();
+  });
+  await expect(page.locator('#med-done-btn')).toHaveCount(0);
+  await expect(page.locator('#hud-toasts')).toContainText('hướng dẫn');
+
+  await page.evaluate(() => {
+    const d = (window as any).__DITU__;
+    d.app.ui.showQuestDetail();
+  });
+  await expect(page.locator('.modal')).toContainText('Bước cần làm trước');
+});
