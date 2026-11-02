@@ -250,10 +250,25 @@ export class HumanoidRig {
   }
 
   dispose() {
-    // No external GLB, mixer or background requests. Nothing to stop here.
-    // Keep the method for the existing player rebuild lifecycle.
-    this.labelSprite?.material.dispose();
+    // Rebuilding the player's appearance must not leak chibi mesh resources.
+    // The striped texture is intentionally shared between all inmate rigs.
+    const geometries = new Set<THREE.BufferGeometry>();
+    const materials = new Set<THREE.Material>();
+    this.root.traverse((obj) => {
+      if (obj instanceof THREE.Mesh) {
+        geometries.add(obj.geometry);
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        for (const material of mats) materials.add(material);
+      }
+    });
+    for (const geometry of geometries) geometry.dispose();
+    for (const material of materials) {
+      if (material instanceof THREE.MeshStandardMaterial && material.map &&
+          material.map !== inmateStripe) material.map.dispose();
+      material.dispose();
+    }
     this.labelSprite?.material.map?.dispose();
+    this.labelSprite?.material.dispose();
   }
 
   update(dt: number, speed = 0) {
