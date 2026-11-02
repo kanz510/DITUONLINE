@@ -32,9 +32,6 @@ function loadCharacter(skin: string) {
   }
   return promise;
 }
-let nextInmateSkin = 0;
-let nextOfficerSkin = 0;
-
 
 export class HumanoidRig {
   root = new THREE.Group();
@@ -50,9 +47,11 @@ export class HumanoidRig {
   private mixer: THREE.AnimationMixer | null = null;
   private actions = new Map<string, THREE.AnimationAction>();
   private activeClip = '';
+  private disposed = false;
+  private loadedModel: THREE.Group | null = null;
 
 
-  constructor(look: Appearance, labelText?: string) {
+  constructor(look: Appearance, labelText?: string, modelSkin?: string) {
     this.root.scale.set(look.build, look.height, look.build);
     this.root.add(this.body);
 
@@ -171,10 +170,11 @@ export class HumanoidRig {
 
     // Character assets are loaded asynchronously; keep the procedural rig as a
     // visual fallback only until a valid GLB and its animation clips arrive.
-    const skin = look.uniform === 'officer'
-      ? ['j', 'q', 'j', 'i'][nextOfficerSkin++ % 4]
-      : ['g', 'a', 'b', 'c', 'd', 'e', 'f', 'h', 'k', 'l', 'm', 'o', 'p', 'r'][nextInmateSkin++ % 14];
+    // Skin selection is deterministic: NPCs pass their fixed identity, player passes
+    // the saved preset. Rebuilding/loading no longer silently swaps character assets.
+    const skin = modelSkin ?? (look.uniform === 'officer' ? 'j' : 'g');
     void loadCharacter(skin).then(({ scene, animations }) => {
+      if (this.disposed) return;
       const model = scene.clone(true);
       const bounds = new THREE.Box3().setFromObject(model);
       const height = bounds.max.y - bounds.min.y;
@@ -188,6 +188,7 @@ export class HumanoidRig {
       });
       this.body.visible = false;
       this.root.add(model);
+      this.loadedModel = model;
       this.mixer = new THREE.AnimationMixer(model);
       for (const clip of animations) {
         this.actions.set(clip.name.toLowerCase(), this.mixer.clipAction(clip));
@@ -203,6 +204,15 @@ export class HumanoidRig {
       this.labelSprite.position.set(0, 1.92, 0);
       this.root.add(this.labelSprite);
     }
+  }
+
+  dispose() {
+    this.disposed = true;
+    this.mixer?.stopAllAction();
+    if (this.loadedModel) this.mixer?.uncacheRoot(this.loadedModel);
+    this.actions.clear();
+    this.mixer = null;
+    this.loadedModel = null;
   }
 
   update(dt: number, speed = 0) {
