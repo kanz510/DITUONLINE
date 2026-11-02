@@ -135,7 +135,8 @@ test('landscape HUD is compact and translucent without hiding quest controls', a
     expect(metrics.clockWidth).toBeLessThanOrEqual(296);
     expect(metrics.questWidth).toBeLessThanOrEqual(296);
   }
-  await expect(page.locator('#btn-quest-autowalk')).toBeVisible();
+  // The route action is conditional on guideTarget, but collapse is always available.
+  await expect(page.locator('#btn-quest-toggle')).toBeVisible();
   await page.locator('#btn-quest-toggle').click();
   await expect(page.locator('#hud-quest-bar')).toHaveClass(/collapsed/);
 });
