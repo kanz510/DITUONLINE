@@ -46,12 +46,16 @@ const STEPS = [
   { name: '3. Siết ốc cố định', zone: [0.4, 0.6] },
 ];
 
+const MINIMAP_LABELS: Record<string, string> = {
+  cellblock: 'Giam', mess: 'Ăn', workshop: 'Xưởng', office: 'QL',
+  medical: 'YT', classroom: 'Học', visitation: 'Thăm', discipline: 'KL',
+};
+
 export class UIManager {
   root: HTMLElement;
   joyZone!: HTMLElement;
   joyKnob!: HTMLElement;
   btnInteract!: HTMLButtonElement;
-  btnSprint!: HTMLElement;
   releaseInfo: AppReleaseInfo = getReleaseInfo();
   private clockEl!: HTMLElement;
   private questBarEl!: HTMLElement;
@@ -66,6 +70,8 @@ export class UIManager {
   private minimapCanvas!: HTMLCanvasElement;
   private minimapCtx!: CanvasRenderingContext2D;
   private minimapStatusEl!: HTMLElement;
+  private minimapAreaEl!: HTMLElement;
+  private interactLabelEl!: HTMLElement;
   private autowalkBannerEl!: HTMLElement;
   private autowalkTextEl!: HTMLElement;
   private btnCancelAutoWalk!: HTMLElement;
@@ -175,11 +181,13 @@ export class UIManager {
             </button>
           </div>
           <div class="hud-stats-mini interactive" id="hud-stats-mini" title="Nhấp để xem chi tiết các chỉ số"></div>
-          <div class="minimap-box" id="minimap-box" title="Bản đồ trại (Cố định Bắc)">
-            <div class="minimap-compass">▲ B</div>
-            <canvas id="minimap-canvas" width="132" height="114"></canvas>
-            <div class="minimap-status" id="minimap-status" style="display:none"></div>
-          </div>
+          <button type="button" class="minimap-box interactive" id="minimap-box"
+            title="Xem các khu trong trại" aria-label="Mở bản đồ khu vực">
+            <span class="minimap-compass" aria-hidden="true">▲ B</span>
+            <canvas id="minimap-canvas" width="132" height="114" aria-hidden="true"></canvas>
+            <span class="minimap-status" id="minimap-status" style="display:none"></span>
+            <span class="minimap-area" id="minimap-area" aria-live="off">Sân sinh hoạt</span>
+          </button>
         </div>
       </div>
       <div class="autowalk-banner" id="autowalk-banner" style="display:none">
@@ -190,8 +198,14 @@ export class UIManager {
       <div class="prompt-box interactive" id="hud-prompt" style="display:none"></div>
       <div class="joy-zone interactive" id="joy-zone"><div class="joy-knob" id="joy-knob"></div></div>
       <div class="touch-right interactive">
-        <button class="btn" id="btn-interact" disabled>${isTouch ? 'Tương tác' : 'Tương tác (E)'}</button>
-        <button class="btn" id="btn-sprint">Chạy</button>
+        <button class="btn interact-action" id="btn-interact" type="button" disabled aria-label="Tương tác" title="Tương tác">
+          <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="8"></circle>
+            <path d="M12 8v8M8 12h8"></path>
+          </svg>
+          <span class="interact-label" id="interact-label">Tương tác</span>
+        </button>
       </div>
       <div id="modal-host"></div>
       <div id="orientation-overlay" style="display:none">
@@ -218,11 +232,12 @@ export class UIManager {
     this.joyZone = this.root.querySelector('#joy-zone')!;
     this.joyKnob = this.root.querySelector('#joy-knob')!;
     this.btnInteract = this.root.querySelector('#btn-interact')!;
-    this.btnSprint = this.root.querySelector('#btn-sprint')!;
+    this.interactLabelEl = this.root.querySelector('#interact-label')!;
     this.orientOverlay = this.root.querySelector('#orientation-overlay')!;
     this.minimapCanvas = this.root.querySelector('#minimap-canvas')!;
     this.minimapCtx = this.minimapCanvas.getContext('2d')!;
     this.minimapStatusEl = this.root.querySelector('#minimap-status')!;
+    this.minimapAreaEl = this.root.querySelector('#minimap-area')!;
     this.autowalkBannerEl = this.root.querySelector('#autowalk-banner')!;
     this.autowalkTextEl = this.root.querySelector('#autowalk-text')!;
     this.btnCancelAutoWalk = this.root.querySelector('#btn-cancel-autowalk')!;
@@ -261,6 +276,12 @@ export class UIManager {
       this.sfx.click();
       this.tryLockOrientation();
       this.showStatsDetail();
+    });
+
+    this.root.querySelector('#minimap-box')?.addEventListener('click', () => {
+      this.sfx.click();
+      this.tryLockOrientation();
+      this.showMap();
     });
 
     this.root.querySelector('#hud-prog-bar')?.addEventListener('click', () => {
@@ -461,6 +482,9 @@ export class UIManager {
       this.statsMiniEl.innerHTML = statsHTML;
     }
 
+    // The location label updates every HUD tick, independently of minimap draw throttling.
+    this.minimapAreaEl.textContent = zn;
+
     // 5. Vẽ Minimap 2D
     this.renderMinimap(p, guideTarget);
 
@@ -474,17 +498,22 @@ export class UIManager {
       this.promptEl.onclick = () => prompt.run();
 
       this.btnInteract.disabled = false;
-      this.btnInteract.classList.add('btn-accent');
+      this.btnInteract.classList.add('is-available');
+      // Keep full instruction accessible while using a compact action caption.
       let act = prompt.label;
-      if (act.includes(':')) act = act.split(':')[1].trim();
-      if (act.length > 16) act = act.slice(0, 16) + '…';
-      this.btnInteract.textContent = isTouch ? act : `${act} (E)`;
+      if (act.includes(':')) act = act.split(':').slice(1).join(':').trim();
+      if (act.length > 14) act = act.slice(0, 13).trimEnd() + '…';
+      this.interactLabelEl.textContent = isTouch ? act : `${act} (E)`;
+      this.btnInteract.title = prompt.label;
+      this.btnInteract.setAttribute('aria-label', prompt.label);
     } else {
       this.promptEl.style.display = 'none';
       this.promptEl.onclick = null;
       this.btnInteract.disabled = true;
-      this.btnInteract.classList.remove('btn-accent');
-      this.btnInteract.textContent = isTouch ? 'Tương tác' : 'Tương tác (E)';
+      this.btnInteract.classList.remove('is-available');
+      this.interactLabelEl.textContent = isTouch ? 'Tương tác' : 'Tương tác (E)';
+      this.btnInteract.title = 'Tương tác';
+      this.btnInteract.setAttribute('aria-label', 'Tương tác');
     }
   }
 
@@ -509,17 +538,33 @@ export class UIManager {
     ctx.fillStyle = '#1e293b';
     ctx.fillRect(px(-28), py(-32), px(28) - px(-28), py(20) - py(-32));
 
-    // Vẽ các phòng
-    for (const b of Object.values(BUILDINGS)) {
+    // Vẽ các phòng và tên viết tắt. Sáng viền phòng mà người chơi đang đứng.
+    for (const [key, b] of Object.entries(BUILDINGS)) {
       const x1 = px(b.x1);
       const y1 = py(b.z1);
       const w = px(b.x2) - x1;
       const h = py(b.z2) - y1;
-      ctx.fillStyle = '#334155';
+      const current = player.x >= b.x1 && player.x <= b.x2 &&
+        player.z >= b.z1 && player.z <= b.z2;
+      ctx.fillStyle = current ? '#27566b' : '#334155';
       ctx.fillRect(x1, y1, w, h);
-      ctx.strokeStyle = '#475569';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = current ? '#67e8f9' : '#475569';
+      ctx.lineWidth = current ? 1.5 : 1;
       ctx.strokeRect(x1, y1, w, h);
+      const shortName = MINIMAP_LABELS[key];
+      if (shortName) {
+        ctx.font = 'bold 8px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.lineJoin = 'round';
+        const cx = x1 + w / 2;
+        const cy = y1 + h / 2;
+        ctx.strokeStyle = '#0b1120';
+        ctx.lineWidth = 2;
+        ctx.strokeText(shortName, cx, cy, Math.max(12, w - 2));
+        ctx.fillStyle = current ? '#e0faff' : '#dbeafe';
+        ctx.fillText(shortName, cx, cy, Math.max(12, w - 2));
+      }
     }
 
     // Vẽ cửa (Xanh lá = Mở, Đỏ = Khóa)
