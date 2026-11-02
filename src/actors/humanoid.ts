@@ -176,7 +176,6 @@ export class HumanoidRig {
       ? ['j', 'q', 'j', 'i'][nextOfficerSkin++ % 4]
       : ['g', 'a', 'b', 'c', 'd', 'e', 'f', 'h', 'k', 'l', 'm', 'o', 'p', 'r'][nextInmateSkin++ % 14];
     void loadCharacter(skin).then(({ scene, animations }) => {
-      if (!this.root.parent) return;
       const model = scene.clone(true);
       const bounds = new THREE.Box3().setFromObject(model);
       const height = bounds.max.y - bounds.min.y;
