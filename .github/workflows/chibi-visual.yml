@@ -1,0 +1,28 @@
+name: Verify chibi visual screenshots (isolated test branch)
+on:
+  push:
+    branches:
+      - verify/chibi-visual-20261103
+permissions:
+  contents: read
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run test:unit
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test tests/e2e/chibi-visual.spec.ts --reporter=list
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chibi-cellblock-canteen-screenshots
+          path: screenshots/
+          if-no-files-found: warn
