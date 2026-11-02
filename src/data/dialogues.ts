@@ -53,6 +53,12 @@ function bayDialogue(g: GameLogic): DNode {
   const pName = g.s.profile.name || 'Minh';
   const first = !g.qObj('nhap_trai', 'gap_bay') && g.qStatus('nhap_trai') === 'active';
   if (first) {
+    const reminder = g.objectiveBlockReason('nhap_trai', 'gap_bay');
+    if (reminder) return {
+      speaker: 'Chú Bảy', role: 'Phạm nhân lâu năm · Buồng 3',
+      text: `Cháu cứ hoàn thành các thủ tục nhập trại trước đã. ${reminder}`,
+      choices: [{ label: 'Dạ, cháu sẽ làm theo thứ tự.', run: () => null }],
+    };
     g.completeObjective('nhap_trai', 'gap_bay');
     return {
       speaker: 'Chú Bảy', role: 'Phạm nhân lâu năm · Buồng 3',
@@ -62,7 +68,6 @@ function bayDialogue(g: GameLogic): DNode {
           label: 'Cháu cảm ơn chú. Cháu sẽ chú ý.',
           run: () => {
             g.changeRel('bay', 5, 'Lần đầu gặp gỡ lịch thiệp');
-            g.startQuest('ca_dau');
             return {
               speaker: 'Chú Bảy',
               text: 'Sáng 8 giờ vào xưởng làm đủ 3 ổ cắm điện cho chú xem. Xong việc qua kể chú nghe.',
@@ -73,7 +78,6 @@ function bayDialogue(g: GameLogic): DNode {
         {
           label: 'Ở đây có ai cần phải né tránh không chú?',
           run: () => {
-            g.startQuest('ca_dau');
             return {
               speaker: 'Chú Bảy',
               text: 'Có Lâm ở buồng 2. Hắn hay gom nợ của mấy đứa mới, dụ dỗ làm chuyện mờ ám trong xưởng rồi ăn chia. Thấy hắn thì cứ dạ vâng rồi lùi ra, đừng dính dáng.',
@@ -104,7 +108,7 @@ function bayDialogue(g: GameLogic): DNode {
   }
 
   // Nhiệm vụ: Đôi dép của Chú Bảy
-  if (g.qStatus('dep_bay') === 'locked') {
+  if (g.qStatus('dep_bay') === 'locked' && g.qStatus('nhap_trai') === 'done') {
     choices.push({
       label: 'Chú tìm gì dưới gầm ghế vậy?',
       run: () => ({
@@ -122,17 +126,37 @@ function bayDialogue(g: GameLogic): DNode {
         ],
       }),
     });
-  } else if (g.qStatus('dep_bay') === 'active' && g.has('dep_to_ong')) {
+  } else if (g.qStatus('dep_bay') === 'active' && g.has('dep_bay')) {
     choices.push({
       label: 'Cháu tìm thấy đôi dép của chú rồi này!',
       important: true,
       run: () => {
-        g.takeItem('dep_to_ong');
-        g.finishQuest('dep_bay', 'done');
+        if (g.objectiveBlockReason('dep_bay', 'tra_dep')) {
+          return { speaker: 'Chú Bảy', text: g.objectiveBlockReason('dep_bay', 'tra_dep')!, choices: [{ label: 'Cháu sẽ làm đúng bước.', run: () => null }] };
+        }
+        g.completeObjective('dep_bay', 'tra_dep');
+        g.takeItem('dep_bay');
         return {
           speaker: 'Chú Bảy',
           text: 'Đúng nó rồi! Đôi dép con gái chú gửi... Đa tạ cậu. Người biết quý đồ của người khác như cậu, trong này hiếm lắm.',
           choices: [{ label: 'Dạ, có gì đâu chú.', run: () => null }],
+        };
+      },
+    });
+  }
+
+  // Theo thứ tự: hỏi Y sĩ An trước, rồi hỏi Chú Bảy để biết chỗ tìm thuốc.
+  if (g.qStatus('nghi_an_thuoc') === 'active' &&
+      g.qObj('nghi_an_thuoc', 'hoi_an') && !g.qObj('nghi_an_thuoc', 'hoi_bay')) {
+    choices.push({
+      label: 'Chú Bảy, chú nhớ đã dùng lọ thuốc hen lần cuối ở đâu không?',
+      important: true,
+      run: () => {
+        g.completeObjective('nghi_an_thuoc', 'hoi_bay');
+        return {
+          speaker: 'Chú Bảy',
+          text: 'Chú có mang lọ thuốc ra sân phía sau xưởng, khi đi về không thấy nữa. Cậu xem ở góc tường xem sao.',
+          choices: [{ label: 'Cháu sẽ đi tìm.', run: () => null }],
         };
       },
     });
@@ -282,13 +306,16 @@ function huyDialogue(g: GameLogic): DNode {
   }
 
   // Nhiệm vụ phụ: Gói mì cho Huy
-  if (g.qStatus('mi_cho_huy') === 'active' && g.has('mi_tom')) {
+  if (g.qStatus('mi_cho_huy') === 'active' && g.has('mi_goi')) {
     choices.push({
       label: 'Tôi mua mì gói căn tin cho cậu này.',
       important: true,
       run: () => {
-        g.takeItem('mi_tom');
-        g.finishQuest('mi_cho_huy', 'done');
+        if (g.objectiveBlockReason('mi_cho_huy', 'dua')) {
+          return { speaker: 'Huy', text: g.objectiveBlockReason('mi_cho_huy', 'dua')!, choices: [{ label: 'Để tôi chuẩn bị.', run: () => null }] };
+        }
+        g.completeObjective('mi_cho_huy', 'dua');
+        g.takeItem('mi_goi');
         return {
           speaker: 'Huy',
           text: 'Cảm ơn ông nhiều lắm! Cả ngày hôm nay đói cồn cào ruột gan. Ông đúng là người bạn tốt.',
@@ -686,15 +713,33 @@ function anDialogue(g: GameLogic): DNode {
   const pName = g.s.profile.name || 'Minh';
   const choices: DChoice[] = [];
 
+  // Nghe Y sĩ An trình bày trước, rồi mới hỏi Chú Bảy và đi tìm thuốc.
+  if (g.qStatus('nghi_an_thuoc') === 'active' && !g.qObj('nghi_an_thuoc', 'hoi_an')) {
+    choices.push({
+      label: 'Y sĩ An, cháu muốn hỏi về lọ thuốc hen bị mất của Chú Bảy.',
+      important: true,
+      run: () => {
+        g.completeObjective('nghi_an_thuoc', 'hoi_an');
+        return {
+          speaker: 'Y sĩ An',
+          text: 'Chúng tôi đang tìm lọ thuốc hen đặc trị của Chú Bảy. Cháu hãy hỏi chú xem chú dùng thuốc lần cuối ở đâu.',
+          choices: [{ label: 'Cháu sẽ đi hỏi chú Bảy trước.', run: () => null }],
+        };
+      },
+    });
+  }
+
   // Trả thuốc hen cho Chú Bảy
-  if (g.qStatus('nghi_an_thuoc') === 'active' && g.has('thuoc_hen')) {
+  if (g.qStatus('nghi_an_thuoc') === 'active' && g.has('chai_thuoc_hen') && g.qObj('nghi_an_thuoc', 'nhat_thuoc')) {
     choices.push({
       label: 'Cháu tìm thấy lọ thuốc hen suyễn ở sau xưởng rồi!',
       important: true,
       run: () => {
-        g.takeItem('thuoc_hen');
-        g.completeObjective('nghi_an_thuoc', 'tra_thuoc');
-        g.finishQuest('nghi_an_thuoc', 'done');
+        if (!g.completeObjective('nghi_an_thuoc', 'tra_thuoc')) return {
+          speaker: 'Y sĩ An', text: 'Hãy tìm hiểu nguồn gốc lọ thuốc trước khi bàn giao.',
+          choices: [{ label: 'Dạ.', run: () => null }],
+        };
+        g.takeItem('chai_thuoc_hen');
         return {
           speaker: 'Y sĩ An',
           text: 'May quá! Đúng là thuốc đặc trị của Chú Bảy rồi. Tôi sẽ cho chú thở khí dung ngay. Cảm ơn cậu đã cứu mạng một con người.',
