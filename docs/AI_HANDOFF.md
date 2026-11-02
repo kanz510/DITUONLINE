@@ -8,6 +8,16 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-03 — ChatGPT — Cụm nút góc phải / tên khu trên minimap / nút Tương tác gọn
+- Người dùng gửi ảnh iPhone landscape: cụm nút góc phải trên và chỉ số rời rạc; minimap không có tên khu; nút Chạy và Tương tác quá lớn, che game.
+- `src/ui/manager.ts`: vẫn giữ Án / Fullscreen / Túi đồ / Menu, chuyển minimap thành nút mở bảng Bản đồ chi tiết. Thêm label `#minimap-area` lấy `zoneName(player.x, player.z)` cập nhật mỗi tick; tên viết tắt trực tiếp trên từng tòa nhà (`Giam, Ăn, Xưởng, QL, YT, Học, Thăm, KL`) và sáng viền nơi đang đứng, không đổi hình học/cửa/route. Bỏ HTML nút Chạy, bỏ property btnSprint. Thay nút Tương tác bằng biểu tượng SVG + nhãn ngắn chỉ khi có prompt; label và title đầy đủ cho accessibility, vẫn gọi event click cũ.
+- `src/main.ts`: bỏ các touch/mouse listeners của btnSprint. Cơ chế tự chạy khi đẩy joystick quá 0.92 hoặc Shift trên desktop trong `InputController.moveVector()` vẫn nguyên; không sửa kinh tế/gameplay/save.
+- `src/ui/styles.css`: cụm nút top-right bo kính gom nhóm, Án và ba icon chạm 44px, chỉ số dưới gọn hơn; minimap có tên vùng ở dải dưới (status khóa phía trên), viền focus để bấm; nút tương tác khi không có prompt dạng icon 50×50 trong mờ, khi có prompt thành pill nhỏ tối đa 158px với chữ rút gọn.
+- `tests/e2e/hotfix.spec.ts`: test nút Chạy không tồn tại, ba nút toolbar còn nguyên, không tràn/đè nhau, mini-map đổi zone khi teleport và mở bảng bản đồ, nút tương tác hoạt động tại giường.
+- Commit mã: `cb2ac50fc0ba8053adb998ffc71aea0c4e522290`, `170df6e7b6824c49d8c2869287426d80a720a74e`, `94fbf7fc97eeeb38f3c8909258c3fb453cc67507`, test `bc1e38d344711641e7742f83689ab93aaefb2c29`.
+- Kiểm thử: GitHub Actions unit test và Vite build trên commit sau sửa CSS đã qua bước build; một số workflow trung gian lỗi ở bước sync `dist/` vì commit mới liên tiếp làm non-fast-forward. E2E Safari chưa chạy trong phiên này; cần xác minh workflow bản cuối hoàn thành và bản Pages đã cập nhật.
+- Antigravity: không khôi phục `btn-sprint` hoặc `btnSprint`. Sprint tự động theo joystick vẫn giữ; map có nhãn và click dẫn đến `showMap()`. Đọc diff trước khi sửa các file này.
+
 ### 2026-11-03 — ChatGPT — HUD Ngày/giờ + Mục tiêu kiểu kính mờ, giảm che màn hình iPhone
 - Lý do: người dùng gửi ảnh iPhone landscape; ô Ngày 1 và Mục tiêu bên trái quá đặc, rộng, xếp chồng làm che cảnh 3D; toast cảnh báo cũng chiếm khoảng lớn.
 - `src/ui/styles.css`: riêng `#hud-clock` và `.hud-quest-bar` dùng nền rgba(10,19,37,0.54), blur 15px và shadow nhẹ để nhìn xuyên qua nhưng còn rõ chữ; hover mission không tăng quá tối. `.hud-left` căn cố định chiều rộng hợp lý, `.hud-quest-bar` dùng 100% chiều rộng cột; xử lý min-width cho header để không tràn.
