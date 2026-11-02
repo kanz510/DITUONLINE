@@ -3,6 +3,7 @@ import { GameLogic } from '../../src/logic/game';
 import { SaveManager, deserialize, serialize, type StorageLike } from '../../src/logic/save';
 import { addSentence, applyReview, computeReview, project, serveDay } from '../../src/logic/sentence';
 import { MAX_TOTAL_ADDITION } from '../../src/logic/constants';
+import { QUESTS } from '../../src/data/quests';
 
 class MemStorage implements StorageLike {
   m = new Map<string, string>();
@@ -397,5 +398,99 @@ describe('Lượt chơi trọn vẹn', () => {
     g.advanceTo(700, ctx);
     expect(fainted).toBe(true);
     expect(g.s.stats.health).toBeGreaterThan(0);
+  });
+});
+
+
+describe('Không bỏ qua bước nhiệm vụ', () => {
+  it('mọi nhiệm vụ nhiều bước chặn bước sau và chặn hoàn thành sớm', () => {
+    for (const [qid, def] of Object.entries(QUESTS)) {
+      const required = def.objectives.filter((o) => !o.optional && !o.branch);
+      if (required.length < 2) continue;
+      const g = new GameLogic();
+      g.startQuest(qid);
+      const next = required[1];
+      const reformBefore = g.s.stats.reform;
+      expect(g.completeObjective(qid, next.id), `${qid}/${next.id}`).toBe(false);
+      expect(g.qObj(qid, next.id), `${qid} must not skip first step`).toBe(false);
+      expect(g.objectiveBlockReason(qid, next.id)).toContain(required[0].text);
+      g.finishQuest(qid, 'done');
+      expect(g.qStatus(qid), `${qid} must not award early`).toBe('active');
+      expect(g.s.stats.reform).toBe(reformBefore);
+    }
+  });
+
+  it('không thể chọn nhánh món nợ trước khi nghe Huy và gặp Lâm', () => {
+    const g = new GameLogic();
+    g.startQuest('mon_no');
+    expect(g.chooseBranch('mon_no', 'pay')).toBe(false);
+    g.completeObjective('mon_no', 'nghe_huy');
+    expect(g.chooseBranch('mon_no', 'steal')).toBe(false);
+    g.completeObjective('mon_no', 'gap_lam');
+    g.s.stats.money = 50;
+    expect(g.chooseBranch('mon_no', 'pay')).toBe(true);
+    expect(g.qObj('mon_no', 'quyet_dinh')).toBe(true);
+    expect(g.qObj('mon_no', 'du_tien')).toBe(true);
+    expect(g.completeObjective('mon_no', 'lay_khoan')).toBe(false);
+    expect(g.completeObjective('mon_no', 'tra_lam')).toBe(true);
+    expect(g.qStatus('mon_no')).toBe('done');
+  });
+
+  it('không được lắp ổ cắm trước chấm công, không lách sang ca chiều để bỏ ca đầu', () => {
+    const g = new GameLogic();
+    g.startQuest('ca_dau');
+    g.s.minute = 500; // 08:20
+    expect(g.canWorkReason()).toMatch(/chấm công/i);
+    g.finishWorkUnit(95);
+    expect(g.s.daily.workUnits).toBe(0);
+    expect(g.clockIn()).toBeNull();
+    expect(g.qObj('ca_dau', 'cham_cong')).toBe(true);
+    g.finishWorkUnit(95);
+    expect(g.s.daily.workUnits).toBe(1);
+    g.s.minute = 850; // 14:10
+    expect(g.clockIn()).toMatch(/ca đầu tiên/i);
+    expect(g.s.flags[`extra:${g.s.day}`]).toBeUndefined();
+    g.finishWorkUnit(95);
+    expect(g.s.daily.extraShiftUnits).toBe(0);
+  });
+
+  it('điểm danh thật có nghĩa vụ hàng ngày, không được tính hộ bước chưa mở', () => {
+    const g = new GameLogic();
+    g.startQuest('nhap_trai');
+    g.s.minute = 395;
+    expect(g.rollcallCheckIn()).toBe(true);
+    expect(g.qObj('nhap_trai', 'diem_danh')).toBe(false);
+    g.completeObjective('nhap_trai', 'chan_man');
+    g.completeObjective('nhap_trai', 'noi_quy');
+    expect(g.qObj('nhap_trai', 'diem_danh')).toBe(false);
+    expect(g.qStatus('nhap_trai')).toBe('active');
+  });
+
+  it('y tế, nghề, điều tra và quà Chú Bảy không thể hoàn thành trước phần hướng dẫn', () => {
+    for (const [quest, later] of [
+      ['nghi_an_thuoc', 'nhat_thuoc'],
+      ['lop_nghe_dau', 'thao_tac'],
+      ['phu_y_te', 'hoan_thanh'],
+      ['manh_moi_kho_7', 'lay_manh_giay'],
+      ['ho_so_giai_trinh', 'nop_ho_so'],
+      ['loi_hua_chu_bay', 'hua_gui_ve'],
+    ]) {
+      const g = new GameLogic();
+      g.startQuest(quest);
+      expect(g.completeObjective(quest, later), quest).toBe(false);
+      expect(g.qObj(quest, later), quest).toBe(false);
+    }
+  });
+
+  it('không trao thưởng trùng khi gọi lại mục tiêu / finishQuest đã hoàn thành', () => {
+    const g = new GameLogic();
+    g.startQuest('dep_bay');
+    g.completeObjective('dep_bay', 'tim_dep');
+    expect(g.completeObjective('dep_bay', 'tra_dep')).toBe(true);
+    const xp = g.s.progression.xp, rel = g.rel('bay');
+    expect(g.completeObjective('dep_bay', 'tra_dep')).toBe(false);
+    g.finishQuest('dep_bay', 'done');
+    expect(g.s.progression.xp).toBe(xp);
+    expect(g.rel('bay')).toBe(rel);
   });
 });
