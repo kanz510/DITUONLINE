@@ -73,3 +73,38 @@ test('canteen explains blocked purchases and confirms a successful purchase insi
   await expect(page.locator('[data-buy="banh_mi"]')).toBeDisabled();
   await expect(page.locator('#canteen-status')).toContainText('cấm');
 });
+
+test('dismissible information panels use a single X and balanced content', async ({ page }) => {
+  await page.evaluate(() => (window as any).__DITU__.app.ui.showQuestDetail());
+
+  const closeX = page.locator('.modal-shell > .modal-close-top');
+  await expect(closeX).toBeVisible();
+  await expect(closeX).toHaveAttribute('aria-label', 'Đóng bảng');
+  await expect(page.locator('.modal button[data-close]')).toHaveCount(0);
+
+  const margins = await page.evaluate(() => {
+    const panel = document.querySelector('.modal')!.getBoundingClientRect();
+    const card = document.querySelector('.modal .card-row')!.getBoundingClientRect();
+    return {
+      left: card.left - panel.left,
+      right: panel.right - card.right,
+    };
+  });
+  expect(Math.abs(margins.left - margins.right)).toBeLessThanOrEqual(5);
+
+  await closeX.click();
+  await expect(page.locator('.modal')).toHaveCount(0);
+
+  await page.evaluate(() => (window as any).__DITU__.app.ui.openPanel('profile'));
+  await expect(page.locator('.modal-shell > .modal-close-top')).toBeVisible();
+  await expect(page.locator('.modal button[data-close]')).toHaveCount(0);
+
+  await page.evaluate(() => (window as any).__DITU__.app.ui.showMainMenu());
+  await expect(page.locator('#menu-build-tag')).toBeVisible();
+  await expect(page.locator('.modal button[data-close]')).toHaveCount(0);
+
+  await page.evaluate(() => (window as any).__DITU__.app.ui.openPanel('pause'));
+  await expect(page.locator('.modal-shell > .modal-close-top')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Tiếp tục chơi' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Bắt đầu lượt chơi mới' })).toBeVisible();
+});
