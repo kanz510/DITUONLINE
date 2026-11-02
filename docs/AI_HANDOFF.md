@@ -8,6 +8,15 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-03 — ChatGPT — Bỏ nút Đóng trùng và cân lại giao diện modal
+- Người dùng xác nhận X đã hiện trên iPhone, yêu cầu xóa nút "Đóng" dư phía dưới trên mọi bảng, chỉnh nội dung trải đều và không lệch.
+- `src/ui/manager.ts`: xử lý tập trung tại `showModal()`. Chỉ với modal đã có `button[data-close]` thì thêm X, đặt class `has-top-close`, xóa các nút có chữ chính xác "Đóng" hoặc "Đóng Menu" và wrapper footer rỗng. Giữ các nút hành động có nghĩa riêng: "Hủy", "Thoát", "Đã hiểu", "Tiếp tục chơi", "Bắt đầu lượt chơi mới" và những nút xác nhận. Đăng ký listener đóng cho các `data-close` còn lại. Không mở thêm cách thoát modal bắt buộc vốn không có `data-close`.
+- `src/ui/styles.css`: bỏ hẳn CSS cũ `padding-right:54px` áp lên toàn modal (gây lệch). Modal dùng padding trái/phải cân, chỉ tiêu đề đầu dành chỗ cho X, rộng tối đa 720px (riêng tạo nhân vật giữ 680px), nút X 44×44px ở ngoài vùng cuộn, responsive chiều ngang iPhone.
+- `tests/e2e/hotfix.spec.ts`: thêm test mobile landscape kiểm tra modal Nhiệm vụ / Nhân vật không còn nút Đóng trùng, nội dung thẻ có margin trái/phải cân nhau, X đóng được; menu vẫn hiện build tag; popup Cài đặt giữ "Tiếp tục chơi" và nút reset.
+- Commit: `249b341663273f2c23a48df64eb11b28a72023f5`, `23d74aca4d8a2a3cafafe722efa94033d9696985`, `feaeb7038ed904e138a17e2be4426fca7e8a8b94`, `529678966a56c58f3470fe2b4559f8bf2ffeac68`.
+- Kiểm thử: có test E2E mới trong repo nhưng chưa thực thi Playwright trên Safari; workflow GitHub Actions chạy unit tests và build Vite trên các commit, chờ xác nhận bản deploy cuối. Các lần chạy CI giữa đợt sửa bị Git push generated dist từ checkout cũ từ chối (non-fast-forward) khi còn commit mới được đẩy liên tục, không được force push.
+- Antigravity: chỉ xoá nhãn Đóng / Đóng Menu dư, KHÔNG bỏ Hủy hoặc các lựa chọn gameplay. Không khôi phục `padding-right:54px`; giữ đồng bộ `dist/` từ workflow mới.
+
 ### 2026-11-03 — ChatGPT — Sửa Pages phát hành bản dist cũ (nguyên nhân không thấy nút X)
 - Triệu chứng: trên iPhone, bảng Nhân vật & Kỹ năng không hiện X dù src đã có.
 - Chẩn đoán qua Actions: repository đồng thời có workflow "pages build and deployment" (Jekyll từ nhánh main) và "Deploy to GitHub Pages" (Vite build); bản dist/ được commit trước đó vẫn chứa JS/CSS cũ nên lần Pages build từ nhánh có thể ghi đè bản mới.
