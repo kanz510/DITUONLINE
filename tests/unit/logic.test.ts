@@ -14,6 +14,24 @@ class MemStorage implements StorageLike {
 const ctx = { inCellblock: false, inRollcall: false, sprinting: false, moving: false, resting: false };
 
 describe('Án & xét giảm án', () => {
+  it('quy tắc giờ mở cửa các khu vực phòng ốc Mốc 2', () => {
+    const g = new GameLogic();
+    // Phòng y tế mở lúc 08:00 (480 phút)
+    g.s.minute = 480;
+    expect(g.isOpen('medical')).toBe(true);
+    // Phòng y tế đóng lúc 12:00 (720 phút)
+    g.s.minute = 720;
+    expect(g.isOpen('medical')).toBe(false);
+    // Lớp học nghề mở ca chiều lúc 15:00 (900 phút)
+    g.s.minute = 900;
+    expect(g.isOpen('classroom')).toBe(true);
+    // Phòng thăm gặp mở lúc 09:00 (540 phút)
+    g.s.minute = 540;
+    expect(g.isOpen('visitation')).toBe(true);
+    // Khu kỷ luật luôn khóa ngoài trừ khi có lệnh
+    expect(g.isOpen('discipline')).toBe(false);
+  });
+
   it('mỗi ngày chỉ trừ án một lần', () => {
     const g = new GameLogic();
     expect(serveDay(g.s, 1)).toBe(true);
@@ -156,6 +174,51 @@ describe('Nhiệm vụ', () => {
     expect(g.qStatus('mi_cho_huy')).toBe('active');
     g.endDay();
     expect(g.qStatus('mi_cho_huy')).toBe('failed');
+  });
+
+  it('Chương 2: Bài học nghề Thầy Phúc cấp chứng chỉ và tăng điểm cải tạo', () => {
+    const g = new GameLogic();
+    g.s.chapter = 2;
+    g.startQuest('lop_nghe_dau');
+    g.completeObjective('lop_nghe_dau', 'den_lop');
+    g.completeObjective('lop_nghe_dau', 'thao_tac');
+    g.completeObjective('lop_nghe_dau', 'nhan_xet');
+    expect(g.qStatus('lop_nghe_dau')).toBe('done');
+    expect(g.has('chung_chi_nghe')).toBe(true);
+    expect(g.rel('phuc')).toBe(10);
+    expect(g.s.skills.vocationalExam).toBe(1);
+    expect(g.qStatus('sach_thu_vien')).toBe('active');
+  });
+
+  it('Chương 2: Nghi án thuốc hen suyễn cứu Chú Bảy và lưu manh mối điều tra', () => {
+    const g = new GameLogic();
+    g.s.chapter = 2;
+    g.startQuest('nghi_an_thuoc');
+    g.completeObjective('nghi_an_thuoc', 'hoi_an');
+    g.completeObjective('nghi_an_thuoc', 'hoi_bay');
+    g.giveItem('chai_thuoc_hen');
+    g.completeObjective('nghi_an_thuoc', 'nhat_thuoc');
+    g.takeItem('chai_thuoc_hen');
+    g.completeObjective('nghi_an_thuoc', 'tra_thuoc');
+    expect(g.qStatus('nghi_an_thuoc')).toBe('done');
+    expect(g.rel('bay')).toBeGreaterThan(15);
+    expect(g.rel('an')).toBe(12);
+    expect(g.s.clues.length).toBeGreaterThan(0);
+  });
+
+  it('Chương 2: Thăm gặp Chị Mai nhận tiền tiếp tế và giảm căng thẳng', () => {
+    const g = new GameLogic();
+    g.s.chapter = 2;
+    const stressBefore = g.s.stats.stress;
+    const moneyBefore = g.s.stats.money;
+    g.startQuest('phong_tham_gap');
+    g.completeObjective('phong_tham_gap', 'gap_chi');
+    g.completeObjective('phong_tham_gap', 'thanh_that');
+    g.completeObjective('phong_tham_gap', 'nhan_tien');
+    expect(g.qStatus('phong_tham_gap')).toBe('done');
+    expect(g.s.stats.money - moneyBefore).toBe(25);
+    expect(g.s.stats.stress).toBeLessThan(stressBefore);
+    expect(g.rel('mai')).toBeGreaterThan(20);
   });
 });
 

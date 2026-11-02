@@ -2,8 +2,8 @@ import { DAY_START, START_SENTENCE } from './constants';
 
 export const SAVE_VERSION = 1;
 
-export type NpcId = 'bay' | 'huy' | 'lam' | 'lan' | 'tung' | 'tu' | 'son' | 'khai';
-export const STORY_NPCS: NpcId[] = ['bay', 'huy', 'lam', 'lan', 'tung'];
+export type NpcId = 'bay' | 'huy' | 'lam' | 'lan' | 'tung' | 'tu' | 'son' | 'khai' | 'phuc' | 'an' | 'mai';
+export const STORY_NPCS: NpcId[] = ['bay', 'huy', 'lam', 'lan', 'tung', 'phuc', 'an', 'mai'];
 
 export interface Stats {
   health: number; // 0..100
@@ -130,8 +130,9 @@ export interface GameState {
   quests: Record<string, QuestState>;
   relations: Record<string, Relation>;
   inventory: Record<string, number>;
+  clues: string[];
   flags: Record<string, number | boolean | string>;
-  skills: { workShifts: number; exerciseSessions: number; fitness: number };
+  skills: { workShifts: number; exerciseSessions: number; fitness: number; vocationalExam: number };
   player: { x: number; z: number; rot: number };
   ending: string | null;
   hearing: Hearing | null;
@@ -168,7 +169,7 @@ export function makeDaily(stats: Stats, relations: Record<string, Relation>): Da
 export function createInitialState(): GameState {
   const stats: Stats = { health: 90, stamina: 85, hunger: 35, stress: 45, money: 20, reform: 40, suspicion: 0 };
   const relations: Record<string, Relation> = {};
-  const base: Record<NpcId, number> = { bay: 5, huy: 0, lam: 0, lan: 0, tung: 0, tu: 0, son: 0, khai: 0 };
+  const base: Record<NpcId, number> = { bay: 5, huy: 0, lam: 0, lan: 0, tung: 0, tu: 0, son: 0, khai: 0, phuc: 0, an: 0, mai: 20 };
   for (const id of Object.keys(base) as NpcId[]) {
     relations[id] = { value: base[id], met: false, memories: [], lastTalkDay: 0, lastGiftDay: 0 };
   }
@@ -195,8 +196,9 @@ export function createInitialState(): GameState {
     quests: {},
     relations,
     inventory: { ao_tu: 1, the_pham_nhan: 1 },
+    clues: [],
     flags: {},
-    skills: { workShifts: 0, exerciseSessions: 0, fitness: 0 },
+    skills: { workShifts: 0, exerciseSessions: 0, fitness: 0, vocationalExam: 0 },
     player: { x: -14.25, z: -27.6, rot: 0 },
     ending: null,
     hearing: null,

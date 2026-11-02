@@ -23,6 +23,13 @@ export const ITEMS: Record<string, ItemDef> = {
   loi_khai_bay: { id: 'loi_khai_bay', name: 'Lời khai của Chú Bảy', desc: 'Chú Bảy thấy đàn em của Lâm lén vào buồng 3 lúc rạng sáng.', quest: true },
   dao_lam: { id: 'dao_lam', name: 'Lưỡi dao lam', desc: 'Hàng cấm. Ai đó đã giấu vào chiếu của bạn.', contraband: true },
   dep_bay: { id: 'dep_bay', name: 'Đôi dép tổ ong của Chú Bảy', desc: 'Đã mòn gót, có khắc chữ "B7".', quest: true },
+  thu_chi_mai: { id: 'thu_chi_mai', name: 'Bức thư của Chị Mai', desc: 'Thư tay chị Mai gửi vào trại động viên em trai cố gắng cải tạo.', essential: true, quest: true },
+  thuoc_cam: { id: 'thuoc_cam', name: 'Vỉ thuốc cảm', desc: 'Thuốc hạ sốt do Y sĩ An cấp phát. Hồi 15 sức khoẻ, giảm 6 căng thẳng.', price: 12, use: { health: 15, stress: -6 }, giftable: true },
+  chai_thuoc_hen: { id: 'chai_thuoc_hen', name: 'Lọ thuốc hen suyễn', desc: 'Lọ thuốc đặc trị của Chú Bảy bị đánh rơi gần góc khuất sau xưởng. Vật chứng.', quest: true },
+  chung_chi_nghe: { id: 'chung_chi_nghe', name: 'Chứng chỉ sơ cấp nghề điện', desc: 'Thầy Phúc ký xác nhận Minh hoàn thành khóa học an toàn điện cơ bản.', essential: true, quest: true },
+  so_tay_dieu_tra: { id: 'so_tay_dieu_tra', name: 'Sổ tay ghi chép', desc: 'Ghi lại các mâu thuẫn, lời khai nhân chứng và giờ giấc camera.', essential: true },
+  sach_phap_luat: { id: 'sach_phap_luat', name: 'Cẩm nang pháp luật & cải tạo', desc: 'Sách mượn từ thư viện. Đọc giúp giảm căng thẳng 10 và hiểu rõ quy tắc giảm án.', use: { stress: -10 } },
+  qua_luu_niem: { id: 'qua_luu_niem', name: 'Khung ảnh gỗ tự làm', desc: 'Gia công tỉ mỉ tại xưởng để gửi tặng Chị Mai trong phòng thăm gặp.', quest: true, giftable: true },
 };
 
 export function itemName(id: string) {

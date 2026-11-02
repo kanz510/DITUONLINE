@@ -97,10 +97,25 @@ export const ACCESS: Record<string, AccessRule> = {
     label: 'Khu buồng giam',
     reason: 'Sau 21:30 khu buồng giam khoá cửa ngoài.',
   },
+  medical: {
+    open: [[450, 690], [810, 1020]],
+    label: 'Phòng y tế',
+    reason: 'Phòng y tế mở cửa tiếp nhận phạm nhân 07:30–11:30 và 13:30–17:00.',
+  },
+  classroom: {
+    open: [[840, 990], [1140, 1260]],
+    label: 'Lớp học nghề & thư viện',
+    reason: 'Lớp học mở ca chiều 14:00–16:30 và giờ đọc sách buổi tối 19:00–21:00.',
+  },
+  visitation: {
+    open: [[480, 660], [840, 1020]],
+    label: 'Phòng thăm gặp',
+    reason: 'Phòng thăm gặp tiếp đón người thân theo lịch hẹn (08:00–11:00 & 14:00–17:00).',
+  },
   discipline: {
     open: [],
     label: 'Khu kỷ luật',
-    reason: 'Khu kỷ luật chỉ mở khi có quyết định kỷ luật của Ban giám thị (sẽ có ở bản cập nhật Mốc 2).',
+    reason: 'Khu kỷ luật chỉ mở khi có quyết định kỷ luật cách ly của Ban giám thị.',
   },
 };
 

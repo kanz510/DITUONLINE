@@ -34,6 +34,7 @@ export class UIManager {
   private toastsEl!: HTMLElement;
   private modalHost!: HTMLElement;
   paused = false;
+  private modalSeq = 0;
   private activeMinigameCancel: (() => void) | null = null;
 
   constructor(
@@ -167,6 +168,7 @@ export class UIManager {
   }
 
   private showModal(html: string, onMount?: (el: HTMLElement) => void) {
+    this.modalSeq++;
     this.paused = true;
     this.modalHost.innerHTML = `<div class="modal-backdrop"><div class="modal">${html}</div></div>`;
     const m = this.modalHost.querySelector('.modal') as HTMLElement;
@@ -210,11 +212,14 @@ export class UIManager {
           btn.addEventListener('click', () => {
             this.sfx.click();
             const idx = Number((btn as HTMLElement).dataset.idx);
+            const currentSeq = this.modalSeq;
             const next = node.choices[idx].run();
             if (next) this.showDialogue(next, onEnd);
             else {
-              this.closeModal();
               onEnd?.();
+              if (this.modalSeq === currentSeq) {
+                this.closeModal();
+              }
             }
           });
         });
@@ -253,7 +258,17 @@ export class UIManager {
           ${choices}
         </div>`;
     }).join('');
-    this.showModal(`<h2>Nhật ký nhiệm vụ</h2>${rows}<button class="btn" data-close>Đóng</button>`);
+    const clueHtml = this.g.s.clues.length
+      ? this.g.s.clues.map((c) => `<div class="card-row" style="border-color:#38bdf8">🔍 <b>Manh mối:</b> ${c}</div>`).join('')
+      : '<div class="hud-sub">Chưa có manh mối nào trong sổ tay điều tra.</div>';
+
+    this.showModal(`
+      <h2>Nhật ký nhiệm vụ & Sổ tay điều tra</h2>
+      ${rows}
+      <h3>Sổ tay điều tra & Manh mối</h3>
+      ${clueHtml}
+      <button class="btn" data-close>Đóng</button>
+    `);
   }
 
   // ───────────── Hồ sơ án & vi phạm ─────────────
@@ -669,6 +684,138 @@ export class UIManager {
         });
       },
     );
+  }
+
+  // ───────────── Mini-game 2: Lớp học nghề quan sát mạch điện ─────────────
+  showVocationalMinigame(onDone?: () => void) {
+    const COLORS = [
+      { id: 1, name: 'Dây Đỏ (Pha L1)', color: '#ef4444' },
+      { id: 2, name: 'Dây Vàng (Pha L2)', color: '#facc15' },
+      { id: 3, name: 'Dây Xanh lam (Trung tính)', color: '#38bdf8' },
+      { id: 4, name: 'Dây Xanh lá (Tiếp địa PE)', color: '#22c55e' },
+    ];
+    // Sơ đồ mẫu
+    const targetSeq = [1, 3, 2, 4];
+    const playerSeq: number[] = [];
+
+    this.showModal(
+      `<h2>Lớp học nghề — Bài kiểm tra an toàn điện</h2>
+       <div class="hud-sub">Quy tắc an toàn của Thầy Phúc: Nối đúng thứ tự theo sơ đồ chuẩn: <b>1. Dây Đỏ → 2. Dây Xanh lam → 3. Dây Vàng → 4. Dây Xanh lá (Tiếp địa)</b>.</div>
+       <div class="card-row" style="margin-top:10px;text-align:center">
+         <div id="voc-display" style="font-weight:700;font-size:16px;color:#fde68a;min-height:30px;margin-bottom:10px">
+           Tiến độ nối: 0 / 4 dây
+         </div>
+         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:400px;margin:0 auto">
+           ${COLORS.map((c) => `
+             <button class="btn" style="background:${c.color};color:#0f172a;font-weight:700;padding:12px;font-size:14px" data-voc-btn="${c.id}">
+               ${c.name}
+             </button>
+           `).join('')}
+         </div>
+         <div style="margin-top:14px">
+           <button class="btn" id="voc-reset">Nối lại từ đầu</button>
+           <button class="btn" data-close>Thoát</button>
+         </div>
+       </div>`,
+      (el) => {
+        const display = el.querySelector('#voc-display')!;
+        el.querySelectorAll('[data-voc-btn]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const id = Number((btn as HTMLElement).dataset.vocBtn);
+            playerSeq.push(id);
+            this.sfx.click();
+            const step = playerSeq.length;
+            display.textContent = `Đã nối ${step}/4: ${playerSeq.map((x) => COLORS.find((c) => c.id === x)?.name).join(' → ')}`;
+
+            if (step === targetSeq.length) {
+              const correct = playerSeq.every((val, idx) => val === targetSeq[idx]);
+              if (correct) {
+                this.sfx.good();
+                this.g.completeObjective('lop_nghe_dau', 'thao_tac');
+                this.g.addReform(3, 'Thực hành nối mạch điện an toàn');
+                this.g.s.skills.vocationalExam++;
+                this.showModal(`
+                  <h2>Hoàn thành bài tập học nghề!</h2>
+                  <div class="card-row" style="color:#4ade80">
+                    ✔ Chính xác tuyệt đối! Trình tự đóng cắt và tiếp địa chuẩn quy chuẩn an toàn điện. Thầy Phúc đã ghi nhận bài thực hành của bạn.
+                  </div>
+                  <button class="btn btn-accent" data-close>Gặp Thầy Phúc nhận xét</button>
+                `, () => onDone?.());
+              } else {
+                this.sfx.bad();
+                display.textContent = '❌ Sai trình tự an toàn! Hãy bấm "Nối lại từ đầu" để làm lại.';
+                playerSeq.length = 0;
+              }
+            }
+          });
+        });
+        el.querySelector('#voc-reset')?.addEventListener('click', () => {
+          playerSeq.length = 0;
+          display.textContent = 'Tiến độ nối: 0 / 4 dây';
+        });
+      },
+    );
+  }
+
+  // ───────────── Hoạt động phụ việc y tế ─────────────
+  showMedicineSortingMinigame() {
+    this.showModal(`
+      <h2>Tủ thuốc y tế — Phân loại thuốc men</h2>
+      <div class="card-row">
+        Bạn dành 30 phút cùng Y sĩ An lau dọn tủ kính, phân loại các vỉ thuốc hạ sốt, kháng sinh và đóng gói băng gạc sạch sẽ.
+      </div>
+      <div class="card-row" style="color:#4ade80">
+        ✔ Hoàn thành tốt việc được giao. Y sĩ An rất hài lòng.
+      </div>
+      <button class="btn btn-accent" id="med-done-btn">Nhận thưởng & Đóng</button>
+    `, (el) => {
+      el.querySelector('#med-done-btn')?.addEventListener('click', () => {
+        this.g.completeObjective('phu_y_te', 'nhan_viec');
+        this.g.completeObjective('phu_y_te', 'hoan_thanh');
+        this.closeModal();
+      });
+    });
+  }
+
+  // ───────────── Đọc sách thư viện ─────────────
+  showLibraryReader() {
+    this.showModal(`
+      <h2>Thư viện trại giam An Phú</h2>
+      <div class="card-row">
+        Giá sách gồm nhiều đầu sách cẩm nang phổ biến giáo dục pháp luật, sổ tay nghề cơ điện và tác phẩm văn học phục vụ cải tạo.
+      </div>
+      <div class="choice-list">
+        <button class="choice-btn" id="lib-read-law">Đọc Cẩm nang pháp luật & quyền giảm án (−10 căng thẳng, +1 điểm cải tạo)</button>
+        <button class="choice-btn" id="lib-read-tech">Đọc Sách hướng dẫn kỹ thuật điện dân dụng (−5 căng thẳng)</button>
+        <button class="choice-btn" data-close>Rời giá sách</button>
+      </div>
+    `, (el) => {
+      el.querySelector('#lib-read-law')?.addEventListener('click', () => {
+        this.g.addStat('stress', -10);
+        this.g.addReform(1, 'Đọc sách pháp luật');
+        this.g.completeObjective('sach_thu_vien', 'muon_sach');
+        this.g.completeObjective('sach_thu_vien', 'doc_xong');
+        this.sfx.good();
+        this.showModal(`
+          <h2>Đã đọc xong Cẩm nang pháp luật</h2>
+          <div class="card-row">
+            Bạn nắm rõ hơn các tiêu chí đánh giá giảm án: hồ sơ kỷ luật sạch, tích cực học nghề, chấp hành thời gian biểu nghiêm túc và có thái độ hòa nhã với mọi người.
+          </div>
+          <button class="btn" data-close>Đóng</button>
+        `);
+      });
+      el.querySelector('#lib-read-tech')?.addEventListener('click', () => {
+        this.g.addStat('stress', -5);
+        this.sfx.good();
+        this.showModal(`
+          <h2>Sách kỹ thuật điện dân dụng</h2>
+          <div class="card-row">
+            Ghi nhớ các nguyên lý đấu dây cơ bản: dây nóng (pha) đi qua công tắc, dây tiếp địa bảo vệ chống rò rỉ điện giật.
+          </div>
+          <button class="btn" data-close>Đóng</button>
+        `);
+      });
+    });
   }
 
   // ───────────── Phiên xem xét tăng án ─────────────

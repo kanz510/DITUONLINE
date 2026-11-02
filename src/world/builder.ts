@@ -54,6 +54,7 @@ export class PrisonWorld {
   drillMesh!: THREE.Object3D;
   sandalsMesh!: THREE.Object3D;
   bedsheetMesh!: THREE.Object3D;
+  asthmaBottleMesh!: THREE.Object3D;
   camCone!: THREE.Mesh;
   camAngle = 0;
   private camSweep = 0;
@@ -245,6 +246,15 @@ export class PrisonWorld {
     sg.position.set(-25.6, 0, 8.6);
     this.sandalsMesh = sg;
     this.scene.add(sg);
+
+    // Lọ thuốc hen suyễn rơi sau xưởng (manh mối nhiệm vụ)
+    this.asthmaBottleMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.06, 0.06, 0.22, 8),
+      new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.5 }),
+    );
+    this.asthmaBottleMesh.position.set(22.5, 0.11, 13);
+    this.asthmaBottleMesh.rotation.z = Math.PI / 3;
+    this.scene.add(this.asthmaBottleMesh);
   }
 
   private makePropMesh(p: PropDef): THREE.Object3D {
@@ -372,6 +382,10 @@ export class PrisonWorld {
       { title: 'XƯỞNG LAO ĐỘNG', sub: 'Ca sáng 08:00–11:30', x: 11.7, y: 3.1, z: -2.75, ry: -Math.PI / 2 },
       { title: 'KHO VẬT Tư — CẤM VÀO', sub: 'Khu vực có camera', x: 21.7, y: 2.8, z: -7, ry: -Math.PI / 2 },
       { title: 'PHÒNG QUẢN GIÁO', sub: 'Tiếp nhận 07:00–17:00', x: -4, y: 3.1, z: 9.7, ry: Math.PI },
+      { title: 'PHÒNG Y TẾ', sub: '07:30–11:30 · 13:30–17:00', x: 22.25, y: 3.1, z: -17.7, ry: 0 },
+      { title: 'LỚP HỌC NGHỀ & THƯ VIỆN', sub: '14:00–16:30 · 19:00–21:00', x: -20.75, y: 3.1, z: 9.7, ry: Math.PI },
+      { title: 'PHÒNG THĂM GẶP', sub: 'Tiếp đón người nhà', x: -19.7, y: 3.1, z: -10.25, ry: Math.PI / 2 },
+      { title: 'KHU KỶ LUẬT', sub: 'Khu biệt giam', x: 10, y: 3.1, z: 9.7, ry: Math.PI },
     ];
     for (const s of signs) {
       const m = new THREE.Mesh(
@@ -411,7 +425,7 @@ export class PrisonWorld {
   }
 
   /** Cập nhật góc quét camera & ánh sáng bầu trời theo giờ trong ngày. */
-  update(dt: number, minute: number, hasSheet: boolean, hasDrill: boolean, hasSandals: boolean) {
+  update(dt: number, minute: number, hasSheet: boolean, hasDrill: boolean, hasSandals: boolean, hasAsthmaBottle = false) {
     this.camSweep += dt * 0.85;
     // Quét từ hướng Tây-Nam sang Đông-Bắc của kho
     this.camAngle = -1.1 + Math.sin(this.camSweep) * 0.75;
@@ -420,6 +434,7 @@ export class PrisonWorld {
     this.bedsheetMesh.visible = !hasSheet;
     this.drillMesh.visible = !hasDrill;
     this.sandalsMesh.visible = !hasSandals;
+    this.asthmaBottleMesh.visible = !hasAsthmaBottle;
 
     // Đổi màu trời & nắng theo giờ (06:00 → 22:00)
     const h = minute / 60;

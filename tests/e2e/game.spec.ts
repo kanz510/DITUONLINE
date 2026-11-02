@@ -115,6 +115,38 @@ test('khởi chạy 3D, chuỗi nhiệm vụ → lựa chọn → hậu quả, l
 
   expect(await page.evaluate(() => (window as any).__DITU__.logic.qStatus('mon_no'))).toBe('done');
 
+  // Kiểm tra đã sang Chương 2 và mở các phòng mới
+  const chapter = await page.evaluate(() => (window as any).__DITU__.logic.s.chapter);
+  expect(chapter).toBe(2);
+
+  // Đến lớp học nghề gặp Thầy Phúc
+  await page.evaluate(() => {
+    const d = (window as any).__DITU__;
+    d.logic.advanceTo(870, { inCellblock: false, inRollcall: false, sprinting: false, moving: false, resting: false });
+    for (const k of Object.keys(d.app.npcs)) d.app.npcs[k].snapToSchedule(d.logic.s.minute);
+    const phuc = d.app.npcs.phuc;
+    d.teleport(phuc.x, phuc.z - 0.8);
+  });
+  await expect(page.locator('#hud-prompt')).toContainText('Thầy Phúc');
+  await page.keyboard.press('KeyE');
+  await page.locator('.choice-btn').first().click(); // gặp thầy
+  await page.locator('.choice-btn').first().click(); // bắt đầu bài tập nối dây
+
+  // Thực hiện bài tập nối dây: [1, 3, 2, 4]
+  await page.locator('[data-voc-btn="1"]').click();
+  await page.locator('[data-voc-btn="3"]').click();
+  await page.locator('[data-voc-btn="2"]').click();
+  await page.locator('[data-voc-btn="4"]').click();
+  await expect(page.locator('.modal h2')).toContainText('Hoàn thành');
+  await page.locator('[data-close]').first().click();
+
+  // Nhận xét của Thầy Phúc
+  await page.keyboard.press('KeyE');
+  await page.locator('.choice-btn').first().click();
+  await page.locator('.choice-btn').first().click();
+  expect(await page.evaluate(() => (window as any).__DITU__.logic.qStatus('lop_nghe_dau'))).toBe('done');
+  expect(await page.evaluate(() => (window as any).__DITU__.logic.has('chung_chi_nghe'))).toBe(true);
+
   // 7. Kiểm tra tải lại trang giữ nguyên trạng thái & không nhân phần thưởng
   const beforeReload = await page.evaluate(() => {
     const s = (window as any).__DITU__.logic.s;

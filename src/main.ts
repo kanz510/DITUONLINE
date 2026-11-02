@@ -229,6 +229,7 @@ class App {
       this.g.has('chan_man'),
       this.g.has('hop_mui_khoan') || !!this.g.s.flags.stole_for_lam,
       this.g.has('dep_bay') || this.g.qStatus('dep_bay') === 'done',
+      this.g.has('chai_thuoc_hen') || this.g.qStatus('nghi_an_thuoc') === 'done',
     );
 
     this.tpCam.update(p.x, p.z, this.input.yaw, this.input.pitch, this.input.distance, this.world.cameraObstacles);
@@ -279,7 +280,7 @@ class App {
         run: () => {
           a.state = 'talk';
           a.faceToward(p.x, p.z);
-          const node = buildDialogue(id, this.g, () => this.ui.showAppealModal());
+          const node = buildDialogue(id, this.g, () => this.ui.showAppealModal(), () => this.ui.showVocationalMinigame());
           this.ui.showDialogue(node, () => (a.state = 'activity'));
         },
       });
@@ -440,6 +441,60 @@ class App {
           label: `${label} (Đang khóa)`,
           run: () => this.ui.toast(`🔒 ${ACCESS.discipline.reason}`, 'info'),
         };
+      case 'med_table':
+        return {
+          id,
+          label: `${label}: Nói chuyện với Y sĩ An`,
+          run: () => {
+            const an = this.npcs.an;
+            an.state = 'talk';
+            an.faceToward(this.g.s.player.x, this.g.s.player.z);
+            const node = buildDialogue('an', this.g, () => this.ui.showAppealModal());
+            this.ui.showDialogue(node, () => (an.state = 'activity'));
+          },
+        };
+      case 'med_cabinet':
+        return {
+          id,
+          label: `${label}: Phụ việc sắp xếp thuốc men`,
+          run: () => this.ui.showMedicineSortingMinigame(),
+        };
+      case 'class_workbench':
+        return {
+          id,
+          label: `${label}: Thực hành nối mạch an toàn`,
+          run: () => this.ui.showVocationalMinigame(),
+        };
+      case 'library_shelf':
+        return {
+          id,
+          label: `${label}: Mượn & đọc cẩm nang cải tạo`,
+          run: () => this.ui.showLibraryReader(),
+        };
+      case 'visit_booth':
+        return {
+          id,
+          label: `${label}: Nhấc ống nghe nói chuyện với Chị Mai`,
+          run: () => {
+            const mai = this.npcs.mai;
+            mai.state = 'talk';
+            mai.faceToward(this.g.s.player.x, this.g.s.player.z);
+            const node = buildDialogue('mai', this.g, () => this.ui.showAppealModal());
+            this.ui.showDialogue(node, () => (mai.state = 'activity'));
+          },
+        };
+      case 'asthma_spot': {
+        if (this.g.has('chai_thuoc_hen') || this.g.qStatus('nghi_an_thuoc') === 'done') return null;
+        return {
+          id,
+          label: `${label}: Nhặt lọ thuốc hen suyễn`,
+          run: () => {
+            this.g.giveItem('chai_thuoc_hen');
+            this.g.completeObjective('nghi_an_thuoc', 'nhat_thuoc');
+            this.ui.toast('Đã nhặt lọ thuốc hen của Chú Bảy! Hãy mang về phòng y tế đưa cho Y sĩ An.', 'good');
+          },
+        };
+      }
     }
     return null;
   }
@@ -469,6 +524,17 @@ class App {
       else if (br === 'steal') { tx = this.npcs.lam.x; tz = this.npcs.lam.z; label = 'Lâm'; }
       else if (br === 'pay') { tx = this.npcs.lam.x; tz = this.npcs.lam.z; label = 'Lâm (trả 40.000đ)'; }
       else if (br === 'report') { tx = this.npcs.lan.x; tz = this.npcs.lan.z; label = 'Quản giáo Lan'; }
+    } else if (g.qStatus('lop_nghe_dau') === 'active') {
+      if (!g.qObj('lop_nghe_dau', 'den_lop')) { tx = this.npcs.phuc.x; tz = this.npcs.phuc.z; label = 'Thầy Phúc'; }
+      else if (!g.qObj('lop_nghe_dau', 'thao_tac')) { tx = -21.5; tz = 13; label = 'Bàn thực hành nghề'; }
+      else { tx = this.npcs.phuc.x; tz = this.npcs.phuc.z; label = 'Thầy Phúc (Nhận chứng chỉ)'; }
+    } else if (g.qStatus('nghi_an_thuoc') === 'active') {
+      if (!g.qObj('nghi_an_thuoc', 'hoi_an')) { tx = this.npcs.an.x; tz = this.npcs.an.z; label = 'Y sĩ An'; }
+      else if (!g.qObj('nghi_an_thuoc', 'hoi_bay')) { tx = this.npcs.bay.x; tz = this.npcs.bay.z; label = 'Chú Bảy'; }
+      else if (!g.qObj('nghi_an_thuoc', 'nhat_thuoc')) { tx = 22.5; tz = 13; label = 'Lọ thuốc rơi sau xưởng'; }
+      else { tx = this.npcs.an.x; tz = this.npcs.an.z; label = 'Y sĩ An (Giao thuốc cứu chú Bảy)'; }
+    } else if (g.qStatus('phong_tham_gap') === 'active') {
+      tx = -22.5; tz = -8.8; label = 'Vách kính thăm gặp (Chị Mai)';
     }
 
     if (!label) return null;

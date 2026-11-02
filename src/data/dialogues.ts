@@ -17,7 +17,7 @@ export interface DNode {
   choices: DChoice[];
 }
 
-export function buildDialogue(npc: string, g: GameLogic, openAppeal: () => void): DNode {
+export function buildDialogue(npc: string, g: GameLogic, openAppeal: () => void, openVocational?: () => void): DNode {
   g.meet(npc);
   switch (npc) {
     case 'bay': return bayDialogue(g);
@@ -25,6 +25,9 @@ export function buildDialogue(npc: string, g: GameLogic, openAppeal: () => void)
     case 'lam': return lamDialogue(g);
     case 'lan': return lanDialogue(g, openAppeal);
     case 'tung': return tungDialogue(g);
+    case 'phuc': return phucDialogue(g, openVocational);
+    case 'an': return anDialogue(g);
+    case 'mai': return maiDialogue(g);
     default: return ambientDialogue(npc, g);
   }
 }
@@ -41,7 +44,10 @@ function giftChoice(npc: string, item: string, label: string, g: GameLogic, repl
 }
 
 function npcTitle(id: string) {
-  return ({ bay: 'Chú Bảy', huy: 'Huy', lam: 'Lâm', lan: 'Quản giáo Lan', tung: 'Cán bộ Tùng' } as Record<string, string>)[id] ?? id;
+  return ({
+    bay: 'Chú Bảy', huy: 'Huy', lam: 'Lâm', lan: 'Quản giáo Lan', tung: 'Cán bộ Tùng',
+    phuc: 'Thầy Phúc', an: 'Y sĩ An', mai: 'Chị Mai',
+  } as Record<string, string>)[id] ?? id;
 }
 
 // ───────────────────── CHÚ BẢY ─────────────────────
@@ -81,6 +87,21 @@ function bayDialogue(g: GameLogic): DNode {
   }
 
   const choices: DChoice[] = [];
+
+  if (g.qStatus('nghi_an_thuoc') === 'active' && !g.qObj('nghi_an_thuoc', 'hoi_bay')) {
+    choices.push({
+      label: 'Chú Bảy, chú khó thở thế này từ khi nào? Thuốc của chú đâu rồi?',
+      important: true,
+      run: () => {
+        g.completeObjective('nghi_an_thuoc', 'hoi_bay');
+        return {
+          speaker: 'Chú Bảy',
+          text: 'Khục khục… Hồi sáng chú mang lọ thuốc theo người… Lúc đi qua lối sau xưởng có đứa nào va mạnh vào chú rồi chạy mất. Chú tìm quanh bãi cỏ sau xưởng mà không thấy… Cháu ngó giùm chú với, chú thở không nổi nữa…',
+          choices: [{ label: 'Cháu ra góc tường sau xưởng tìm ngay cho chú!', run: () => null }],
+        };
+      },
+    });
+  }
 
   if (g.qStatus('ca_dau') === 'active' && g.qObj('ca_dau', 'lap_rap') && !g.qObj('ca_dau', 'bao_bay')) {
     choices.push({
@@ -549,6 +570,248 @@ function lanDialogue(g: GameLogic, openAppeal: () => void): DNode {
   return {
     speaker: 'Quản giáo Lan', role: `Quản giáo Khu A · Quan hệ: ${g.rel('lan')}`,
     text: 'Phạm nhân Minh AP-0317. Có việc gì cần báo cáo hay giải trình thì trình bày ngắn gọn, rõ căn cứ.',
+    choices,
+  };
+}
+
+// ───────────────────── THẦY PHÚC, Y SĨ AN, CHỊ MAI ─────────────────────
+function phucDialogue(g: GameLogic, openVocational?: () => void): DNode {
+  const choices: DChoice[] = [];
+
+  if (g.qStatus('lop_nghe_dau') === 'active') {
+    if (!g.qObj('lop_nghe_dau', 'den_lop')) {
+      choices.push({
+        label: 'Em chào Thầy Phúc. Em đến đăng ký học nghề ca chiều ạ.',
+        important: true,
+        run: () => {
+          g.completeObjective('lop_nghe_dau', 'den_lop');
+          return {
+            speaker: 'Thầy Phúc',
+            text: 'Tốt lắm Minh. Vào đây thì ngoài việc chấp hành nội quy, học một cái nghề là tấm vé để sau này ra đời tự nuôi sống bản thân, không sa ngã nữa. Thầy có bài tập nối mạch điện an toàn tại bàn thực hành kia — qua đó kiểm tra khả năng quan sát và ghi nhớ màu dây cho thầy xem.',
+            choices: [
+              {
+                label: 'Bắt đầu bài kiểm tra học nghề tại bàn thực hành',
+                run: () => {
+                  openVocational?.();
+                  return null;
+                },
+              },
+              { label: 'Dạ, để em chuẩn bị một chút.', run: () => null },
+            ],
+          };
+        },
+      });
+    } else if (g.qObj('lop_nghe_dau', 'thao_tac') && !g.qObj('lop_nghe_dau', 'nhan_xet')) {
+      choices.push({
+        label: 'Thưa Thầy Phúc, em đã hoàn thành xong bài nối mạch an toàn rồi ạ.',
+        important: true,
+        run: () => {
+          g.completeObjective('lop_nghe_dau', 'nhan_xet');
+          return {
+            speaker: 'Thầy Phúc',
+            text: 'Khá lắm! Nối đúng trình tự, thao tác dứt khoát và cẩn thận. Đây là Chứng chỉ nghề cơ điện bậc sơ cấp của em. Giữ lấy nó làm nền tảng trong hồ sơ xét giảm án. Buổi tối em có thể qua giá sách thư viện mượn thêm sách pháp luật và kỹ thuật mà đọc.',
+            choices: [{ label: 'Em cảm ơn thầy nhiều lắm!', run: () => null }],
+          };
+        },
+      });
+    }
+  }
+
+  choices.push({
+    label: 'Thực hành nối mạch điện (Mini-game học nghề)',
+    run: () => {
+      openVocational?.();
+      return null;
+    },
+  });
+
+  choices.push({
+    label: 'Hỏi thầy về các quy định giảm án cho người học nghề',
+    run: () => ({
+      speaker: 'Thầy Phúc',
+      text: 'Mỗi kỳ xét 5 ngày, nếu em vừa hoàn thành định mức lao động, vừa có chứng chỉ học nghề và không vi phạm kỷ luật, hội đồng sẽ đánh giá em ở mức xuất sắc (+1.5 đến +3 ngày giảm). Nghề nghiệp là cái gốc của sự hướng thiện.',
+      choices: [{ label: 'Em đã hiểu.', run: () => null }],
+    }),
+  });
+
+  choices.push({
+    label: 'Trò chuyện hỏi thăm Thầy Phúc',
+    run: () => {
+      g.dailyTalk('phuc');
+      return {
+        speaker: 'Thầy Phúc',
+        text: 'Thầy dạy ở trại giam này hơn 15 năm rồi. Người ra trại thành đạt quay lại cảm ơn thầy cũng có, người tái phạm quay lại cũng có. Tương lai ở trong tay các em cả đấy.',
+        choices: [{ label: 'Vâng ạ.', run: () => null }],
+      };
+    },
+  });
+
+  choices.push({ label: 'Chào thầy em về', run: () => null });
+
+  return {
+    speaker: 'Thầy Phúc', role: `Cán bộ dạy nghề & Thư viện · Quan hệ: ${g.rel('phuc')}`,
+    text: 'Minh hả? Đang giờ lên lớp hoặc đọc sách, có việc gì cần thầy hướng dẫn không em?',
+    choices,
+  };
+}
+
+function anDialogue(g: GameLogic): DNode {
+  const choices: DChoice[] = [];
+
+  if (g.qStatus('nghi_an_thuoc') === 'active') {
+    if (!g.qObj('nghi_an_thuoc', 'hoi_an')) {
+      choices.push({
+        label: 'Chào Y sĩ An, nghe nói phòng y tế đang có chuyện gấp?',
+        important: true,
+        run: () => {
+          g.completeObjective('nghi_an_thuoc', 'hoi_an');
+          return {
+            speaker: 'Y sĩ An',
+            text: 'Minh đấy à? Chú Bảy ở buồng 3 đang lên cơn hen dữ dội, nhưng lọ thuốc hen xịt đặc trị cấp phát riêng cho chú trong tủ bỗng dưng biến mất sáng nay. Thuốc này có thành phần an thần nhẹ nên có đứa xấu trong trại lén tuồn ra ngoài hoặc cất giấu. Em cùng buồng chú Bảy, mau đi hỏi chú xem có nhớ ai va quẹt sáng nay không!',
+            choices: [{ label: 'Để em đi hỏi Chú Bảy ngay!', run: () => null }],
+          };
+        },
+      });
+    } else if (g.has('chai_thuoc_hen')) {
+      choices.push({
+        label: 'Y sĩ An ơi! Em tìm thấy lọ thuốc hen của Chú Bảy bị vứt ở góc sau xưởng rồi!',
+        important: true,
+        run: () => {
+          g.takeItem('chai_thuoc_hen');
+          g.completeObjective('nghi_an_thuoc', 'tra_thuoc');
+          return {
+            speaker: 'Y sĩ An',
+            text: 'May quá! Đúng là lọ thuốc của chú Bảy rồi! Cảm ơn em rất nhiều Minh ơi, chị cho chú xịt thuốc ngay đây. Lọ thuốc bị vứt ở góc xưởng… chắc chắn có liên quan đến đám người hay lén lút ở đó. Chị sẽ ghi nhận việc làm tốt này của em vào sổ theo dõi y tế!',
+            choices: [{ label: 'Cứu được Chú Bảy là may rồi chị.', run: () => null }],
+          };
+        },
+      });
+    }
+  }
+
+  if (g.qStatus('phu_y_te') === 'locked') {
+    choices.push({
+      label: 'Chị có cần người phụ dọn dẹp tủ thuốc không ạ?',
+      run: () => ({
+        speaker: 'Y sĩ An',
+        text: 'Được thế thì tốt quá. Chiều nay thuốc men chuyển về hơi lộn xộn. Em qua góc tủ thuốc y tế phân loại bông băng và cơ số thuốc cảm giúp chị nhé. Xong việc chị gửi em một vỉ thuốc cảm dự phòng.',
+        choices: [
+          {
+            label: 'Nhận giúp Y sĩ An phân loại tủ thuốc',
+            run: () => {
+              g.startQuest('phu_y_te');
+              return { speaker: 'Y sĩ An', text: 'Cảm ơn em! Tủ thuốc ở góc phòng bên kia kìa.', choices: [{ label: 'Vâng ạ.', run: () => null }] };
+            },
+          },
+          { label: 'Lát nữa em quay lại.', run: () => null },
+        ],
+      }),
+    });
+  }
+
+  choices.push({
+    label: 'Khám sức khỏe / Xin lời khuyên y tế',
+    run: () => {
+      const st = g.s.stats;
+      let advice = 'Sức khỏe em hiện khá ổn định. Cứ ăn uống đúng bữa và ngủ đủ giấc nhé.';
+      if (st.health < 50) advice = 'Sức khỏe em đang sút giảm nghiêm trọng! Đừng làm việc quá sức, hãy ăn đủ khẩu phần và dùng thuốc khi cần.';
+      else if (st.stress > 60) advice = 'Mức độ căng thẳng của em khá cao. Chiều nên ra sân tập xà hoặc tối qua thư viện đọc sách thư giãn.';
+      return {
+        speaker: 'Y sĩ An',
+        text: advice,
+        choices: [{ label: 'Em cảm ơn y sĩ.', run: () => null }],
+      };
+    },
+  });
+
+  choices.push({
+    label: 'Nói chuyện hỏi thăm Y sĩ An',
+    run: () => {
+      g.dailyTalk('an');
+      return {
+        speaker: 'Y sĩ An',
+        text: 'Làm y tế trong trại giam này nhiều lúc áp lực lắm, nhưng thấy các phạm nhân bình phục và biết quý trọng sức khỏe là chị thấy an lòng.',
+        choices: [{ label: 'Vâng chị.', run: () => null }],
+      };
+    },
+  });
+
+  const gift = giftChoice('an', 'tra_da', 'chai trà đá', g, 'Cảm ơn em nhé, trời nắng nực được ngụm trà mát thật.');
+  if (gift) choices.push(gift);
+  choices.push({ label: 'Chào Y sĩ', run: () => null });
+
+  return {
+    speaker: 'Y sĩ An', role: `Y sĩ Trại giam An Phú · Quan hệ: ${g.rel('an')}`,
+    text: 'Minh đấy à? Trong người thấy thế nào, có chỗ nào không khỏe cần khám không?',
+    choices,
+  };
+}
+
+function maiDialogue(g: GameLogic): DNode {
+  const choices: DChoice[] = [];
+
+  if (g.qStatus('phong_tham_gap') === 'active') {
+    choices.push({
+      label: 'Cầm ống nghe điện thoại nội bộ nói chuyện với Chị Mai',
+      important: true,
+      run: () => {
+        g.completeObjective('phong_tham_gap', 'gap_chi');
+        return {
+          speaker: 'Chị Mai', role: 'Phòng thăm gặp · Vách kính số 1',
+          text: 'Minh… em gầy đi nhiều quá. Ở trong này cán bộ đối xử với em có tốt không? Cơm nước thế nào em? Chị ở ngoài quê một mình lo việc nhà… chỉ mong từng ngày em cải tạo ngoan để sớm về với chị.',
+          choices: [
+            {
+              label: 'Chân thành: "Em vẫn khỏe chị à. Em đang học nghề với Thầy Phúc, chị ở ngoài ráng giữ gìn sức khỏe, em hứa sẽ về sớm."',
+              important: true,
+              run: () => {
+                g.completeObjective('phong_tham_gap', 'thanh_that');
+                g.completeObjective('phong_tham_gap', 'nhan_tien');
+                g.finishQuest('phong_tham_gap', 'done');
+                return {
+                  speaker: 'Chị Mai',
+                  text: 'Nghe em nói thế chị mừng phát khóc… Chị có gửi 25.000đ vào sổ lưu ký căng tin cho em bồi dưỡng thêm. Ráng lên em nhé, cả nhà chỉ chờ ngày em trở về.',
+                  choices: [{ label: 'Em cảm ơn chị… Em sẽ không làm chị thất vọng đâu.', run: () => null }],
+                };
+              },
+            },
+            {
+              label: 'Kín tiếng: "Trong này phức tạp lắm chị, nhưng em tự xoay sở được, chị đừng lo."',
+              run: () => {
+                g.completeObjective('phong_tham_gap', 'thanh_that');
+                g.completeObjective('phong_tham_gap', 'nhan_tien');
+                g.finishQuest('phong_tham_gap', 'done');
+                return {
+                  speaker: 'Chị Mai',
+                  text: 'Em đừng làm liều chuyện gì đấy nhé! Chị gửi chút tiền vào sổ lưu ký, nhớ mua đồ ăn tẩm bổ. Giữ mình nha em.',
+                  choices: [{ label: 'Vâng chị.', run: () => null }],
+                };
+              },
+            },
+          ],
+        };
+      },
+    });
+  }
+
+  choices.push({
+    label: 'Hỏi thăm tình hình gia đình ở quê',
+    run: () => {
+      g.dailyTalk('mai');
+      return {
+        speaker: 'Chị Mai',
+        text: 'Ở quê mùa màng năm nay cũng đỡ hơn rồi. Hàng xóm láng giềng ai cũng hỏi thăm em. Nhớ đừng dính vào ba cái ẩu đả trong trại nghe em.',
+        choices: [{ label: 'Em nhớ rồi chị.', run: () => null }],
+      };
+    },
+  });
+
+  const gift = giftChoice('mai', 'qua_luu_niem', 'khung ảnh gỗ tự làm', g, 'Trời ơi, em tự làm ở xưởng khéo tay quá… Chị sẽ đem về để đầu giường đợi ngày em về.');
+  if (gift) choices.push(gift);
+  choices.push({ label: 'Tạm biệt chị', run: () => null });
+
+  return {
+    speaker: 'Chị Mai', role: `Chị gái · Quan hệ: ${g.rel('mai')}`,
+    text: 'Minh ơi, thời gian thăm gặp có hạn thôi em, có chuyện gì cần dặn dò chị không?',
     choices,
   };
 }

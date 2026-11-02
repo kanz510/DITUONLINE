@@ -91,6 +91,69 @@ export const QUESTS: Record<string, QuestDef> = {
     reward: 'Huy +8, Huy nhớ bạn giữ lời.',
     failure: 'Quá hạn: Huy −8 và nhớ bạn thất hứa.',
   },
+  lop_nghe_dau: {
+    id: 'lop_nghe_dau', title: 'Bài học nghề đầu tiên', type: 'main', chapter: 2, giver: 'Thầy Phúc',
+    reason: 'Thầy Phúc kiểm tra tính kỷ luật, kỹ năng quan sát và an toàn điện của Minh.',
+    requirement: 'Đã sang Chương 2. Đến lớp học nghề trong ca chiều (14:00–16:30).',
+    objectives: [
+      { id: 'den_lop', text: 'Gặp Thầy Phúc tại Lớp học nghề (14:00–16:30)' },
+      { id: 'thao_tac', text: 'Hoàn thành bài tập quan sát & nối dây an toàn tại bàn thực hành' },
+      { id: 'nhan_xet', text: 'Nghe Thầy Phúc đánh giá và nhận chứng chỉ nghề' },
+    ],
+    reward: '+4 điểm cải tạo, Chứng chỉ nghề, mở quyền mượn sách thư viện.',
+    failure: 'Có thể làm lại bài kiểm tra vào ca chiều hôm sau.',
+  },
+  nghi_an_thuoc: {
+    id: 'nghi_an_thuoc', title: 'Nghi án thuốc trị hen', type: 'main', chapter: 2, giver: 'Y sĩ An',
+    reason: 'Chú Bảy tái phát hen suyễn nhưng thuốc trong tủ y tế bị thiếu hụt bí ẩn.',
+    requirement: 'Gặp Y sĩ An tại Phòng y tế (07:30–11:30 hoặc 13:30–17:00).',
+    objectives: [
+      { id: 'hoi_an', text: 'Nghe Y sĩ An trình bày sự việc tại Phòng y tế' },
+      { id: 'hoi_bay', text: 'Hỏi Chú Bảy về thời điểm cơn hen xuất hiện' },
+      { id: 'nhat_thuoc', text: 'Tìm kiếm vật chứng tại góc tường sau xưởng' },
+      { id: 'tra_thuoc', text: 'Giao lại lọ thuốc cho Y sĩ An để cấp cứu Chú Bảy' },
+    ],
+    reward: '+6 điểm cải tạo, Chú Bảy +15, Y sĩ An +12 quan hệ, ghi lại manh mối điều tra.',
+    failure: 'Không giới hạn thời gian.',
+  },
+  phong_tham_gap: {
+    id: 'phong_tham_gap', title: 'Cuộc gặp sau vách kính', type: 'main', chapter: 2, giver: 'Chị Mai',
+    reason: 'Chị Mai bắt xe đò từ quê lên trại giam An Phú thăm Minh theo lịch hẹn.',
+    requirement: 'Đến Phòng thăm gặp (08:00–11:00 hoặc 14:00–17:00).',
+    objectives: [
+      { id: 'gap_chi', text: 'Ngồi vào vách kính nói chuyện với Chị Mai' },
+      { id: 'thanh_that', text: 'Lựa chọn lời tâm sự chân thành làm chị yên tâm' },
+      { id: 'nhan_tien', text: 'Nhận 25.000đ tiền tiếp tế chị gửi vào sổ lưu ký' },
+    ],
+    reward: '+25.000đ tiền căn tin, −20 căng thẳng, Chị Mai tin tưởng (+15 quan hệ).',
+    failure: 'Có thể gặp chị vào ca thăm gặp tiếp theo.',
+  },
+  sach_thu_vien: {
+    id: 'sach_thu_vien', title: 'Độc giả chăm chỉ', type: 'side', chapter: 2, giver: 'Thầy Phúc',
+    reason: 'Đọc cẩm nang cải tạo tại thư viện trong giờ đọc sách buổi tối (19:00–21:00).',
+    requirement: 'Đã hoàn thành bài học nghề đầu tiên.',
+    objectives: [
+      { id: 'muon_sach', text: 'Mượn cẩm nang pháp luật từ giá sách thư viện' },
+      { id: 'doc_xong', text: 'Đọc sách tại bàn thư viện' },
+    ],
+    reward: '+2 điểm cải tạo, −10 căng thẳng, hiểu rõ quy tắc xét giảm án.',
+    failure: 'Không giới hạn.',
+  },
+  phu_y_te: {
+    id: 'phu_y_te', title: 'Phụ việc y tế', type: 'side', chapter: 2, giver: 'Y sĩ An',
+    reason: 'Giúp Y sĩ An phân loại bông băng và vệ sinh dụng cụ tại tủ thuốc.',
+    requirement: 'Đã làm quen Y sĩ An.',
+    objectives: [
+      { id: 'nhan_viec', text: 'Nhận việc tại tủ thuốc y tế' },
+      { id: 'hoan_thanh', text: 'Hoàn thành sắp xếp thuốc men' },
+    ],
+    reward: '+3 điểm cải tạo, +1 vỉ thuốc cảm, Y sĩ An +8 quan hệ.',
+    failure: 'Không giới hạn.',
+  },
 };
 
-export const QUEST_ORDER = ['nhap_trai', 'ca_dau', 'mon_no', 'dep_bay', 'mi_cho_huy'];
+export const QUEST_ORDER = [
+  'nhap_trai', 'ca_dau', 'mon_no',
+  'lop_nghe_dau', 'nghi_an_thuoc', 'phong_tham_gap',
+  'dep_bay', 'mi_cho_huy', 'sach_thu_vien', 'phu_y_te',
+];

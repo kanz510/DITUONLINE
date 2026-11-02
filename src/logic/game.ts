@@ -24,7 +24,8 @@ const IDLE_CTX: TickCtx = { inCellblock: true, inRollcall: false, sprinting: fal
 
 export const NPC_NAMES: Record<string, string> = {
   bay: 'Chú Bảy', huy: 'Huy', lam: 'Lâm', lan: 'Quản giáo Lan', tung: 'Cán bộ Tùng',
-  tu: 'Anh Tư', son: 'Sơn', khai: 'Khải', minh: 'Minh', mai: 'Mai',
+  tu: 'Anh Tư', son: 'Sơn', khai: 'Khải', minh: 'Minh', mai: 'Chị Mai',
+  phuc: 'Thầy Phúc', an: 'Y sĩ An',
 };
 
 export const WORK_QUOTA = 3;
@@ -84,6 +85,14 @@ export class GameLogic {
   }
   canteenBanned() {
     return ((this.s.flags.canteenBanUntil as number) ?? 0) >= this.s.day;
+  }
+  addClue(id: string, text: string) {
+    if (!this.s.clues.includes(id)) {
+      this.s.clues.push(id);
+      this.notify(`Manh mối mới: ${text}`, 'good');
+      this.event(`Thu thập manh mối: ${text}`);
+      this.commit();
+    }
   }
 
   // ───────────── Chỉ số ─────────────
@@ -434,9 +443,41 @@ export class GameLogic {
           this.s.flags.huy_debt_cleared = true;
         }
         this.s.chapter = Math.max(this.s.chapter, 2);
-        this.notify('Kết thúc Chương 1. (Chương 2–4 sẽ mở ở Mốc 2–3.)', 'quest');
+        this.startQuest('lop_nghe_dau');
+        this.startQuest('nghi_an_thuoc');
+        this.startQuest('phong_tham_gap');
+        this.notify('Bắt đầu Chương 2 — Chọn cách sống! (Mở Lớp học nghề, Phòng y tế & Thăm gặp)', 'quest');
         break;
       }
+      case 'lop_nghe_dau':
+        this.addReform(4, 'Bài học nghề đầu tiên');
+        this.giveItem('chung_chi_nghe');
+        this.changeRel('phuc', 10, 'Minh hoàn thành bài học nghề an toàn');
+        this.s.skills.vocationalExam++;
+        this.startQuest('sach_thu_vien');
+        break;
+      case 'nghi_an_thuoc':
+        this.addReform(6, 'Tìm lại thuốc hen cứu Chú Bảy');
+        this.changeRel('bay', 15, 'Minh tìm lại lọ thuốc hen cứu mạng chú');
+        this.changeRel('an', 12, 'Minh hỗ trợ tìm ra vật chứng y tế');
+        this.addClue('thuoc_hen_sau_xuong', 'Lọ thuốc hen của Chú Bảy rơi gần góc sau xưởng nơi đàn em Lâm tụ tập.');
+        break;
+      case 'phong_tham_gap':
+        this.changeRel('mai', 15, 'Minh hứa với chị sẽ cải tạo tốt để về sớm');
+        this.addStat('stress', -20);
+        this.addStat('money', 25);
+        this.addReform(3, 'Được gia đình động viên cải tạo');
+        break;
+      case 'sach_thu_vien':
+        this.addReform(2, 'Chăm chỉ đọc sách pháp luật');
+        this.addStat('stress', -10);
+        this.changeRel('phuc', 5, 'Minh tự giác mượn sách cẩm nang');
+        break;
+      case 'phu_y_te':
+        this.addReform(3, 'Hỗ trợ việc phòng y tế');
+        this.giveItem('thuoc_cam', 1);
+        this.changeRel('an', 8, 'Minh nhiệt tình giúp phân loại thuốc');
+        break;
       case 'dep_bay':
         this.changeRel('bay', 10, 'Minh tìm lại đôi dép con gái gửi cho chú');
         this.addStat('stress', -5);
