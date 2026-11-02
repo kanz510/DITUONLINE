@@ -8,6 +8,16 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-03 — ChatGPT — Sửa Pages phát hành bản dist cũ (nguyên nhân không thấy nút X)
+- Triệu chứng: trên iPhone, bảng Nhân vật & Kỹ năng không hiện X dù src đã có.
+- Chẩn đoán qua Actions: repository đồng thời có workflow "pages build and deployment" (Jekyll từ nhánh main) và "Deploy to GitHub Pages" (Vite build); bản dist/ được commit trước đó vẫn chứa JS/CSS cũ nên lần Pages build từ nhánh có thể ghi đè bản mới.
+- Thay đổi `.github/workflows/deploy.yml`: cấp quyền contents:write; sau unit test và Vite build, commit và push `dist/`, `sw.js`, `release.json` bằng github-actions[bot] nếu nội dung đổi; guard `[generated-pages]` tránh workflow tự lặp. Không force push, không ghi đè commit mới nếu có xung đột.
+- Commit workflow: `53db26de83f8f933f4e8f755773faa3b0b166e20` (YAML lỗi dấu hai chấm trong biểu thức, CI không chạy); commit sửa YAML: `2e005b7f6e9d3206865746d9f61f9bc4e3d8e9b9`.
+- Workflow đã tạo commit tự động `125b60bc4f48d84ab31826d5fa2dbc8d3a2f100a`, cập nhật `dist/assets/index-CHf_XcMm.js`, `dist/assets/index-BMylmsZC.css`, `dist/index.html`, `dist/release.json` v.v.
+- Xác nhận bằng đọc file trên GitHub: bundle JS mới có `modal-close-top`, `modal-shell` và `Đóng bảng`; CSS cũng có `modal-close-top`; release hash mới `60f365e559f5`, thay `f02df49cc594`.
+- Kiểm thử: CI chạy unit test và build thành công đến bước sync; chưa xác nhận trực tiếp trên Safari trong phiên này. Cần kiểm tra Pages đã hoàn tất và nút X khi mở các bảng.
+- Antigravity: KHÔNG xóa bước sync `dist/` nếu Pages còn deploy Jekyll từ nhánh. Nếu chuyển Pages Source sang GitHub Actions duy nhất, có thể bỏ bước sync sau khi xác thực trang đang chạy bản build mới.
+
 ### 2026-11-02 — ChatGPT — Sửa nút X không hiển thị trên iPhone
 - Người dùng gửi ảnh bảng Nhân vật & Kỹ năng không có nút X sau bản sửa trước.
 - `src/ui/manager.ts`: bọc modal trong `.modal-shell`, gắn nút X làm phần tử cùng cấp với modal, thay vì nằm trong vùng cuộn.
