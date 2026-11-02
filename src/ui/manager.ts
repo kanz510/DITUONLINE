@@ -607,6 +607,18 @@ export class UIManager {
     const cls = extraClass ? `modal ${extraClass}` : 'modal';
     this.modalHost.innerHTML = `<div class="modal-backdrop"><div class="${cls}">${html}</div></div>`;
     const m = this.modalHost.querySelector('.modal') as HTMLElement;
+    // Only add the top close control to panels that already allow closing.
+    // Story/mandatory interactions without data-close remain protected.
+    if (m.querySelector('[data-close]')) {
+      const closeTop = document.createElement('button');
+      closeTop.type = 'button';
+      closeTop.className = 'modal-close-top';
+      closeTop.setAttribute('aria-label', 'Đóng bảng');
+      closeTop.title = 'Đóng bảng';
+      closeTop.textContent = '×';
+      closeTop.addEventListener('click', () => this.closeModal());
+      m.prepend(closeTop);
+    }
     m.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => this.closeModal()));
     if (onMount) onMount(m);
   }
