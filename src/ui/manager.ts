@@ -607,9 +607,12 @@ export class UIManager {
     const cls = extraClass ? `modal ${extraClass}` : 'modal';
     this.modalHost.innerHTML = `<div class="modal-backdrop"><div class="modal-shell"><div class="${cls}">${html}</div></div></div>`;
     const m = this.modalHost.querySelector('.modal') as HTMLElement;
-    // Only add the top close control to panels that already allow closing.
-    // Story/mandatory interactions without data-close remain protected.
-    if (m.querySelector('[data-close]')) {
+    // Add the always-visible X only to dismissible panels.
+    // Keep action labels such as "Hủy", "Thoát" and "Tiếp tục chơi":
+    // unlike a redundant "Đóng" footer, these convey gameplay context.
+    const closeButtons = Array.from(m.querySelectorAll<HTMLButtonElement>('button[data-close]'));
+    if (closeButtons.length) {
+      m.classList.add('has-top-close');
       const closeTop = document.createElement('button');
       closeTop.type = 'button';
       closeTop.className = 'modal-close-top';
@@ -618,8 +621,23 @@ export class UIManager {
       closeTop.textContent = '×';
       closeTop.addEventListener('click', () => this.closeModal());
       (m.parentElement as HTMLElement).append(closeTop);
+
+      // Remove only duplicate "Đóng" / "Đóng Menu" buttons.
+      // Remove their otherwise empty footer containers to avoid dead space.
+      for (const button of closeButtons) {
+        const label = (button.textContent ?? '').replace(/\\s+/g, ' ').trim().toLocaleLowerCase('vi');
+        if (label === 'đóng' || label === 'đóng menu') {
+          const wrapper = button.parentElement;
+          button.remove();
+          if (wrapper && wrapper !== m && wrapper.parentElement === m &&
+              wrapper.children.length === 0 && !wrapper.textContent?.trim()) {
+            wrapper.remove();
+          }
+        } else {
+          button.addEventListener('click', () => this.closeModal());
+        }
+      }
     }
-    m.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => this.closeModal()));
     if (onMount) onMount(m);
   }
 
