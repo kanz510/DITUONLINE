@@ -270,6 +270,8 @@ export const SPOTS: SpotDef[] = [
   { id: 'workbench', x: 16, z: 0.15, r: 1.2, label: 'Bàn lắp ráp' },
   { id: 'rest_ws', x: 14.2, z: 6.5, r: 1.3, label: 'Ghế nghỉ' },
   { id: 'drill', x: 26.2, z: -5.2, r: 1.2, label: 'Kệ vật tư' },
+  { id: 'clue_crate', x: 20.8, z: -7.0, r: 1.2, label: 'Kiện hàng niêm phong KHO-07' },
+  { id: 'class_fan', x: -18.0, z: 15.5, r: 1.3, label: 'Quạt lớp học bị hỏng' },
   { id: 'exercise', x: -21.5, z: 4.2, r: 1.5, label: 'Xà đơn & tạ tay' },
   { id: 'stonetable', x: -10, z: 3.5, r: 1.5, label: 'Bàn cờ đá' },
   { id: 'bench_yard', x: -16, z: 3.8, r: 1.3, label: 'Ghế đá' },
