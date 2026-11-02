@@ -4,6 +4,7 @@ import {
   BUILDINGS, DOORS, PROPS, WALLS, ZONES, propBox, type Box, type PropDef, type WallDef,
 } from './layout';
 import { Collision } from './collision';
+import { surfaceMaterial, upgradePropModel } from '../graphics/assets';
 
 // Keep the original PROPS footprints, collisions and NPC navigation unchanged.
 // GLBs replace visuals only. This guarantees no new path blockers without nav review.
@@ -24,24 +25,6 @@ function loadProp(path: string) {
     propCache.set(path, pending);
   }
   return pending;
-}
-
-function checkerTex(c1: string, c2: string, cells = 8): THREE.CanvasTexture {
-  const cv = document.createElement('canvas');
-  cv.width = 128;
-  cv.height = 128;
-  const ctx = cv.getContext('2d')!;
-  const s = 128 / cells;
-  for (let y = 0; y < cells; y++) {
-    for (let x = 0; x < cells; x++) {
-      ctx.fillStyle = (x + y) % 2 === 0 ? c1 : c2;
-      ctx.fillRect(x * s, y * s, s, s);
-    }
-  }
-  const t = new THREE.CanvasTexture(cv);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(8, 8);
-  return t;
 }
 
 function signTex(title: string, sub = '', bg = '#1e293b', fg = '#f8fafc'): THREE.CanvasTexture {
@@ -115,7 +98,7 @@ export class PrisonWorld {
   }
 
   private buildGround() {
-    const yardMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.95 });
+    const yardMat = surfaceMaterial('asphalt.jpg', 0xd1d5db, 18, 17);
     const yard = new THREE.Mesh(new THREE.PlaneGeometry(64, 60), yardMat);
     yard.rotation.x = -Math.PI / 2;
     yard.position.set(0, -0.02, -6);
@@ -123,13 +106,11 @@ export class PrisonWorld {
     this.scene.add(yard);
 
     // Sàn từng khu
-    const tile1 = checkerTex('#cbd5e1', '#94a3b8');
-    const tile2 = checkerTex('#e2e8f0', '#cbd5e1');
     const mats: Record<string, THREE.Material> = {
-      tile: new THREE.MeshStandardMaterial({ map: tile1, roughness: 0.8 }),
-      tile2: new THREE.MeshStandardMaterial({ map: tile2, roughness: 0.75 }),
-      concrete: new THREE.MeshStandardMaterial({ color: 0x4b5563, roughness: 0.9 }),
-      wood: new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.75 }),
+      tile: surfaceMaterial('floor_tiles.jpg', 0xffffff, 6, 7),
+      tile2: surfaceMaterial('floor_tiles.jpg', 0xf1f5f9, 6, 7),
+      concrete: surfaceMaterial('concrete.jpg', 0xd4d4d8, 8, 9),
+      wood: surfaceMaterial('wood_planks.jpg', 0xe5d5b5, 6, 7),
     };
     for (const k of Object.keys(BUILDINGS)) {
       const b = BUILDINGS[k];
@@ -160,9 +141,9 @@ export class PrisonWorld {
   }
 
   private buildWalls() {
-    const outerUpper = new THREE.MeshStandardMaterial({ color: 0xd6d3c4, roughness: 0.88 });
-    const outerLower = new THREE.MeshStandardMaterial({ color: 0x4a5d4e, roughness: 0.9 });
-    const perimMat = new THREE.MeshStandardMaterial({ color: 0x52525b, roughness: 0.95 });
+    const outerUpper = surfaceMaterial('plaster_beige.jpg', 0xf6f0e1, 2, 1);
+    const outerLower = surfaceMaterial('plaster_moss.jpg', 0xbacaba, 2, 1);
+    const perimMat = surfaceMaterial('brick.jpg', 0xa8a29e, 4, 3);
     const barMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.6, roughness: 0.4 });
 
     for (const w of WALLS) {
@@ -294,10 +275,14 @@ export class PrisonWorld {
   private buildProps() {
     for (const p of PROPS) {
       if (p.collide) this.collision.boxes.push(propBox(p));
-      const obj = this.makePropMesh(p);
+      const placeholder = this.makePropMesh(p);
+      const obj = new THREE.Group();
+      obj.add(placeholder);
       // Load each unique GLB once, clone its geometry hierarchy per prop.
       // Preserve existing fallback geometry until the model is ready.
-      const asset = propAssets[p.kind];
+      const asset = p.kind === 'bunk' && (p.x > 20 || (p.x > 5 && p.z > 10))
+        ? 'furniture/bedSingle.glb'
+        : propAssets[p.kind];
       if (asset) {
         void loadProp(asset).then((template) => {
           const model = template.clone(true);
@@ -310,7 +295,10 @@ export class PrisonWorld {
           // Uniform scale avoids stretched models; fit within the existing
           // collision footprint and cap height for indoor clearance.
           const maxHeight = p.kind === 'tree' ? 4.5 : p.kind === 'bunk' ? 2.0 : 1.9;
-          const factor = Math.min(p.w / width, p.d / depth, maxHeight / height);
+          // Tree crowns overhang the trunk collider: scale to real height rather than .8 m footprint.
+          const factor = p.kind === 'tree'
+            ? 4.5 / height
+            : Math.min(p.w / width, p.d / depth, maxHeight / height) * 0.96;
           model.scale.setScalar(factor);
           model.position.set(
             -(bounds.min.x + bounds.max.x) * 0.5 * factor,
@@ -326,7 +314,17 @@ export class PrisonWorld {
           obj.clear();
           obj.add(model);
         }).catch((err) => console.warn('[Prop GLB] Procedural fallback:', asset, err));
+      } else if (p.kind === 'lamp') {
+        void upgradePropModel(obj, placeholder, 'models/roads/light-square.glb',
+          { width: p.w, depth: p.d }, { height: 3.8 });
+      } else if (p.kind === 'plant') {
+        void upgradePropModel(obj, placeholder, 'models/nature/plant_bushDetailed.glb',
+          { width: p.w, depth: p.d }, { height: 0.75 });
+      } else if (p.kind === 'shelf' && p.x < -20 && p.z > 10) {
+        void upgradePropModel(obj, placeholder, 'models/furniture/bookcaseOpen.glb',
+          { width: p.w, depth: p.d }, { rotateY: Math.PI / 2 });
       }
+      if (p.kind === 'tree' || p.kind === 'lamp' || p.kind === 'shelf') this.cameraObstacles.push(obj);
       obj.position.set(p.x, 0, p.z);
       if (p.rot) obj.rotation.y = p.rot;
       this.scene.add(obj);
