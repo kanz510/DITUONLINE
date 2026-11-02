@@ -1,10 +1,16 @@
 # Asset staging cho ĐI TÙ ONLINE (DITUONLINE)
 
-Thư mục này chứa asset đồ họa **chưa nối vào game** — chỉ để dành cho bước
-gắn asset sau này (ví dụ: dặn AI khác "lấy asset trong thư mục `assets/`").
-Game hiện tại vẫn chạy hoàn toàn bằng geometry và canvas texture procedural
-trong `src/`; thêm thư mục này vào repo **không làm game thay đổi gì**
-(Vite chỉ bundle `src/` + `public/`, CI build/test không đụng tới đây).
+Đây là **kho asset nguồn**. Một phần đã được nối vào game từ 03/11/2026:
+nhân vật dùng Kenney GLB/AnimationMixer, giường tầng/đơn, bàn/ghế/tủ/cây
+dùng GLB, sàn và tường dùng texture PNG/JPG, sân có đèn và bụi cây GLB.
+Các vật thể phục vụ nhiệm vụ, cửa khóa, camera và biển chữ vẫn dùng mesh
+hiện có để bảo toàn gameplay. Các asset chưa được chọn vẫn để nguyên ở đây.
+
+Quy ước bản chạy: asset nhân vật/nội thất chính dưới `public/models/`,
+mô hình bổ sung và texture bề mặt dưới `public/assets/`. Mỗi GLB luôn đi
+cùng thư mục `Textures/` của nó. Không tải file từ thư mục nguồn `assets/`
+lúc chạy; Vite chỉ xuất `src/` và `public/`. Các lần nối tiếp theo cần
+tránh copy hai lần cùng một GLB sang các thư mục public khác nhau.
 
 Tổng cộng: 78 file model (3,50 MB) + 16 texture (0,55 MB) + file này = 4,05 MB.
 
