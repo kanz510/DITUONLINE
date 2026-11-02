@@ -7,8 +7,15 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="manifest" href="./manifest.webmanifest" />
     <title>ĐI TÙ ONLINE — Trại giam An Phú</title>
+    <script>
+      // Fallback: nếu GitHub Pages đang cấu hình deploy từ nhánh main root thay vì GitHub Actions dist
+      if (!document.querySelector('script[src*="assets/"]') && location.hostname.endsWith('github.io') && (location.pathname.endsWith('/DITUONLINE/') || location.pathname.endsWith('/DITUONLINE/index.html'))) {
+        // Chuyển hướng an toàn vào bản build dist để không bị màn hình trắng
+        location.replace('./dist/');
+      }
+    </script>
   </head>
   <body>
     <canvas id="game-canvas"></canvas>

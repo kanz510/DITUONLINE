@@ -9,6 +9,7 @@ import type { DNode } from '../data/dialogues';
 import { BUILDINGS, ZONES, zoneName } from '../world/layout';
 import type { NpcActor } from '../actors/npc';
 import type { SoundEngine } from '../core/audio';
+import { getReleaseInfo, type AppReleaseInfo } from '../version';
 
 export interface PromptTarget {
   id: string;
@@ -29,6 +30,7 @@ export class UIManager {
   joyKnob!: HTMLElement;
   btnInteract!: HTMLButtonElement;
   btnSprint!: HTMLElement;
+  releaseInfo: AppReleaseInfo = getReleaseInfo();
   private clockEl!: HTMLElement;
   private questBarEl!: HTMLElement;
   private sentenceEl!: HTMLElement;
@@ -102,6 +104,7 @@ export class UIManager {
         <div class="hud-right">
           <div class="hud-action-row interactive">
             <div class="sentence-tag" id="hud-sentence">Án: 30n</div>
+            <div class="version-tag" id="hud-version" title="Phiên bản trò chơi">v${this.releaseInfo.version}-${this.releaseInfo.buildHash.slice(0, 6)}</div>
             <button class="btn" id="btn-fullscreen" title="Toàn màn hình">⛶</button>
             <button class="btn" id="btn-bag">${isTouch ? '🎒 Túi' : '🎒 Túi (B)'}</button>
             <button class="btn btn-accent" id="btn-menu">${isTouch ? '☰ Menu' : '☰ Menu (Esc)'}</button>
@@ -201,6 +204,15 @@ export class UIManager {
     this.toastsEl.appendChild(d);
     while (this.toastsEl.children.length > 2) this.toastsEl.firstElementChild?.remove();
     setTimeout(() => d.remove(), 3200);
+  }
+
+  updateReleaseInfo(rel: AppReleaseInfo) {
+    this.releaseInfo = rel;
+    const shortHash = rel.buildHash.slice(0, 6);
+    const vEl = this.root.querySelector('#hud-version');
+    if (vEl) vEl.textContent = `v${rel.version}-${shortHash}`;
+    const mEl = this.root.querySelector('#menu-build-tag');
+    if (mEl) mEl.textContent = `v${rel.version} (${rel.buildHash.slice(0, 7)}) • M${rel.milestone}`;
   }
 
   updateHUD(
@@ -354,7 +366,8 @@ export class UIManager {
           <span>Cài đặt & Âm thanh</span>
         </button>
       </div>
-      <div style="text-align:right;margin-top:14px">
+      <div class="menu-footer-bar" style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08);font-size:11px;color:#94a3b8">
+        <span id="menu-build-tag">v${this.releaseInfo.version} (${this.releaseInfo.buildHash.slice(0, 7)}) • M${this.releaseInfo.milestone}</span>
         <button class="btn btn-accent" data-close>Đóng Menu</button>
       </div>
     `,

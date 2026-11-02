@@ -15,6 +15,7 @@ import { NpcActor } from './actors/npc';
 import { InputController, ThirdPersonCamera } from './core/controls';
 import { SoundEngine } from './core/audio';
 import { UIManager, type PromptTarget } from './ui/manager';
+import { fetchLiveRelease } from './version';
 
 class App {
   renderer!: THREE.WebGLRenderer;
@@ -88,6 +89,8 @@ class App {
         this.sfx.volume = this.g.s.settings.volume;
       },
     });
+
+    fetchLiveRelease().then((rel) => this.ui.updateReleaseInfo(rel));
 
     this.bindEvents();
     this.input.bind(canvas, this.ui.joyZone, this.ui.joyKnob);
@@ -686,3 +689,23 @@ class App {
 }
 
 new App().init();
+
+// Đăng ký Service Worker cho PWA & cache offline
+if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').then((reg) => {
+      reg.addEventListener('updatefound', () => {
+        const inst = reg.installing;
+        if (inst) {
+          inst.addEventListener('statechange', () => {
+            if (inst.state === 'installed' && navigator.serviceWorker.controller) {
+              console.log('[SW] Bản cập nhật mới đã sẵn sàng.');
+            }
+          });
+        }
+      });
+    }).catch((err) => {
+      console.warn('[SW] Không thể đăng ký Service Worker:', err);
+    });
+  });
+}

@@ -216,6 +216,8 @@ test('trải nghiệm điện thoại: xoay dọc/ngang, HUD gọn không đè, 
   await expect(page.locator('#hud-clock')).toBeVisible();
   await expect(page.locator('#hud-quest-bar')).toBeVisible();
   await expect(page.locator('#hud-sentence')).toBeVisible();
+  await expect(page.locator('#hud-version')).toBeVisible();
+  await expect(page.locator('#hud-version')).toContainText('v0.2.0');
   await expect(page.locator('#btn-fullscreen')).toBeVisible();
   await expect(page.locator('#btn-menu')).toBeVisible();
   await expect(page.locator('#hud-stats-mini')).toBeVisible();
@@ -229,6 +231,7 @@ test('trải nghiệm điện thoại: xoay dọc/ngang, HUD gọn không đè, 
   // 4. Mở menu trung tâm
   await page.locator('#btn-menu').click();
   await expect(page.locator('.modal h2')).toContainText('MENU TRÒ CHƠI');
+  await expect(page.locator('#menu-build-tag')).toContainText('v0.2.0');
   await expect(page.locator('.menu-card-btn')).toHaveCount(7);
   // Đóng menu
   await page.locator('.modal [data-close]').click();
