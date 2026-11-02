@@ -237,22 +237,25 @@ test('trải nghiệm điện thoại: xoay dọc/ngang, HUD gọn không đè, 
   await expect(page.locator('#hud-clock')).toBeVisible();
   await expect(page.locator('#hud-quest-bar')).toBeVisible();
   await expect(page.locator('#hud-sentence')).toBeVisible();
-  await expect(page.locator('#hud-version')).toBeVisible();
-  await expect(page.locator('#hud-version')).toContainText('v0.3.0');
+  // Nút icon SVG với kích thước chạm >= 44px và nhãn hỗ trợ truy cập
   await expect(page.locator('#btn-fullscreen')).toBeVisible();
+  await expect(page.locator('#btn-bag')).toBeVisible();
   await expect(page.locator('#btn-menu')).toBeVisible();
+  await expect(page.locator('#btn-bag')).toHaveAttribute('aria-label', 'Túi đồ');
+  await expect(page.locator('#btn-menu')).toHaveAttribute('aria-label', 'Menu trò chơi');
+
+  const bagBox = await page.locator('#btn-bag').boundingBox();
+  expect(bagBox?.width).toBeGreaterThanOrEqual(44);
+  expect(bagBox?.height).toBeGreaterThanOrEqual(44);
+
   await expect(page.locator('#hud-stats-mini')).toBeVisible();
   await expect(page.locator('#joy-zone')).toBeVisible();
   await expect(page.locator('#btn-interact')).toBeVisible();
 
-  // Kiểm tra không còn nhãn phím tắt trên touch
-  await expect(page.locator('#btn-bag')).toHaveText('🎒 Túi');
-  await expect(page.locator('#btn-menu')).toHaveText('☰ Menu');
-
-  // 4. Mở menu trung tâm
+  // 4. Mở menu trung tâm (mã phiên bản được đưa vào trong Menu)
   await page.locator('#btn-menu').click();
   await expect(page.locator('.modal h2')).toContainText('MENU TRÒ CHƠI');
-  await expect(page.locator('#menu-build-tag')).toContainText('v0.3.0');
+  await expect(page.locator('#menu-build-tag')).toContainText('v0.4.0');
   await expect(page.locator('.menu-card-btn')).toHaveCount(8);
   // Đóng menu
   await page.locator('.modal [data-close]').click();
@@ -263,10 +266,15 @@ test('trải nghiệm điện thoại: xoay dọc/ngang, HUD gọn không đè, 
   await expect(page.locator('.modal h2')).toContainText('MỤC TIÊU & NHIỆM VỤ');
   await page.locator('.modal [data-close]').click();
 
-  // 6. Mở chi tiết chỉ số khi chạm thanh stats mini
+  // 6. Mở chi tiết chỉ số khi chạm thanh stats mini (thống nhất 0-100: Độ no & Tinh thần)
   await page.locator('#hud-stats-mini').click();
   await expect(page.locator('.modal h2')).toContainText('CHỈ SỐ SINH HOẠT');
+  await expect(page.locator('.modal')).toContainText('Độ no');
+  await expect(page.locator('.modal')).toContainText('Tinh thần');
   await page.locator('.modal [data-close]').click();
+
+  // Kiểm tra Minimap 2D cố định hướng Bắc
+  await expect(page.locator('#minimap-canvas')).toBeVisible();
 
   // 7. Chụp screenshot tại 4 vị trí kiểm tra theo yêu cầu:
   // Vị trí 1: Khu buồng giam (cellblock)

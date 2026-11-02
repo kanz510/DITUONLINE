@@ -1,4 +1,4 @@
-import { SAVE_VERSION, createInitialState, type CharacterProfile, type GameState, type Progression } from './state';
+import { SAVE_VERSION, createInitialState, createStats, type CharacterProfile, type GameState, type Progression } from './state';
 import { START_SENTENCE } from './constants';
 
 export const SAVE_KEY = 'ditu-online.save';
@@ -77,13 +77,33 @@ export function migrate(raw: any, storage?: StorageLike | null): GameState | nul
       : (st.sentence?.remaining ?? START_SENTENCE),
   };
 
+  // Migration chỉ số (v2 -> v3): độ no = 100 - hunger, tinh thần = 100 - stress
+  let stats = { ...def.stats, ...st.stats };
+  if (v < 3) {
+    const rawSt = st.stats || {};
+    const hungerVal = typeof rawSt.hunger === 'number' ? rawSt.hunger : 35;
+    const stressVal = typeof rawSt.stress === 'number' ? rawSt.stress : 45;
+    const satiety = typeof rawSt.satiety === 'number' ? rawSt.satiety : Math.max(0, Math.min(100, 100 - hungerVal));
+    const morale = typeof rawSt.morale === 'number' ? rawSt.morale : Math.max(0, Math.min(100, 100 - stressVal));
+    stats = {
+      ...stats,
+      health: rawSt.health ?? def.stats.health,
+      stamina: rawSt.stamina ?? def.stats.stamina,
+      satiety,
+      morale,
+      money: rawSt.money ?? def.stats.money,
+      reform: rawSt.reform ?? def.stats.reform,
+      suspicion: rawSt.suspicion ?? def.stats.suspicion,
+    };
+  }
+
   const merged: GameState = {
     ...def,
     ...st,
     profile,
     progression,
     sentence,
-    stats: { ...def.stats, ...st.stats },
+    stats: createStats(stats),
     skills: { ...def.skills, ...st.skills },
     settings: { ...def.settings, ...st.settings },
     relations: { ...def.relations, ...st.relations },

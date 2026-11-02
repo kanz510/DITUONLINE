@@ -7,7 +7,7 @@ import { createInitialState, type NpcId } from './logic/state';
 import { NPCS } from './data/npcs';
 import { VIOLATIONS } from './data/violations';
 import { buildDialogue } from './data/dialogues';
-import { DOORS, NODES, SPOTS, ZONES, inBox, zonesAt } from './world/layout';
+import { DOORS, NODES, SPOTS, ZONES, inBox, zonesAt, type Box } from './world/layout';
 import { findPath, nearestNode } from './world/nav';
 import { PrisonWorld } from './world/builder';
 import { HumanoidRig } from './actors/humanoid';
@@ -15,8 +15,47 @@ import { NpcActor } from './actors/npc';
 import { InputController, ThirdPersonCamera } from './core/controls';
 import { SoundEngine } from './core/audio';
 import { CutsceneController } from './core/cutscene';
-import { UIManager, type PromptTarget } from './ui/manager';
+import { UIManager, type PromptTarget, type GuideTarget } from './ui/manager';
 import { fetchLiveRelease } from './version';
+
+const AREA_EXIT_MAP: Record<string, { doorId: string; name: string; safeNode: [number, number]; insideBox: Box }> = {
+  workshop: {
+    doorId: 'door_workshop',
+    name: 'Xưởng lao động',
+    safeNode: [10.5, -2.75],
+    insideBox: { x1: 12, z1: -12, x2: 28, z2: 8 },
+  },
+  mess: {
+    doorId: 'door_mess',
+    name: 'Nhà ăn',
+    safeNode: [6.25, -16.5],
+    insideBox: { x1: -2, z1: -32, x2: 16, z2: -18 },
+  },
+  medical: {
+    doorId: 'door_medical',
+    name: 'Phòng y tế',
+    safeNode: [22.25, -16.5],
+    insideBox: { x1: 18, z1: -32, x2: 28, z2: -18 },
+  },
+  classroom: {
+    doorId: 'door_classroom',
+    name: 'Lớp học nghề',
+    safeNode: [-20.75, 8.5],
+    insideBox: { x1: -28, z1: 10, x2: -15, z2: 20 },
+  },
+  visitation: {
+    doorId: 'door_visitation',
+    name: 'Phòng thăm gặp',
+    safeNode: [-18.5, -10.25],
+    insideBox: { x1: -28, z1: -15, x2: -20, z2: -4 },
+  },
+  discipline: {
+    doorId: 'door_discipline',
+    name: 'Khu kỷ luật',
+    safeNode: [10, 8.5],
+    insideBox: { x1: 6, z1: 10, x2: 14, z2: 20 },
+  },
+};
 
 class App {
   renderer!: THREE.WebGLRenderer;
@@ -31,6 +70,16 @@ class App {
   playerRig!: HumanoidRig;
   npcs: Record<NpcId, NpcActor> = {} as Record<NpcId, NpcActor>;
   resting = false;
+  tempUnlockedDoors = new Set<string>();
+  private isEscorting = false;
+  private escortTimer = 0;
+  private escortTargetArea: string | null = null;
+  private lastWarningMinute = -1;
+  private autoWalking = false;
+  private autoWalkTargetName = '';
+  private autoWalkWaypoints: [number, number][] = [];
+  private autoWalkIndex = 0;
+  private autoWalkIsLocked = false;
   private restrictedEpisode = 0;
   private wasInStorage = false;
   private currentPrompt: PromptTarget | null = null;
@@ -42,14 +91,9 @@ class App {
     const loaded = this.saves.load();
     this.g = new GameLogic(loaded ?? createInitialState());
     if (this.g.qStatus('nhap_trai') === 'locked') this.g.startQuest('nhap_trai');
+    this.checkStartupLockout();
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    this.renderer.setSize(window.innerWidth, window.innerHeight, true);
-    canvas.style.width = '100vw';
-    canvas.style.height = '100vh';
-    canvas.style.width = '100dvw';
-    canvas.style.height = '100dvh';
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.world = new PrisonWorld();
@@ -78,7 +122,7 @@ class App {
       this.world.scene.add(a.rig.root);
     }
 
-    this.world.collision.dynamic = () => this.world.updateDoors((area) => this.g.isOpen(area));
+    this.world.collision.dynamic = () => this.world.updateDoors((area) => this.isDoorPassable(area));
 
     this.ui = new UIManager(uiRoot, this.g, this.sfx, {
       npcs: () => this.npcs,
@@ -122,6 +166,12 @@ class App {
           this.ui.toast('Không tìm thấy bản sao lưu hợp lệ.', 'warn');
         }
       },
+      onAutoWalk: (tx, tz, isLocked, safeX, safeZ, targetName) => {
+        this.startAutoWalk(tx, tz, isLocked, safeX, safeZ, targetName);
+      },
+      onCancelAutoWalk: () => {
+        this.cancelAutoWalk(true);
+      },
     });
 
     fetchLiveRelease().then((rel) => this.ui.updateReleaseInfo(rel));
@@ -154,15 +204,15 @@ class App {
     const onResize = () => {
       const w = Math.max(window.innerWidth, document.documentElement.clientWidth || 0);
       const h = Math.max(window.innerHeight, document.documentElement.clientHeight || 0);
-      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-      this.renderer.setSize(w, h, true);
-      canvas.style.width = '100vw';
-      canvas.style.height = '100vh';
-      canvas.style.width = '100dvw';
-      canvas.style.height = '100dvh';
+      const pr = Math.min(window.devicePixelRatio || 1, 2);
+      this.renderer.setPixelRatio(pr);
+      this.renderer.setSize(w, h, false);
+      canvas.style.removeProperty('width');
+      canvas.style.removeProperty('height');
       this.tpCam.cam.aspect = w / h;
       this.tpCam.cam.updateProjectionMatrix();
       this.input.reset();
+      this.ui.checkOrientation();
     };
     window.addEventListener('resize', onResize);
     window.addEventListener('orientationchange', () => {
@@ -289,6 +339,200 @@ class App {
     this.playerRig.root.rotation.y = p.rot;
   }
 
+  isDoorPassable(area: string): boolean {
+    return this.g.isOpen(area) || this.tempUnlockedDoors.has(area);
+  }
+
+  private checkStartupLockout() {
+    const p = this.g.s.player;
+    for (const [area, info] of Object.entries(AREA_EXIT_MAP)) {
+      if (!this.g.isOpen(area) && inBox(info.insideBox, p.x, p.z)) {
+        p.x = info.safeNode[0];
+        p.z = info.safeNode[1];
+        this.ui.toast(`Đã đưa bạn ra ngoài sân trại do ${info.name} hiện đang đóng cửa theo lịch.`, 'info');
+        break;
+      }
+    }
+  }
+
+  private startAutoWalk(tx: number, tz: number, isLocked?: boolean, safeX?: number, safeZ?: number, targetName?: string) {
+    if (this.isEscorting) return;
+    const destX = isLocked && safeX !== undefined ? safeX : tx;
+    const destZ = isLocked && safeZ !== undefined ? safeZ : tz;
+    const p = this.g.s.player;
+
+    const pNode = nearestNode(p.x, p.z);
+    const tNode = nearestNode(destX, destZ);
+    const path = findPath(pNode, tNode);
+    if (!path || path.length === 0) {
+      this.ui.toast('Không tìm được đường đi hợp lệ đến mục tiêu.', 'warn');
+      return;
+    }
+
+    const waypoints: [number, number][] = [];
+    for (const nid of path) {
+      waypoints.push(NODES[nid]);
+    }
+    waypoints.push([destX, destZ]);
+
+    this.autoWalking = true;
+    this.autoWalkWaypoints = waypoints;
+    this.autoWalkIndex = 0;
+    this.autoWalkIsLocked = !!isLocked;
+    this.autoWalkTargetName = targetName || 'Mục tiêu';
+    this.ui.setAutoWalkState(true, this.autoWalkTargetName);
+    this.resting = false;
+  }
+
+  private cancelAutoWalk(notify = false) {
+    if (!this.autoWalking) return;
+    this.autoWalking = false;
+    this.autoWalkWaypoints = [];
+    this.autoWalkIndex = 0;
+    this.ui.setAutoWalkState(false);
+    if (notify) {
+      this.ui.toast('Đã dừng chế độ tự đi.', 'info');
+    }
+  }
+
+  private updateAutoWalk(dt: number) {
+    if (!this.autoWalking) return;
+    const p = this.g.s.player;
+    const wp = this.autoWalkWaypoints[this.autoWalkIndex];
+    if (!wp) {
+      this.cancelAutoWalk(false);
+      return;
+    }
+
+    const dx = wp[0] - p.x;
+    const dz = wp[1] - p.z;
+    const d = Math.hypot(dx, dz);
+
+    const isLast = this.autoWalkIndex >= this.autoWalkWaypoints.length - 1;
+    const arriveDist = isLast ? 1.6 : 0.8;
+
+    if (d <= arriveDist) {
+      if (isLast) {
+        this.cancelAutoWalk(false);
+        this.sfx.good();
+        if (this.autoWalkIsLocked) {
+          this.ui.toast(`Đã đến điểm chờ an toàn ngoài cửa. Khu vực hiện đang đóng.`, 'info');
+        } else {
+          this.ui.toast(`Đã đến gần ${this.autoWalkTargetName}.`, 'good');
+        }
+        return;
+      }
+      this.autoWalkIndex++;
+      return;
+    }
+
+    const speed = 3.7;
+    const dirX = dx / d;
+    const dirZ = dz / d;
+    const [nx, nz] = this.world.collision.move(p.x, p.z, dirX * speed * dt, dirZ * speed * dt, 0.36);
+    p.x = nx;
+    p.z = nz;
+    p.rot = Math.atan2(dirX, dirZ);
+    this.sfx.step(dt, false);
+    this.playerRig.pose = 'walk';
+    this.playerRig.update(dt, speed);
+    this.playerRig.root.position.set(p.x, 0, p.z);
+    this.playerRig.root.rotation.y = p.rot;
+  }
+
+  private checkAreaLockoutsAndWarnings() {
+    if (this.isEscorting) return;
+    const curMin = this.g.s.minute;
+    const p = this.g.s.player;
+
+    // Cảnh báo trước 15 phút khi khu vực sắp đóng cửa
+    if (curMin !== this.lastWarningMinute) {
+      for (const [area, info] of Object.entries(AREA_EXIT_MAP)) {
+        const openNow = this.g.isOpen(area);
+        const openIn15 = this.g.isOpenAt(area, curMin + 15);
+        if (openNow && !openIn15 && inBox(info.insideBox, p.x, p.z)) {
+          this.ui.toast(`⚠️ Chú ý: ${info.name} sẽ đóng cửa trong 15 phút nữa! Vui lòng hoàn thành công việc và rời khu vực.`, 'warn');
+          this.lastWarningMinute = curMin;
+          break;
+        }
+      }
+    }
+
+    // Nếu khu vực đã đóng cửa mà người chơi vẫn còn bên trong -> Quản giáo Tùng đến áp giải ra ngoài
+    for (const [area, info] of Object.entries(AREA_EXIT_MAP)) {
+      if (!this.g.isOpen(area) && inBox(info.insideBox, p.x, p.z)) {
+        this.startEscort(area, info);
+        break;
+      }
+    }
+  }
+
+  private startEscort(area: string, info: typeof AREA_EXIT_MAP[string]) {
+    this.cancelAutoWalk(false);
+    this.isEscorting = true;
+    this.escortTimer = 0;
+    this.escortTargetArea = area;
+    this.tempUnlockedDoors.add(area);
+
+    // Di chuyển cán bộ Tùng đến ngay gần người chơi
+    const tung = this.npcs.tung;
+    tung.moveTo(this.g.s.player.x + 1.2, this.g.s.player.z, this.g.s.player.rot);
+    tung.state = 'walk';
+
+    this.sfx.bell();
+    this.ui.toast(`👮 Cán bộ Tùng: Hết giờ quy định rồi, ${info.name} đang đóng cửa! Theo tôi ra sân trại ngay!`, 'bad');
+  }
+
+  private updateEscort(dt: number) {
+    if (!this.isEscorting || !this.escortTargetArea) return;
+    this.escortTimer += dt;
+    const info = AREA_EXIT_MAP[this.escortTargetArea];
+    if (!info) {
+      this.isEscorting = false;
+      return;
+    }
+
+    const p = this.g.s.player;
+    const [destX, destZ] = info.safeNode;
+    const dx = destX - p.x;
+    const dz = destZ - p.z;
+    const d = Math.hypot(dx, dz);
+
+    // Đi cùng cán bộ Tùng ra ngoài điểm an toàn, fallback timeout 5.2s
+    if (d < 1.0 || this.escortTimer >= 5.2) {
+      p.x = destX;
+      p.z = destZ;
+      this.tempUnlockedDoors.delete(this.escortTargetArea);
+      this.isEscorting = false;
+      this.escortTargetArea = null;
+
+      // Phạt nhẹ 1 lần duy nhất, không ngất
+      this.g.recordViolation('disobedience', `escort-${this.g.s.day}-${this.g.s.minute}`, `Không chấp hành hiệu lệnh rời ${info.name} đúng giờ quy định.`);
+      this.ui.toast(`Đã áp giải ra sân trại an toàn. Cửa ${info.name} đã được khóa lại.`, 'info');
+
+      const tung = this.npcs.tung;
+      tung.snapToSchedule(this.g.s.minute);
+      return;
+    }
+
+    const speed = 3.6;
+    const dirX = dx / d;
+    const dirZ = dz / d;
+    p.x += dirX * speed * dt;
+    p.z += dirZ * speed * dt;
+    p.rot = Math.atan2(dirX, dirZ);
+
+    const tung = this.npcs.tung;
+    tung.moveTo(p.x + dirZ * 1.0, p.z - dirX * 1.0, p.rot);
+    tung.rig.pose = 'walk';
+    tung.rig.update(dt, speed);
+
+    this.playerRig.pose = 'walk';
+    this.playerRig.update(dt, speed);
+    this.playerRig.root.position.set(p.x, 0, p.z);
+    this.playerRig.root.rotation.y = p.rot;
+  }
+
   private step(dt: number) {
     if (this.cutscene.isActive()) {
       this.cutscene.update(dt);
@@ -301,38 +545,53 @@ class App {
     if (!this.ui.paused) {
       const mv = this.input.moveVector();
       const moving = Math.hypot(mv.fwd, mv.right) > 0.05;
-      if (moving) this.resting = false;
-      const canSprint = mv.sprint && this.g.s.stats.stamina > 5;
-      const speed = moving ? (canSprint ? 5.8 : 3.7) : 0;
-
       if (moving) {
-        const sin = Math.sin(this.input.yaw);
-        const cos = Math.cos(this.input.yaw);
-        const wx = -sin * mv.fwd + cos * mv.right;
-        const wz = -cos * mv.fwd - sin * mv.right;
-        const [nx, nz] = this.world.collision.move(p.x, p.z, wx * speed * dt, wz * speed * dt, 0.36);
-        p.x = nx;
-        p.z = nz;
-        p.rot = Math.atan2(wx, wz);
-        this.sfx.step(dt, canSprint);
+        this.resting = false;
+        if (this.autoWalking) this.cancelAutoWalk(false);
       }
 
-      this.playerRig.pose = this.resting ? 'sit' : moving ? 'walk' : 'stand';
-      this.playerRig.update(dt, speed);
-      this.playerRig.root.position.set(p.x, 0, p.z);
-      this.playerRig.root.rotation.y = p.rot;
+      if (this.isEscorting) {
+        this.updateEscort(dt);
+      } else if (this.autoWalking) {
+        this.updateAutoWalk(dt);
+      } else {
+        const canSprint = mv.sprint && this.g.s.stats.stamina > 5;
+        const speed = moving ? (canSprint ? 5.8 : 3.7) : 0;
+
+        if (moving) {
+          const sin = Math.sin(this.input.yaw);
+          const cos = Math.cos(this.input.yaw);
+          const wx = -sin * mv.fwd + cos * mv.right;
+          const wz = -cos * mv.fwd - sin * mv.right;
+          const [nx, nz] = this.world.collision.move(p.x, p.z, wx * speed * dt, wz * speed * dt, 0.36);
+          p.x = nx;
+          p.z = nz;
+          p.rot = Math.atan2(wx, wz);
+          this.sfx.step(dt, canSprint);
+        }
+
+        this.playerRig.pose = this.resting ? 'sit' : moving ? 'walk' : 'stand';
+        this.playerRig.update(dt, speed);
+        this.playerRig.root.position.set(p.x, 0, p.z);
+        this.playerRig.root.rotation.y = p.rot;
+      }
 
       for (const id of Object.keys(this.npcs) as NpcId[]) {
         const a = this.npcs[id];
-        a.update(dt, this.g.s.minute);
+        if (id === 'tung' && this.isEscorting) {
+          // Tùng đã được cập nhật qua updateEscort
+        } else {
+          a.update(dt, this.g.s.minute);
+        }
         if (a.rig.labelSprite) {
           const d = Math.hypot(a.x - p.x, a.z - p.z);
           a.rig.labelSprite.visible = d < 8.0;
         }
       }
 
-      this.g.tick(dt, this.tickCtx(moving, moving && canSprint));
+      this.g.tick(dt, this.tickCtx(moving || this.autoWalking, moving && mv.sprint));
       this.checkRestrictedZone();
+      this.checkAreaLockoutsAndWarnings();
     } else {
       this.input.reset();
       this.playerRig.pose = 'stand';
@@ -616,22 +875,44 @@ class App {
   }
 
   /** Điều hướng thông minh qua cửa & hành lang bằng đồ thị A* pathfinding (không trỏ xuyên tường). */
-  private guideTo(label: string, tx: number, tz: number, isDuty: boolean): { label: string; dist: number; angle: number; isDuty: boolean } {
+  private guideTo(
+    label: string,
+    tx: number,
+    tz: number,
+    isDuty: boolean,
+    details?: {
+      questTitle?: string;
+      stepDesc?: string;
+      progress?: string;
+      targetName?: string;
+      openCondition?: string;
+      isLocked?: boolean;
+      safeX?: number;
+      safeZ?: number;
+    },
+  ): GuideTarget {
     const p = this.g.s.player;
     const directD = Math.hypot(tx - p.x, tz - p.z);
     const pZones = zonesAt(p.x, p.z);
     const tZones = zonesAt(tx, tz);
     const sameZone = pZones.length > 0 && tZones.length > 0 && pZones.some((z) => tZones.includes(z));
 
+    const route: [number, number][] = [];
+
     // Nếu rất gần hoặc ở cùng khu vực mở: trỏ trực tiếp
     if (directD < 2.0 || (directD < 3.8 && sameZone)) {
       const dx = tx - p.x;
       const dz = tz - p.z;
+      route.push([tx, tz]);
       return {
         label,
         dist: directD,
         angle: Math.atan2(dx, -dz) - this.input.yaw,
         isDuty,
+        tx,
+        tz,
+        route,
+        ...details,
       };
     }
 
@@ -653,11 +934,15 @@ class App {
 
     let totalDist = Math.hypot(targetDx, targetDz);
     const startIdx = Math.max(0, path.indexOf(nextNodeId));
-    for (let i = startIdx; i < path.length - 1; i++) {
-      const [ax, az] = NODES[path[i]];
-      const [bx, bz] = NODES[path[i + 1]];
-      totalDist += Math.hypot(ax - bx, az - bz);
+    for (let i = startIdx; i < path.length; i++) {
+      const pt = NODES[path[i]];
+      route.push([pt[0], pt[1]]);
+      if (i < path.length - 1) {
+        const nextPt = NODES[path[i + 1]];
+        totalDist += Math.hypot(pt[0] - nextPt[0], pt[1] - nextPt[1]);
+      }
     }
+    route.push([tx, tz]);
     const [lastX, lastZ] = NODES[path[path.length - 1]];
     totalDist += Math.hypot(tx - lastX, tz - lastZ);
 
@@ -666,33 +951,71 @@ class App {
       dist: totalDist,
       angle: Math.atan2(targetDx, -targetDz) - this.input.yaw,
       isDuty,
+      tx,
+      tz,
+      route,
+      ...details,
     };
   }
 
-  /** Tìm mục tiêu tiếp theo để vẽ mũi tên chỉ đường trên HUD (phân biệt nghĩa vụ vs nhiệm vụ). */
-  private computeGuide(): { label: string; dist: number; angle: number; isDuty?: boolean } | null {
+  /** Tìm mục tiêu tiếp theo để vẽ mũi tên chỉ đường trên HUD & Minimap 2D (phân biệt nghĩa vụ vs nhiệm vụ). */
+  private computeGuide(): GuideTarget | null {
     const g = this.g;
     const p = g.s.player;
     const curBlock = blockAt(g.s.minute);
 
     // 1. ƯU TIÊN NGHĨA VỤ LỊCH TRÌNH BẮT BUỘC (chỉ hiện 1 mục tiêu duy nhất)
     if (curBlock.id === 'rollcall' && g.s.daily.rollcall === 'pending') {
-      return this.guideTo('Ô điểm danh sáng sân trại', -9, -9, true);
+      return this.guideTo('Ô điểm danh sáng sân trại', -9, -9, true, {
+        questTitle: 'Điểm danh sáng',
+        stepDesc: 'Có mặt tại ô vàng ngoài sân trại trước 06:45 để cán bộ Tùng điểm danh.',
+        progress: 'Chờ điểm danh',
+        targetName: 'Ô điểm danh',
+        safeX: -9,
+        safeZ: -9,
+      });
     }
 
     if (curBlock.id === 'work') {
       if (!g.s.daily.workClockedIn) {
-        return this.guideTo('Bảng chấm công xưởng (trước 08:30)', 13.1, -6, true);
+        const openWs = g.isOpen('workshop');
+        return this.guideTo('Bảng chấm công xưởng (trước 08:30)', 13.1, -6, true, {
+          questTitle: 'Lao động ca sáng',
+          stepDesc: 'Đến xưởng lao động bấm bảng chấm công trước 08:30.',
+          progress: 'Chưa bấm thẻ',
+          targetName: 'Bảng chấm công',
+          safeX: 10.5,
+          safeZ: -2.75,
+          isLocked: !openWs,
+          openCondition: 'Mở cửa 08:00–11:30',
+        });
       }
       if (g.s.daily.workUnits === 0) {
-        return this.guideTo('Bàn xưởng: hoàn thành ca lao động sáng', 16, 0.15, true);
+        const openWs = g.isOpen('workshop');
+        return this.guideTo('Bàn xưởng: hoàn thành ca lao động sáng', 16, 0.15, true, {
+          questTitle: 'Lao động ca sáng',
+          stepDesc: 'Lắp ráp đủ 3 ổ cắm điện tại bàn xưởng.',
+          progress: `${g.s.daily.workUnits}/3 ổ cắm`,
+          targetName: 'Bàn xưởng',
+          safeX: 10.5,
+          safeZ: -2.75,
+          isLocked: !openWs,
+          openCondition: 'Mở cửa 08:00–11:30',
+        });
       }
     }
 
     if (curBlock.id === 'curfew') {
       const inCell = zonesAt(p.x, p.z).includes('cellblock');
       if (!inCell) {
-        return this.guideTo('Về buồng giam 3 điểm danh tối & ngủ', -14.9, -28.6, true);
+        return this.guideTo('Về buồng giam 3 điểm danh tối & ngủ', -14.9, -28.6, true, {
+          questTitle: 'Giới nghiêm buổi tối',
+          stepDesc: 'Đúng 21:00 phải có mặt tại buồng giam số 3 để kiểm tra quân số và ngủ.',
+          progress: 'Về buồng ngủ',
+          targetName: 'Buồng giam số 3',
+          safeX: -17,
+          safeZ: -17.75,
+        });
       }
     }
 
@@ -700,6 +1023,7 @@ class App {
     let tx = 0;
     let tz = 0;
     let label = '';
+    let details: Parameters<typeof this.guideTo>[4] = {};
 
     const bayWhere = () => {
       if (curBlock.id === 'work') return 'Chú Bảy (Bàn xưởng #2)';
@@ -709,60 +1033,96 @@ class App {
     };
 
     if (g.qStatus('nhap_trai') === 'active') {
-      if (!g.qObj('nhap_trai', 'chan_man')) { tx = -14.9; tz = -28.6; label = 'Giường của bạn (Nhận chăn màn)'; }
-      else if (!g.qObj('nhap_trai', 'noi_quy')) { tx = -27.0; tz = -21.5; label = 'Bảng nội quy buồng giam'; }
-      else if (!g.qObj('nhap_trai', 'diem_danh')) { tx = -9; tz = -9; label = 'Ô điểm danh sáng sân trại'; }
-      else if (!g.qObj('nhap_trai', 'gap_bay')) {
+      if (!g.qObj('nhap_trai', 'chan_man')) {
+        tx = -14.9; tz = -28.6; label = 'Giường của bạn (Nhận chăn màn)';
+        details = { questTitle: 'Chương 1: Nhập trại', stepDesc: 'Đến giường của bạn (buồng số 3) nhận chăn màn & đồ cá nhân.', progress: '0/4', targetName: 'Giường của bạn' };
+      } else if (!g.qObj('nhap_trai', 'noi_quy')) {
+        tx = -27.0; tz = -21.5; label = 'Bảng nội quy buồng giam';
+        details = { questTitle: 'Chương 1: Nhập trại', stepDesc: 'Đọc kỹ bảng nội quy trại giam trên tường buồng A.', progress: '1/4', targetName: 'Bảng nội quy' };
+      } else if (!g.qObj('nhap_trai', 'diem_danh')) {
+        tx = -9; tz = -9; label = 'Ô điểm danh sáng sân trại';
+        details = { questTitle: 'Chương 1: Nhập trại', stepDesc: 'Có mặt điểm danh tại ô vàng ngoài sân trại (06:30–06:45).', progress: '2/4', targetName: 'Ô điểm danh' };
+      } else if (!g.qObj('nhap_trai', 'gap_bay')) {
         tx = this.npcs.bay.x; tz = this.npcs.bay.z;
         label = bayWhere();
+        details = { questTitle: 'Chương 1: Nhập trại', stepDesc: 'Gặp và làm quen Chú Bảy (bạn cùng buồng giam).', progress: '3/4', targetName: 'Chú Bảy' };
       }
     } else if (g.qStatus('ca_dau') === 'active') {
-      if (!g.qObj('ca_dau', 'cham_cong')) { tx = 13.1; tz = -6; label = 'Bảng chấm công xưởng'; }
-      else if (!g.qObj('ca_dau', 'lap_rap')) { tx = 16; tz = 0.15; label = 'Bàn lắp ráp linh kiện'; }
-      else { tx = this.npcs.bay.x; tz = this.npcs.bay.z; label = bayWhere(); }
+      const openWs = g.isOpen('workshop');
+      if (!g.qObj('ca_dau', 'cham_cong')) {
+        tx = 13.1; tz = -6; label = 'Bảng chấm công xưởng';
+        details = { questTitle: 'Nhiệm vụ: Ca đầu tiên', stepDesc: 'Bấm thẻ chấm công tại xưởng bắt đầu ca làm.', progress: '0/3', targetName: 'Bảng chấm công', safeX: 10.5, safeZ: -2.75, isLocked: !openWs, openCondition: '08:00–11:30' };
+      } else if (!g.qObj('ca_dau', 'lap_rap')) {
+        tx = 16; tz = 0.15; label = 'Bàn lắp ráp linh kiện';
+        details = { questTitle: 'Nhiệm vụ: Ca đầu tiên', stepDesc: 'Hoàn thành lắp ráp linh kiện đạt định mức.', progress: `${g.s.daily.workUnits}/3 ổ cắm`, targetName: 'Bàn xưởng', safeX: 10.5, safeZ: -2.75, isLocked: !openWs, openCondition: '08:00–11:30' };
+      } else {
+        tx = this.npcs.bay.x; tz = this.npcs.bay.z; label = bayWhere();
+        details = { questTitle: 'Nhiệm vụ: Ca đầu tiên', stepDesc: 'Báo cáo hoàn thành ca làm với Chú Bảy.', progress: '2/3', targetName: 'Chú Bảy' };
+      }
     } else if (g.qStatus('mon_no') === 'active') {
       const br = g.qBranch('mon_no');
-      if (!g.qObj('mon_no', 'nghe_huy')) { tx = this.npcs.huy.x; tz = this.npcs.huy.z; label = 'Huy (Buồng 3 / Sân)'; }
-      else if (!g.qObj('mon_no', 'gap_lam') || !br) { tx = this.npcs.lam.x; tz = this.npcs.lam.z; label = 'Lâm (Khu thể thao sân)'; }
-      else if (br === 'steal' && !g.qObj('mon_no', 'lay_khoan')) { tx = 26.2; tz = -5.2; label = 'Kệ kho xưởng (Lẻn lấy hộp khoan)'; }
-      else if (br === 'steal') { tx = this.npcs.lam.x; tz = this.npcs.lam.z; label = 'Lâm (Giao đồ)'; }
-      else if (br === 'pay') { tx = this.npcs.lam.x; tz = this.npcs.lam.z; label = 'Lâm (Trả 40.000đ)'; }
-      else if (br === 'report') { tx = this.npcs.lan.x; tz = this.npcs.lan.z; label = 'Quản giáo Lan (Báo cáo kèm vật chứng)'; }
+      if (!g.qObj('mon_no', 'nghe_huy')) {
+        tx = this.npcs.huy.x; tz = this.npcs.huy.z; label = 'Huy (Buồng 3 / Sân)';
+        details = { questTitle: 'Nhiệm vụ: Món nợ buồng 3', stepDesc: 'Nghe Huy tâm sự về áp lực nợ nần với Lâm.', progress: '0/3', targetName: 'Huy' };
+      } else if (!g.qObj('mon_no', 'gap_lam') || !br) {
+        tx = this.npcs.lam.x; tz = this.npcs.lam.z; label = 'Lâm (Khu thể thao sân)';
+        details = { questTitle: 'Nhiệm vụ: Món nợ buồng 3', stepDesc: 'Gặp Lâm tìm cách giải quyết món nợ.', progress: '1/3', targetName: 'Lâm' };
+      } else if (br === 'steal' && !g.qObj('mon_no', 'lay_khoan')) {
+        tx = 26.2; tz = -5.2; label = 'Kệ kho xưởng (Lẻn lấy hộp khoan)';
+        details = { questTitle: 'Nhiệm vụ: Món nợ buồng 3', stepDesc: 'Tránh camera kho, lấy trộm hộp mũi khoan cho Lâm.', progress: '2/3', targetName: 'Kệ kho xưởng', safeX: 20.6, safeZ: -7, isLocked: true, openCondition: 'Khu vực cấm camera' };
+      } else if (br === 'steal') {
+        tx = this.npcs.lam.x; tz = this.npcs.lam.z; label = 'Lâm (Giao đồ)';
+        details = { questTitle: 'Nhiệm vụ: Món nợ buồng 3', stepDesc: 'Giao hộp mũi khoan cho Lâm để xóa nợ cho Huy.', progress: '2/3', targetName: 'Lâm' };
+      } else if (br === 'pay') {
+        tx = this.npcs.lam.x; tz = this.npcs.lam.z; label = 'Lâm (Trả 40.000đ)';
+        details = { questTitle: 'Nhiệm vụ: Món nợ buồng 3', stepDesc: 'Trả tiền chuộc nợ cho Huy.', progress: '2/3', targetName: 'Lâm' };
+      } else if (br === 'report') {
+        tx = this.npcs.lan.x; tz = this.npcs.lan.z; label = 'Quản giáo Lan (Báo cáo kèm vật chứng)';
+        details = { questTitle: 'Nhiệm vụ: Món nợ buồng 3', stepDesc: 'Báo cáo hành vi bảo kê, cờ bạc cho Quản giáo Lan.', progress: '2/3', targetName: 'Quản giáo Lan' };
+      }
     } else if (g.qStatus('lop_nghe_dau') === 'active') {
       const openClass = g.isOpen('classroom');
       if (!g.qObj('lop_nghe_dau', 'den_lop')) {
         tx = this.npcs.phuc.x; tz = this.npcs.phuc.z;
         label = openClass ? 'Thầy Phúc (Lớp học nghề)' : 'Thầy Phúc (Lớp mở 14:00–16:30)';
+        details = { questTitle: 'Nhiệm vụ: Nghề tương lai', stepDesc: 'Đến lớp học nghề gặp Thầy Phúc.', progress: '0/3', targetName: 'Thầy Phúc', safeX: -20.75, safeZ: 8.5, isLocked: !openClass, openCondition: 'Mở cửa 14:00–16:30' };
       } else if (!g.qObj('lop_nghe_dau', 'thao_tac')) {
         tx = -21.5; tz = 13;
         label = openClass ? 'Bàn thực hành nối mạch' : 'Bàn thực hành (Mở 14:00–16:30)';
+        details = { questTitle: 'Nhiệm vụ: Nghề tương lai', stepDesc: 'Thực hành nối mạch an toàn tại bàn học.', progress: '1/3', targetName: 'Bàn thực hành', safeX: -20.75, safeZ: 8.5, isLocked: !openClass, openCondition: 'Mở cửa 14:00–16:30' };
       } else {
         tx = this.npcs.phuc.x; tz = this.npcs.phuc.z;
         label = 'Thầy Phúc (Nhận chứng chỉ)';
+        details = { questTitle: 'Nhiệm vụ: Nghề tương lai', stepDesc: 'Báo cáo bài tập với Thầy Phúc để nhận chứng nhận.', progress: '2/3', targetName: 'Thầy Phúc', safeX: -20.75, safeZ: 8.5, isLocked: !openClass, openCondition: 'Mở cửa 14:00–16:30' };
       }
     } else if (g.qStatus('nghi_an_thuoc') === 'active') {
       const openMed = g.isOpen('medical');
       if (!g.qObj('nghi_an_thuoc', 'hoi_an')) {
         tx = this.npcs.an.x; tz = this.npcs.an.z;
         label = openMed ? 'Y sĩ An (Phòng y tế)' : 'Y sĩ An (Mở 07:30–11:30 & 13:30–17:00)';
+        details = { questTitle: 'Nhiệm vụ: Nghi án lọ thuốc', stepDesc: 'Đến phòng y tế hỏi Y sĩ An về thuốc của Chú Bảy.', progress: '0/4', targetName: 'Y sĩ An', safeX: 22.25, safeZ: -16.5, isLocked: !openMed, openCondition: '07:30–11:30 & 13:30–17:00' };
       } else if (!g.qObj('nghi_an_thuoc', 'hoi_bay')) {
         tx = this.npcs.bay.x; tz = this.npcs.bay.z;
         label = bayWhere();
+        details = { questTitle: 'Nhiệm vụ: Nghi án lọ thuốc', stepDesc: 'Hỏi Chú Bảy về địa điểm làm rơi lọ thuốc.', progress: '1/4', targetName: 'Chú Bảy' };
       } else if (!g.qObj('nghi_an_thuoc', 'nhat_thuoc')) {
         tx = 22.5; tz = 13;
         label = 'Lọ thuốc rơi góc sau xưởng';
+        details = { questTitle: 'Nhiệm vụ: Nghi án lọ thuốc', stepDesc: 'Tìm nhặt lọ thuốc hen suyễn bị rơi góc sau xưởng.', progress: '2/4', targetName: 'Lọ thuốc hen' };
       } else {
         tx = this.npcs.an.x; tz = this.npcs.an.z;
         label = openMed ? 'Y sĩ An (Giao thuốc cứu chú Bảy)' : 'Y sĩ An (Phòng y tế)';
+        details = { questTitle: 'Nhiệm vụ: Nghi án lọ thuốc', stepDesc: 'Đem lọ thuốc về phòng y tế giao cho Y sĩ An.', progress: '3/4', targetName: 'Y sĩ An', safeX: 22.25, safeZ: -16.5, isLocked: !openMed, openCondition: '07:30–11:30 & 13:30–17:00' };
       }
     } else if (g.qStatus('phong_tham_gap') === 'active') {
       const openVisit = g.isOpen('visitation');
       tx = -22.5; tz = -8.8;
       label = openVisit ? 'Vách kính thăm gặp (Chị Mai)' : 'Phòng thăm gặp (Mở 08:30–11:00 & 14:00–16:30)';
+      details = { questTitle: 'Nhiệm vụ: Tiếng vọng gia đình', stepDesc: 'Vào phòng thăm gặp nhấc ống nghe trò chuyện với Chị Mai.', progress: 'Chờ gặp', targetName: 'Vách kính thăm gặp', safeX: -18.5, safeZ: -10.25, isLocked: !openVisit, openCondition: '08:30–11:00 & 14:00–16:30' };
     }
 
     if (!label) return null;
-    return this.guideTo(label, tx, tz, false);
+    return this.guideTo(label, tx, tz, false, details);
   }
 }
 

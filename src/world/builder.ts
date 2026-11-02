@@ -24,22 +24,36 @@ function checkerTex(c1: string, c2: string, cells = 8): THREE.CanvasTexture {
 
 function signTex(title: string, sub = '', bg = '#1e293b', fg = '#f8fafc'): THREE.CanvasTexture {
   const cv = document.createElement('canvas');
-  cv.width = 256;
-  cv.height = 128;
+  cv.width = 512;
+  cv.height = 256;
   const ctx = cv.getContext('2d')!;
   ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, 256, 128);
+  ctx.fillRect(0, 0, 512, 256);
   ctx.strokeStyle = '#f59e0b';
-  ctx.lineWidth = 6;
-  ctx.strokeRect(6, 6, 244, 116);
+  ctx.lineWidth = 10;
+  ctx.strokeRect(8, 8, 496, 240);
   ctx.fillStyle = fg;
-  ctx.font = 'bold 28px system-ui, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(title, 128, sub ? 54 : 72);
+  ctx.textBaseline = 'middle';
+
+  // Tự động co dãn cỡ chữ theo độ dài để tuyệt đối không tràn hay cắt chữ
+  let fontSize = sub ? 42 : 54;
+  ctx.font = `bold ${fontSize}px system-ui, sans-serif`;
+  while (fontSize > 18 && ctx.measureText(title).width > 470) {
+    fontSize -= 2;
+    ctx.font = `bold ${fontSize}px system-ui, sans-serif`;
+  }
+  ctx.fillText(title, 256, sub ? 96 : 128);
+
   if (sub) {
-    ctx.font = '20px system-ui, sans-serif';
+    let subSize = 26;
+    ctx.font = `600 ${subSize}px system-ui, sans-serif`;
+    while (subSize > 15 && ctx.measureText(sub).width > 470) {
+      subSize -= 1.5;
+      ctx.font = `600 ${subSize}px system-ui, sans-serif`;
+    }
     ctx.fillStyle = '#fde68a';
-    ctx.fillText(sub, 128, 92);
+    ctx.fillText(sub, 256, 168);
   }
   return new THREE.CanvasTexture(cv);
 }
@@ -432,31 +446,31 @@ export class PrisonWorld {
   }
 
   private buildSignsAndMarkers() {
-    const signs: { title: string; sub: string; x: number; y: number; z: number; ry?: number }[] = [
-      { title: 'KHU BUỒNG GIAM A', sub: 'Giờ về buồng: 21:00', x: -17, y: 3.05, z: -17.75, ry: 0 },
-      { title: 'NHÀ ĂN & CĂN TIN', sub: '07:00 · 11:30 · 16:30', x: 6.25, y: 3.05, z: -17.75, ry: 0 },
-      { title: 'XƯỞNG LAO ĐỘNG', sub: 'Ca sáng 08:00–11:30', x: 11.75, y: 3.05, z: -2.75, ry: -Math.PI / 2 },
-      { title: 'KHO VẬT TƯ — CẤM VÀO', sub: 'Khu vực có camera', x: 21.75, y: 3.05, z: -7.0, ry: -Math.PI / 2 },
-      { title: 'PHÒNG QUẢN GIÁO', sub: 'Tiếp nhận 07:00–17:00', x: -4, y: 3.05, z: 9.75, ry: Math.PI },
-      { title: 'PHÒNG Y TẾ', sub: '07:30–11:30 · 13:30–17:00', x: 22.25, y: 3.05, z: -17.75, ry: 0 },
-      { title: 'LỚP HỌC NGHỀ & THƯ VIỆN', sub: '14:00–16:30 · 19:00–21:00', x: -20.75, y: 3.05, z: 9.75, ry: Math.PI },
-      { title: 'PHÒNG THĂM GẶP', sub: 'Tiếp đón người nhà', x: -19.75, y: 3.05, z: -10.25, ry: Math.PI / 2 },
-      { title: 'KHU KỶ LUẬT', sub: 'Khu biệt giam', x: 10, y: 3.05, z: 9.75, ry: Math.PI },
+    const signs: { title: string; sub: string; x: number; y: number; z: number; ry: number }[] = [
+      { title: 'KHU BUỒNG GIAM A', sub: 'Giờ về buồng: 21:00', x: -17, y: 3.05, z: -17.78, ry: 0 },
+      { title: 'NHÀ ĂN & CĂN TIN', sub: '07:00 · 11:30 · 16:30', x: 6.25, y: 3.05, z: -17.78, ry: 0 },
+      { title: 'XƯỞNG LAO ĐỘNG', sub: 'Ca sáng 08:00–11:30', x: 11.78, y: 3.05, z: -2.75, ry: -Math.PI / 2 },
+      { title: 'KHO VẬT TƯ — CẤM VÀO', sub: 'Khu vực có camera', x: 21.78, y: 3.05, z: -7.0, ry: -Math.PI / 2 },
+      { title: 'PHÒNG QUẢN GIÁO', sub: 'Tiếp nhận 07:00–17:00', x: -4, y: 3.05, z: 9.78, ry: Math.PI },
+      { title: 'PHÒNG Y TẾ', sub: '07:30–11:30 · 13:30–17:00', x: 22.25, y: 3.05, z: -17.78, ry: 0 },
+      { title: 'LỚP HỌC NGHỀ & THƯ VIỆN', sub: '14:00–16:30 · 19:00–21:00', x: -20.75, y: 3.05, z: 9.78, ry: Math.PI },
+      { title: 'PHÒNG THĂM GẶP', sub: 'Tiếp đón người nhà', x: -19.78, y: 3.05, z: -10.25, ry: Math.PI / 2 },
+      { title: 'KHU KỶ LUẬT', sub: 'Khu biệt giam', x: 10, y: 3.05, z: 9.78, ry: Math.PI },
     ];
     for (const s of signs) {
       const isZ = s.ry === -Math.PI / 2 || s.ry === Math.PI / 2;
       const plate = new THREE.Mesh(
-        isZ ? new THREE.BoxGeometry(0.04, 0.40, 1.22) : new THREE.BoxGeometry(1.22, 0.40, 0.04),
+        isZ ? new THREE.BoxGeometry(0.04, 0.38, 1.20) : new THREE.BoxGeometry(1.20, 0.38, 0.04),
         new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.6 }),
       );
       plate.position.set(s.x, s.y, s.z);
       this.scene.add(plate);
 
       const m = new THREE.Mesh(
-        new THREE.PlaneGeometry(1.18, 0.36),
+        new THREE.PlaneGeometry(1.16, 0.34),
         new THREE.MeshBasicMaterial({ map: signTex(s.title, s.sub), side: THREE.DoubleSide }),
       );
-      const offset = 0.025;
+      const offset = 0.022;
       const px = s.x + (s.ry === -Math.PI / 2 ? -offset : s.ry === Math.PI / 2 ? offset : 0);
       const pz = s.z + (s.ry === 0 ? offset : s.ry === Math.PI ? -offset : 0);
       m.position.set(px, s.y, pz);

@@ -122,6 +122,13 @@ export class NpcActor {
     return !col.blocked(this.x, this.z, px, pz);
   }
 
+  moveTo(x: number, z: number, rot: number) {
+    this.x = x;
+    this.z = z;
+    this.rot = rot;
+    this.syncMesh();
+  }
+
   private syncMesh() {
     this.rig.root.position.set(this.x, 0, this.z);
     this.rig.root.rotation.y = this.rot;

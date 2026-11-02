@@ -10,7 +10,7 @@ import {
 import { ITEMS } from '../data/items';
 import { QUEST_ORDER, QUESTS } from '../data/quests';
 import type { DNode } from '../data/dialogues';
-import { BUILDINGS, zoneName } from '../world/layout';
+import { BUILDINGS, DOORS, zoneName } from '../world/layout';
 import type { NpcActor } from '../actors/npc';
 import type { SoundEngine } from '../core/audio';
 import { getReleaseInfo, type AppReleaseInfo } from '../version';
@@ -20,6 +20,24 @@ export interface PromptTarget {
   label: string;
   risk?: string;
   run: () => void;
+}
+
+export interface GuideTarget {
+  label: string;
+  dist: number;
+  angle: number;
+  isDuty?: boolean;
+  questTitle?: string;
+  stepDesc?: string;
+  progress?: string;
+  targetName?: string;
+  tx?: number;
+  tz?: number;
+  openCondition?: string;
+  isLocked?: boolean;
+  safeX?: number;
+  safeZ?: number;
+  route?: [number, number][];
 }
 
 const STEPS = [
@@ -45,6 +63,17 @@ export class UIManager {
   private toastsEl!: HTMLElement;
   private modalHost!: HTMLElement;
   private orientOverlay!: HTMLElement;
+  private minimapCanvas!: HTMLCanvasElement;
+  private minimapCtx!: CanvasRenderingContext2D;
+  private minimapStatusEl!: HTMLElement;
+  private autowalkBannerEl!: HTMLElement;
+  private autowalkTextEl!: HTMLElement;
+  private btnCancelAutoWalk!: HTMLElement;
+  private questCollapsed = false;
+  private lastMinimapDraw = 0;
+  private lastClockHTML = '';
+  private lastQuestHTML = '';
+  private lastStatsHTML = '';
   paused = false;
   private modalSeq = 0;
   private activeMinigameCancel: (() => void) | null = null;
@@ -64,6 +93,8 @@ export class UIManager {
       onRewatchIntro?: () => void;
       onUpdateAppearance?: (look: { skin: number; hair: number; hairStyle: 'short' | 'buzz' | 'bald'; preset: number }) => void;
       onRestoreBackup?: () => void;
+      onAutoWalk?: (tx: number, tz: number, isLocked?: boolean, safeX?: number, safeZ?: number, targetName?: string) => void;
+      onCancelAutoWalk?: () => void;
     },
   ) {
     this.root = container;
@@ -84,11 +115,11 @@ export class UIManager {
     return 'ontouchstart' in window || (navigator.maxTouchPoints ?? 0) > 0;
   }
 
-  private hasOpenModal(): boolean {
+  hasOpenModal(): boolean {
     return this.modalHost.innerHTML.trim() !== '';
   }
 
-  private checkOrientation() {
+  checkOrientation() {
     const isPortrait = window.matchMedia?.('(orientation: portrait)')?.matches ?? (window.innerHeight > window.innerWidth);
     const isTouch = this.isTouchDevice();
 
@@ -117,18 +148,43 @@ export class UIManager {
             <span class="hud-level-badge" id="hud-level">Lv.1</span>
             <div class="hud-xp-bar"><div class="hud-xp-fill" id="hud-xp-fill" style="width:0%"></div></div>
           </div>
-          <div class="hud-quest-bar interactive" id="hud-quest-bar" title="Nhấp để xem chi tiết mục tiêu"></div>
+          <div class="hud-quest-bar interactive" id="hud-quest-bar" title="Nhấp để xem chi tiết / tự đi"></div>
         </div>
         <div class="hud-right">
           <div class="hud-action-row interactive">
             <div class="sentence-tag" id="hud-sentence">Án: 24n</div>
-            <div class="version-tag" id="hud-version" title="Phiên bản trò chơi">v${this.releaseInfo.version}-${this.releaseInfo.buildHash.slice(0, 6)}</div>
-            <button class="btn" id="btn-fullscreen" title="Toàn màn hình">⛶</button>
-            <button class="btn" id="btn-bag">${isTouch ? '🎒 Túi' : '🎒 Túi (B)'}</button>
-            <button class="btn btn-accent" id="btn-menu">${isTouch ? '☰ Menu' : '☰ Menu (Esc)'}</button>
+            <button class="btn icon-btn" id="btn-fullscreen" title="Toàn màn hình" aria-label="Toàn màn hình">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+              </svg>
+            </button>
+            <button class="btn icon-btn" id="btn-bag" title="${isTouch ? 'Túi đồ' : 'Túi đồ (B)'}" aria-label="Túi đồ">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <path d="M16 10a4 4 0 0 1-8 0"/>
+              </svg>
+            </button>
+            <button class="btn icon-btn btn-accent" id="btn-menu" title="${isTouch ? 'Menu cài đặt' : 'Menu (Esc)'}" aria-label="Menu trò chơi">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"/>
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            </button>
           </div>
           <div class="hud-stats-mini interactive" id="hud-stats-mini" title="Nhấp để xem chi tiết các chỉ số"></div>
+          <div class="minimap-box" id="minimap-box" title="Bản đồ trại (Cố định Bắc)">
+            <div class="minimap-compass">▲ B</div>
+            <canvas id="minimap-canvas" width="132" height="114"></canvas>
+            <div class="minimap-status" id="minimap-status" style="display:none"></div>
+          </div>
         </div>
+      </div>
+      <div class="autowalk-banner" id="autowalk-banner" style="display:none">
+        <span class="pulse-dot"></span>
+        <span class="autowalk-text" id="autowalk-text">Đang tự đi...</span>
+        <button class="btn btn-sm" id="btn-cancel-autowalk">Hủy [X]</button>
       </div>
       <div class="toasts" id="hud-toasts"></div>
       <div class="prompt-box interactive" id="hud-prompt" style="display:none"></div>
@@ -164,6 +220,17 @@ export class UIManager {
     this.btnInteract = this.root.querySelector('#btn-interact')!;
     this.btnSprint = this.root.querySelector('#btn-sprint')!;
     this.orientOverlay = this.root.querySelector('#orientation-overlay')!;
+    this.minimapCanvas = this.root.querySelector('#minimap-canvas')!;
+    this.minimapCtx = this.minimapCanvas.getContext('2d')!;
+    this.minimapStatusEl = this.root.querySelector('#minimap-status')!;
+    this.autowalkBannerEl = this.root.querySelector('#autowalk-banner')!;
+    this.autowalkTextEl = this.root.querySelector('#autowalk-text')!;
+    this.btnCancelAutoWalk = this.root.querySelector('#btn-cancel-autowalk')!;
+
+    this.btnCancelAutoWalk.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.hooks.onCancelAutoWalk?.();
+    });
 
     this.btnMenu.addEventListener('click', () => {
       this.sfx.click();
@@ -175,12 +242,6 @@ export class UIManager {
       this.sfx.click();
       this.tryLockOrientation();
       this.openPanel('bag');
-    });
-
-    this.questBarEl.addEventListener('click', () => {
-      this.sfx.click();
-      this.tryLockOrientation();
-      this.showQuestDetail();
     });
 
     this.statsMiniEl.addEventListener('click', () => {
@@ -223,27 +284,48 @@ export class UIManager {
     }
   }
 
+  setAutoWalkState(active: boolean, targetName?: string) {
+    if (active) {
+      this.autowalkBannerEl.style.display = 'flex';
+      this.autowalkTextEl.textContent = `Đang tự đi tới: ${targetName || 'Mục tiêu'}...`;
+    } else {
+      this.autowalkBannerEl.style.display = 'none';
+    }
+  }
+
   toast(text: string, kind = 'info') {
+    const last = this.toastsEl.lastElementChild as HTMLElement | null;
+    if (last && (last.dataset.rawText === text || last.textContent?.startsWith(text))) {
+      const count = parseInt(last.dataset.count || '1', 10) + 1;
+      last.dataset.count = String(count);
+      last.textContent = `${text} (x${count})`;
+      last.className = `toast ${kind}`;
+      return;
+    }
     const d = document.createElement('div');
     d.className = `toast ${kind}`;
+    d.dataset.rawText = text;
+    d.dataset.count = '1';
     d.textContent = text;
     this.toastsEl.appendChild(d);
-    while (this.toastsEl.children.length > 2) this.toastsEl.firstElementChild?.remove();
-    setTimeout(() => d.remove(), 3200);
+    while (this.toastsEl.children.length > 3) this.toastsEl.firstElementChild?.remove();
+    setTimeout(() => {
+      d.style.opacity = '0';
+      d.style.transform = 'translateY(-4px)';
+      d.style.transition = 'opacity 0.25s, transform 0.25s';
+      setTimeout(() => d.remove(), 260);
+    }, 3500);
   }
 
   updateReleaseInfo(rel: AppReleaseInfo) {
     this.releaseInfo = rel;
-    const shortHash = rel.buildHash.slice(0, 6);
-    const vEl = this.root.querySelector('#hud-version');
-    if (vEl) vEl.textContent = `v${rel.version}-${shortHash}`;
     const mEl = this.root.querySelector('#menu-build-tag');
     if (mEl) mEl.textContent = `v${rel.version} (${rel.buildHash.slice(0, 7)}) • M${rel.milestone}`;
   }
 
   updateHUD(
     prompt: PromptTarget | null,
-    guideTarget: { label: string; dist: number; angle: number; isDuty?: boolean } | null,
+    guideTarget: GuideTarget | null,
   ) {
     const s = this.g.s;
     const cur = blockAt(s.minute);
@@ -253,11 +335,15 @@ export class UIManager {
     const isTouch = this.isTouchDevice();
 
     // 1. Góc trên trái: Thời gian, khu vực, hoạt động
-    this.clockEl.innerHTML = `
+    const clockHTML = `
       <div class="hud-clock">Ngày ${s.day} · ${fmtTime(s.minute)} — <span style="color:#93c5fd">${zn}</span></div>
       <div>Hiện tại: <b style="color:#fde68a">${cur.label}</b> (${cur.where})</div>
       <div class="hud-sub">${nxt ? `Tiếp: ${fmtTime(nxt.start)} ${nxt.label}` : 'Cuối ngày — về buồng ngủ'}</div>
     `;
+    if (clockHTML !== this.lastClockHTML) {
+      this.lastClockHTML = clockHTML;
+      this.clockEl.innerHTML = clockHTML;
+    }
 
     // 2. Góc trên phải: Án còn lại
     this.sentenceEl.textContent = `Án: ${s.sentence.remaining}n`;
@@ -272,56 +358,100 @@ export class UIManager {
       xpFill.style.width = `${pct}%`;
     }
 
-    // 3. Thanh mục tiêu 1 dòng gọn gàng
-    let arrowStr = '';
-    if (s.settings.guide && guideTarget) {
-      const arrow = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][
-        Math.round(((guideTarget.angle % (Math.PI * 2)) + Math.PI * 2) / (Math.PI / 4)) % 8
-      ];
-      arrowStr = `${arrow} ${Math.round(guideTarget.dist)}m`;
+    // 3. Bảng mục tiêu chi tiết, hỗ trợ tự đi và thu gọn
+    const qTitle = guideTarget?.questTitle || 'Sinh hoạt trại giam';
+    const qStep = guideTarget?.stepDesc || guideTarget?.label || 'Tham gia các hoạt động theo lịch trình';
+    const qProg = guideTarget?.progress ? ` <span style="color:#86efac;font-weight:700">(${guideTarget.progress})</span>` : '';
+    const qTag = guideTarget?.isDuty ? '🔔 Nghĩa vụ' : '🎯 Mục tiêu';
+    const isDutyCls = guideTarget?.isDuty ? 'duty' : '';
+    const destName = guideTarget?.targetName || guideTarget?.label || '';
+    const distText = guideTarget ? `${Math.round(guideTarget.dist)}m` : '';
+    const openCond = guideTarget?.openCondition ? `<span class="quest-open-cond ${guideTarget.isLocked ? 'locked' : ''}">⏰ ${guideTarget.openCondition}</span>` : '';
+
+    const questHTML = this.questCollapsed
+      ? `
+        <div class="quest-row-header">
+          <span class="quest-tag ${isDutyCls}">${qTag}</span>
+          <span class="quest-title-text">${qTitle}: ${destName || qStep}</span>
+          ${distText ? `<span style="color:#38bdf8;font-weight:700">${distText}</span>` : ''}
+          <span class="quest-toggle-icon" id="btn-quest-toggle" title="Mở rộng bảng nhiệm vụ">▸</span>
+        </div>
+      `
+      : `
+        <div class="quest-row-header">
+          <div style="display:flex;align-items:center;gap:6px;overflow:hidden">
+            <span class="quest-tag ${isDutyCls}">${qTag}</span>
+            <span class="quest-title-text">${qTitle}</span>
+          </div>
+          <span class="quest-toggle-icon" id="btn-quest-toggle" title="Thu gọn bảng nhiệm vụ">▾</span>
+        </div>
+        <div class="quest-row-desc">${qStep}${qProg}</div>
+        <div class="quest-row-footer">
+          <div class="quest-dest-info" id="quest-dest-info">
+            <span>📍 <b>${destName}</b></span>
+            ${distText ? `<span style="color:#38bdf8;font-weight:700">· ${distText}</span>` : ''}
+            ${openCond ? `· ${openCond}` : ''}
+          </div>
+          ${guideTarget?.tx !== undefined ? `<button class="btn-auto-walk" id="btn-quest-autowalk">🚶 Tự đi</button>` : ''}
+        </div>
+      `;
+
+    if (questHTML !== this.lastQuestHTML) {
+      this.lastQuestHTML = questHTML;
+      this.questBarEl.className = this.questCollapsed ? 'hud-quest-bar collapsed interactive' : 'hud-quest-bar interactive';
+      this.questBarEl.innerHTML = questHTML;
+
+      // Gắn sự kiện thu gọn & tự đi
+      const toggleBtn = this.questBarEl.querySelector('#btn-quest-toggle');
+      toggleBtn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.sfx.click();
+        this.questCollapsed = !this.questCollapsed;
+        this.lastQuestHTML = ''; // force re-render
+      });
+
+      const triggerAutoWalk = (e: Event) => {
+        e.stopPropagation();
+        this.sfx.click();
+        if (guideTarget?.tx !== undefined && guideTarget?.tz !== undefined) {
+          this.hooks.onAutoWalk?.(guideTarget.tx, guideTarget.tz, guideTarget.isLocked, guideTarget.safeX, guideTarget.safeZ, destName);
+        }
+      };
+      this.questBarEl.querySelector('#btn-quest-autowalk')?.addEventListener('click', triggerAutoWalk);
+      this.questBarEl.querySelector('#quest-dest-info')?.addEventListener('click', triggerAutoWalk);
+
+      this.questBarEl.onclick = (e) => {
+        if ((e.target as HTMLElement).closest('#btn-quest-toggle') || (e.target as HTMLElement).closest('#btn-quest-autowalk') || (e.target as HTMLElement).closest('#quest-dest-info')) {
+          return;
+        }
+        this.sfx.click();
+        this.showQuestDetail();
+      };
     }
 
-    let questTitle = '';
-    let questTag = '🎯 Mục tiêu';
-    if (guideTarget?.isDuty) {
-      questTag = '🔔 Nghĩa vụ';
-      questTitle = guideTarget.label;
-    } else if (guideTarget) {
-      questTitle = guideTarget.label;
-    } else {
-      const activeQuests = QUEST_ORDER.filter((q) => this.g.qStatus(q) === 'active');
-      if (activeQuests.length > 0) {
-        const def = QUESTS[activeQuests[0]];
-        const br = this.g.qBranch(activeQuests[0]);
-        const nextObj = def.objectives.find((o) => (!o.branch || o.branch === br) && !this.g.qObj(activeQuests[0], o.id));
-        questTitle = `${def.title}: ${nextObj ? nextObj.text : 'Hoàn tất'}`;
-      } else {
-        questTitle = 'Sinh hoạt tự do trong khuôn viên';
-      }
-    }
-
-    this.questBarEl.innerHTML = `
-      <span class="quest-tag">${questTag}:</span>
-      <span class="quest-text" title="${questTitle}">${questTitle}</span>
-      ${arrowStr ? `<span class="quest-arrow">${arrowStr}</span>` : ''}
-    `;
-
-    // 4. Thanh chỉ số mini
+    // 4. Thanh chỉ số mini (thống nhất 0% xấu, 100% tốt)
     const st = s.stats;
     const isWarning =
-      st.health < 30 || st.stamina < 15 || st.hunger > 75 || st.stress > 75 || st.suspicion > 70;
+      st.health < 30 || st.stamina < 20 || st.satiety < 25 || st.morale < 25 || st.suspicion > 70;
     if (isWarning) this.statsMiniEl.classList.add('stat-warning');
     else this.statsMiniEl.classList.remove('stat-warning');
 
-    this.statsMiniEl.innerHTML = `
+    const statsHTML = `
       <span class="stat-item ${st.health < 30 ? 'danger' : ''}">❤️${Math.round(st.health)}</span>
-      <span class="stat-item ${st.stamina < 15 ? 'danger' : ''}">⚡${Math.round(st.stamina)}</span>
-      <span class="stat-item ${st.hunger > 70 ? 'danger' : ''}">🍚${Math.round(st.hunger)}</span>
-      <span class="stat-item ${st.stress > 70 ? 'danger' : ''}">🧠${Math.round(st.stress)}</span>
+      <span class="stat-item ${st.stamina < 20 ? 'danger' : ''}">⚡${Math.round(st.stamina)}</span>
+      <span class="stat-item ${st.satiety < 25 ? 'danger' : ''}">🍚${Math.round(st.satiety)}</span>
+      <span class="stat-item ${st.morale < 25 ? 'danger' : ''}">🧠${Math.round(st.morale)}</span>
       <span class="stat-item">💰${fmtMoney(st.money)}</span>
     `;
+    if (statsHTML !== this.lastStatsHTML) {
+      this.lastStatsHTML = statsHTML;
+      this.statsMiniEl.innerHTML = statsHTML;
+    }
 
-    // 5. Nút tương tác và hộp nhắc ngữ cảnh
+    // 5. Vẽ Minimap 2D
+    this.renderMinimap(p, guideTarget);
+
+    // 6. Nút tương tác và hộp nhắc ngữ cảnh
     if (prompt && !this.paused) {
       this.promptEl.style.display = 'block';
       this.promptEl.innerHTML = `
@@ -342,6 +472,107 @@ export class UIManager {
       this.btnInteract.disabled = true;
       this.btnInteract.classList.remove('btn-accent');
       this.btnInteract.textContent = isTouch ? 'Tương tác' : 'Tương tác (E)';
+    }
+  }
+
+  private renderMinimap(player: { x: number; z: number; rot: number }, guide: GuideTarget | null) {
+    if (!this.minimapCanvas || !this.minimapCtx) return;
+    const ctx = this.minimapCtx;
+    const cw = this.minimapCanvas.width;
+    const ch = this.minimapCanvas.height;
+
+    // Giảm tần suất vẽ tránh lag (~15fps)
+    const now = performance.now();
+    if (now - this.lastMinimapDraw < 65) return;
+    this.lastMinimapDraw = now;
+
+    const px = (wx: number) => Math.round(((wx - (-30)) / 60) * cw);
+    const py = (wz: number) => Math.round(((wz - (-34)) / 56) * ch);
+
+    ctx.fillStyle = '#0b1120';
+    ctx.fillRect(0, 0, cw, ch);
+
+    // Vẽ sân trại
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(px(-28), py(-32), px(28) - px(-28), py(20) - py(-32));
+
+    // Vẽ các phòng
+    for (const b of Object.values(BUILDINGS)) {
+      const x1 = px(b.x1);
+      const y1 = py(b.z1);
+      const w = px(b.x2) - x1;
+      const h = py(b.z2) - y1;
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(x1, y1, w, h);
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x1, y1, w, h);
+    }
+
+    // Vẽ cửa (Xanh lá = Mở, Đỏ = Khóa)
+    for (const d of DOORS) {
+      const open = this.g.isOpen(d.area);
+      ctx.strokeStyle = open ? '#22c55e' : '#ef4444';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(px(d.box.x1), py(d.box.z1));
+      ctx.lineTo(px(d.box.x2), py(d.box.z2));
+      ctx.stroke();
+    }
+
+    // Tuyến đường hợp lệ (A* path không xuyên tường)
+    if (guide?.route && guide.route.length > 0) {
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 2]);
+      ctx.beginPath();
+      ctx.moveTo(px(player.x), py(player.z));
+      for (const pt of guide.route) {
+        ctx.lineTo(px(pt[0]), py(pt[1]));
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Mục tiêu (Target)
+    if (guide?.tx !== undefined && guide?.tz !== undefined) {
+      const tx = px(guide.tx);
+      const ty = py(guide.tz);
+      ctx.fillStyle = guide.isDuty ? '#38bdf8' : '#f59e0b';
+      ctx.beginPath();
+      ctx.arc(tx, ty, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // Người chơi (Player) + Mũi tên hướng quay
+    const pX = px(player.x);
+    const pY = py(player.z);
+    ctx.fillStyle = '#06b6d4';
+    ctx.beginPath();
+    ctx.arc(pX, pY, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const hx = Math.sin(player.rot);
+    const hy = Math.cos(player.rot);
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(pX, pY);
+    ctx.lineTo(pX + hx * 7, pY + hy * 7);
+    ctx.stroke();
+
+    // Hiển thị trạng thái khóa nếu mục tiêu chưa tiếp cận được
+    if (guide?.isLocked) {
+      this.minimapStatusEl.style.display = 'block';
+      this.minimapStatusEl.textContent = guide.openCondition ? `Khóa · ${guide.openCondition}` : 'Khu vực đang đóng';
+    } else {
+      this.minimapStatusEl.style.display = 'none';
     }
   }
 
@@ -808,17 +1039,17 @@ export class UIManager {
       </div>
       <div class="card-row">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <span>🍚 <b>Mức đói</b>: ${Math.round(st.hunger)}/100</span>
-          ${bar(st.hunger, st.hunger > 70 ? '#ef4444' : '#f59e0b')}
+          <span>🍚 <b>Độ no</b>: ${Math.round(st.satiety)}/100</span>
+          ${bar(st.satiety, st.satiety < 25 ? '#ef4444' : st.satiety < 60 ? '#f59e0b' : '#22c55e')}
         </div>
-        <div class="hud-sub">Tăng dần theo giờ. Cần ăn cơm đúng giờ tại Nhà ăn hoặc mua đồ ăn nhẹ tại quầy căn tin.</div>
+        <div class="hud-sub">0 là đói lả, 100 là no căng. Giảm dần theo giờ và khi lao động nặng. Cần ăn cơm đúng giờ tại Nhà ăn hoặc dùng thức ăn nhẹ mua tại quầy căn tin.</div>
       </div>
       <div class="card-row">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <span>🧠 <b>Căng thẳng</b>: ${Math.round(st.stress)}/100</span>
-          ${bar(st.stress, st.stress > 70 ? '#ef4444' : '#a855f7')}
+          <span>🧠 <b>Tinh thần</b>: ${Math.round(st.morale)}/100</span>
+          ${bar(st.morale, st.morale < 25 ? '#ef4444' : st.morale < 60 ? '#f59e0b' : '#a855f7')}
         </div>
-        <div class="hud-sub">Tăng khi vi phạm hoặc chịu sức ép. Giảm bằng tập thể dục sân trại, đọc sách thư viện hoặc ngủ đủ giấc.</div>
+        <div class="hud-sub">0 là suy sụp tinh thần, 100 là vững vàng lạc quan. Giảm khi vi phạm kỷ luật hoặc chịu sức ép. Phục hồi bằng tập thể dục sân trại, đọc sách thư viện, trò chuyện hoặc ngủ đủ giấc.</div>
       </div>
       <div class="card-row">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">

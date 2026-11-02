@@ -1,6 +1,6 @@
 import { BACKGROUNDS, DAY_START, START_SENTENCE, type BackgroundId, type Difficulty } from './constants';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 export interface CharacterProfile {
   name: string;
@@ -37,13 +37,15 @@ export type NpcId = 'bay' | 'huy' | 'lam' | 'lan' | 'tung' | 'tu' | 'son' | 'kha
 export const STORY_NPCS: NpcId[] = ['bay', 'huy', 'lam', 'lan', 'tung', 'phuc', 'an', 'mai'];
 
 export interface Stats {
-  health: number; // 0..100
-  stamina: number; // 0..100
-  hunger: number; // 0..100 (cao = đói)
-  stress: number; // 0..100
+  health: number; // 0..100 (0 yếu/ngất, 100 khỏe)
+  stamina: number; // 0..100 (0 kiệt sức, 100 hồi đầy)
+  satiety: number; // 0..100 (độ no: 0 đói lả, 100 no căng)
+  morale: number; // 0..100 (tinh thần: 0 suy sụp, 100 ổn định)
   money: number; // nghìn đồng
   reform: number; // 0..100 điểm cải tạo
   suspicion: number; // 0..100
+  hunger?: number; // tương thích ngược: 100 - satiety
+  stress?: number; // tương thích ngược: 100 - morale
 }
 
 export type ViolationStatus = 'active' | 'overturned' | 'upheld';
@@ -199,6 +201,31 @@ export function makeDaily(stats: Stats, relations: Record<string, Relation>): Da
   };
 }
 
+export function createStats(s: Partial<Stats> = {}): Stats {
+  const obj: Stats = {
+    health: s.health ?? 90,
+    stamina: s.stamina ?? 85,
+    satiety: s.satiety ?? (s.hunger !== undefined ? clampStat(100 - s.hunger) : 65),
+    morale: s.morale ?? (s.stress !== undefined ? clampStat(100 - s.stress) : 55),
+    money: s.money ?? 20,
+    reform: s.reform ?? 40,
+    suspicion: s.suspicion ?? 0,
+  };
+  Object.defineProperty(obj, 'hunger', {
+    get() { return 100 - this.satiety; },
+    set(v: number) { this.satiety = clampStat(100 - v); },
+    enumerable: true,
+    configurable: true,
+  });
+  Object.defineProperty(obj, 'stress', {
+    get() { return 100 - this.morale; },
+    set(v: number) { this.morale = clampStat(100 - v); },
+    enumerable: true,
+    configurable: true,
+  });
+  return obj;
+}
+
 export function createInitialState(customProfile?: Partial<CharacterProfile>): GameState {
   const profile: CharacterProfile = {
     name: 'Minh',
@@ -228,7 +255,7 @@ export function createInitialState(customProfile?: Partial<CharacterProfile>): G
     attrs,
   };
 
-  const stats: Stats = { health: 90, stamina: 85, hunger: 35, stress: 45, money: 20, reform: 40, suspicion: 0 };
+  const stats = createStats();
   const relations: Record<string, Relation> = {};
   const base: Record<NpcId, number> = { bay: 5, huy: 0, lam: 0, lan: 0, tung: 0, tu: 0, son: 0, khai: 0, phuc: 0, an: 0, mai: 20 };
   for (const id of Object.keys(base) as NpcId[]) {

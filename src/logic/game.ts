@@ -150,8 +150,8 @@ export class GameLogic {
       this.notify('Đã cất giữ Mảnh chứng từ xuất kho số 7.', 'quest');
     } else if (choice === 'help_victim') {
       this.changeRel('bay', 10, 'Chú Bảy biết chuyện Minh từng cứu người trong đám cháy kho');
-      this.addStat('stress', -15);
-      this.notify('Hành động cứu người trong đám cháy giúp bạn giữ được lương tri và giảm bớt dằn vặt.', 'good');
+      this.addStat('morale', 15);
+      this.notify('Hành động cứu người trong đám cháy giúp bạn giữ được lương tri và củng cố tinh thần.', 'good');
     } else if (choice === 'chase_contact') {
       this.addClue('nhan_dang_ke_cam_dau', 'Nhìn rõ bóng kẻ thuê chở hàng có vết sẹo ở cổ và đi chiếc xe tải màu xanh rêu.');
       this.notify('Đã ghi nhớ nhân dạng kẻ cầm đầu vụ việc.', 'quest');
@@ -173,8 +173,20 @@ export class GameLogic {
 
   // ───────────── Chỉ số ─────────────
   addStat(k: keyof Stats, delta: number) {
-    if (k === 'money') this.s.stats.money = Math.max(0, Math.round((this.s.stats.money + delta) * 10) / 10);
-    else this.s.stats[k] = clampStat(this.s.stats[k] + delta);
+    if (k === 'money') {
+      this.s.stats.money = Math.max(0, Math.round((this.s.stats.money + delta) * 10) / 10);
+    } else if (k === 'hunger') {
+      // Tương thích ngược: tăng hunger = giảm độ no (satiety)
+      this.s.stats.satiety = clampStat(this.s.stats.satiety - delta);
+    } else if (k === 'stress') {
+      // Tương thích ngược: tăng stress = giảm tinh thần (morale)
+      this.s.stats.morale = clampStat(this.s.stats.morale - delta);
+    } else {
+      this.s.stats[k] = clampStat(((this.s.stats[k] as number) ?? 0) + delta);
+    }
+    // Đồng bộ thuộc tính tương thích ngược
+    this.s.stats.hunger = 100 - this.s.stats.satiety;
+    this.s.stats.stress = 100 - this.s.stats.morale;
   }
 
   /** Cộng/trừ điểm cải tạo. `repeatable` = hoạt động lặp lại → bị giới hạn theo ngày. */
@@ -219,7 +231,7 @@ export class GameLogic {
     r.lastTalkDay = this.s.day;
     if (r.value >= -10) {
       r.value = Math.min(100, r.value + 1);
-      this.addStat('stress', -3);
+      this.addStat('morale', 3);
     }
     return true;
   }
@@ -260,8 +272,10 @@ export class GameLogic {
     if (!def.use) return 'Không thể dùng vật phẩm này.';
     if (!this.takeItem(id)) return 'Không có vật phẩm.';
     const u = def.use;
-    if (u.hunger) this.addStat('hunger', u.hunger);
-    if (u.stress) this.addStat('stress', u.stress);
+    if (u.satiety) this.addStat('satiety', u.satiety);
+    else if (u.hunger) this.addStat('satiety', -u.hunger);
+    if (u.morale) this.addStat('morale', u.morale);
+    else if (u.stress) this.addStat('morale', -u.stress);
     if (u.stamina) this.addStat('stamina', u.stamina);
     if (u.health) this.addStat('health', u.health);
     this.notify(`Đã dùng ${def.name}.`, 'info');
@@ -314,7 +328,8 @@ export class GameLogic {
       this.s.stats.reform = clampStat(before + def.reform);
       v.reformDelta = this.s.stats.reform - before;
       if (def.suspicion) this.addStat('suspicion', def.suspicion);
-      if (def.stress) this.addStat('stress', def.stress);
+      if (def.morale) this.addStat('morale', def.morale);
+      else if (def.stress) this.addStat('morale', -def.stress);
       // Kỷ luật khi tái phạm: 3 vi phạm còn hiệu lực trong 5 ngày
       const recent = this.s.violations.filter((x) => x.status !== 'overturned' && x.severity > 0 && x.day > this.s.day - 5);
       if (recent.length >= 2) {
@@ -349,7 +364,7 @@ export class GameLogic {
       v.status = 'overturned';
       this.s.stats.reform = clampStat(this.s.stats.reform - v.reformDelta);
       this.addStat('suspicion', -15);
-      this.addStat('stress', -10);
+      this.addStat('morale', 10);
       this.notify(`Khiếu nại thành công: hủy vi phạm "${v.title}", hoàn ${-v.reformDelta} điểm.`, 'good');
       if (v.appealTag === 'planted') {
         this.s.flags.lam_exposed = true;
@@ -830,10 +845,10 @@ export class GameLogic {
     if (!b) return 'Chưa đến giờ phát cơm (07:00, 11:30, 16:30).';
     if (this.s.daily.meals[b]) return 'Bạn đã nhận suất ăn bữa này.';
     this.s.daily.meals[b] = true;
-    this.addStat('hunger', -45);
+    this.addStat('satiety', 45);
     this.addStat('stamina', 20);
     this.addStat('health', 3);
-    this.notify('Ăn xong suất cơm: −45 đói, +20 thể lực.', 'good');
+    this.notify('Ăn xong suất cơm: +45 độ no, +20 thể lực.', 'good');
     this.event('Ăn ' + (b === 'breakfast' ? 'sáng' : b === 'lunch' ? 'trưa' : 'tối'));
     this.commit();
     return null;
@@ -854,10 +869,10 @@ export class GameLogic {
     this.s.daily.exercise++;
     this.s.skills.exerciseSessions++;
     this.addStat('stamina', -18);
-    const stressDown = Math.round((4 + 12 * r) * (first ? 1 : 0.5));
-    this.addStat('stress', -stressDown);
+    const moraleUp = Math.round((4 + 12 * r) * (first ? 1 : 0.5));
+    this.addStat('morale', moraleUp);
     this.s.skills.fitness = Math.min(20, this.s.skills.fitness + r * (first ? 1 : 0.4));
-    this.notify(`Tập xong: −${stressDown} căng thẳng, thể chất ${this.s.skills.fitness.toFixed(1)}/20.`, 'good');
+    this.notify(`Tập xong: +${moraleUp} tinh thần, thể chất ${this.s.skills.fitness.toFixed(1)}/20.`, 'good');
     this.event('Tập thể dục ngoài sân');
     this.commit();
   }
@@ -875,25 +890,45 @@ export class GameLogic {
 
   private updateNeeds(dtSec: number, hours: number, ctx: TickCtx) {
     const st = this.s.stats;
-    this.addStat('hunger', 5 * hours);
-    const regenMul = (st.hunger >= 70 ? 0.5 : 1) * (1 + this.s.skills.fitness / 20);
-    if (ctx.sprinting) this.addStat('stamina', -7 * dtSec);
+    const endurance = this.s.progression?.attrs?.endurance ?? 1;
+    const enduranceBonus = 1 + endurance * 0.12;
+
+    // Giảm dần độ no theo thời gian (5% mỗi giờ)
+    this.addStat('satiety', -5 * hours);
+
+    // Thể lực: chạy tiêu hao (bền bỉ giảm hao phí thể lực)
+    const regenMul = (st.satiety < 25 ? 0.5 : 1) * (1 + this.s.skills.fitness / 20) * enduranceBonus;
+    if (ctx.sprinting) this.addStat('stamina', (-7 * dtSec) / enduranceBonus);
     else if (ctx.resting) this.addStat('stamina', 6 * dtSec * regenMul);
     else if (ctx.moving) this.addStat('stamina', 0.6 * dtSec * regenMul);
     else this.addStat('stamina', 1.5 * dtSec * regenMul);
-    if (ctx.resting) this.addStat('stress', -1.5 * hours);
-    if (st.hunger >= 85) {
+
+    // Nghỉ ngơi hồi phục tinh thần nếu độ no không quá thấp
+    if (ctx.resting && st.satiety >= 25) this.addStat('morale', 1.5 * hours);
+
+    // Đói lả (độ no <= 15) -> tụt máu và suy sụp tinh thần
+    if (st.satiety <= 15) {
       this.addStat('health', -4 * hours);
-      this.addStat('stress', 3 * hours);
-    } else if (st.hunger < 60) this.addStat('health', 1 * hours);
-    if (st.stress >= 85) this.addStat('health', -1 * hours);
+      this.addStat('morale', -3 * hours);
+    } else if (st.satiety >= 40 && st.health < 100) {
+      // No bụng hồi máu tự nhiên
+      this.addStat('health', 1 * hours);
+    }
+
+    // Tinh thần suy sụp (morale <= 15) -> tổn hại sức khỏe
+    if (st.morale <= 15) {
+      this.addStat('health', -1 * hours);
+    }
+
     if (st.health <= 0) this.faint();
   }
 
   private faint() {
     this.s.stats.health = 35;
-    this.s.stats.stamina = 40;
-    this.notify('Bạn ngất xỉu vì kiệt sức! Bạn cùng buồng dìu bạn về nghỉ. Không bị tính vi phạm, nhưng mất thời gian.', 'bad');
+    this.s.stats.stamina = Math.max(this.s.stats.stamina, 40);
+    this.s.stats.satiety = Math.max(this.s.stats.satiety, 35);
+    this.s.stats.morale = Math.max(this.s.stats.morale, 30);
+    this.notify('Bạn ngất xỉu vì kiệt sức! Bạn cùng buồng dìu bạn vào Phòng y tế nghỉ ngơi.', 'bad');
     this.event('Ngất xỉu');
     this.emit('faint');
   }
@@ -1055,9 +1090,9 @@ export class GameLogic {
 
     // Qua đêm
     this.addStat('stamina', 100);
-    this.addStat('stress', inBed ? -15 : -5);
-    this.addStat('hunger', 15);
-    if (s.stats.hunger < 70) this.addStat('health', 8);
+    this.addStat('morale', inBed ? 15 : 5);
+    this.addStat('satiety', -15);
+    if (s.stats.satiety >= 30) this.addStat('health', 8);
     this.addStat('suspicion', todays.length === 0 ? -12 : -5);
 
     s.day += 1;
@@ -1121,5 +1156,9 @@ export class GameLogic {
 
   isOpen(area: string) {
     return isOpen(area, this.s.minute);
+  }
+
+  isOpenAt(area: string, minute: number) {
+    return isOpen(area, minute);
   }
 }

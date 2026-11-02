@@ -267,11 +267,27 @@ describe('Lưu / tải', () => {
 
   it('di chuyển dữ liệu không có version', () => {
     const g = deserialize(JSON.stringify({ day: 4, stats: { money: 99 } }))!;
-    expect(g.version).toBe(2);
+    expect(g.version).toBe(3);
     expect(g.day).toBe(4);
     expect(g.stats.money).toBe(99);
     expect(g.stats.reform).toBe(40);
+    expect(g.stats.satiety).toBe(65);
+    expect(g.stats.morale).toBe(55);
     expect(deserialize(JSON.stringify({ version: 999, state: {} }))).toBeNull();
+  });
+
+  it('migration save cũ: độ no = 100 - hunger, tinh thần = 100 - stress', () => {
+    const oldV2 = {
+      version: 2,
+      day: 5,
+      stats: { health: 80, stamina: 70, hunger: 40, stress: 70, money: 15, reform: 45, suspicion: 5 },
+    };
+    const migrated = deserialize(JSON.stringify(oldV2))!;
+    expect(migrated.version).toBe(3);
+    expect(migrated.stats.health).toBe(80);
+    expect(migrated.stats.stamina).toBe(70);
+    expect(migrated.stats.satiety).toBe(60); // 100 - 40
+    expect(migrated.stats.morale).toBe(30);  // 100 - 70
   });
 });
 
