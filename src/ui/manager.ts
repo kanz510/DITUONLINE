@@ -1068,15 +1068,21 @@ export class UIManager {
       .map((qid) => {
         const def = QUESTS[qid];
         const br = this.g.qBranch(qid);
-        const objsHtml = def.objectives
-          .filter((o) => !o.branch || o.branch === br)
-          .map((o) => {
-            const done = this.g.qObj(qid, o.id);
-            return `<div style="font-size:13px;margin:3px 0;color:${done ? '#86efac' : '#cbd5e1'}">
-              ${done ? '✔' : '○'} ${o.text}
-            </div>`;
-          })
-          .join('');
+        const visibleObjectives = def.objectives.filter((o) => !o.branch || o.branch === br);
+        const nextRequired = visibleObjectives.find((o) => !o.optional && !this.g.qObj(qid, o.id));
+        const objsHtml = visibleObjectives.map((o) => {
+          const done = this.g.qObj(qid, o.id);
+          const blocked = !done && !!this.g.objectiveBlockReason(qid, o.id);
+          const isNext = !done && o === nextRequired;
+          return `<div style="font-size:13px;margin:4px 0;line-height:1.45;color:${done ? '#86efac' : isNext ? '#fde68a' : '#cbd5e1'}">
+            ${done ? '✔' : blocked ? '🔒' : '➜'} ${o.text}
+          </div>`;
+        }).join('');
+        const nextHint = nextRequired
+          ? `<div style="margin:8px 0;padding:7px 9px;border-radius:8px;background:rgba(245,158,11,.11);border-left:3px solid #f59e0b;color:#fde68a;font-size:12px">
+              Bước cần làm trước: ${nextRequired.text}
+            </div>`
+          : '';
 
         return `
           <div class="card-row">
@@ -1085,6 +1091,7 @@ export class UIManager {
               <span class="tag ${def.type === 'main' ? 'good' : ''}">${def.type === 'main' ? 'Chính' : 'Phụ'}</span>
             </div>
             <div class="hud-sub" style="margin-bottom:6px">Người giao: <b>${def.giver}</b> · ${def.reason}</div>
+            ${nextHint}
             <div style="margin-left:4px">${objsHtml}</div>
             <div class="hud-sub" style="margin-top:6px;color:#fde68a">Phần thưởng: ${def.reward}</div>
           </div>
