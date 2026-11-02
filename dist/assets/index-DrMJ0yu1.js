@@ -4141,16 +4141,19 @@ void main() {
         <div style="text-align:right;margin-top:12px">
           <button class="btn btn-accent" data-close>Đóng</button>
         </div>
-      `;this.showModal(e,e=>{e.querySelectorAll(`[data-upgrade]`).forEach(e=>{e.addEventListener(`click`,()=>{let t=e.dataset.upgrade;this.g.spendSkillPoint(t)&&a()})})})};a()}showQuestDetail(){let e=this.g.s,t=Wc.filter(e=>this.g.qStatus(e)===`active`).map(e=>{let t=Uc[e],n=this.g.qBranch(e),r=t.objectives.filter(e=>!e.branch||e.branch===n).map(t=>{let n=this.g.qObj(e,t.id);return`<div style="font-size:13px;margin:3px 0;color:${n?`#86efac`:`#cbd5e1`}">
-              ${n?`✔`:`○`} ${t.text}
-            </div>`}).join(``);return`
+      `;this.showModal(e,e=>{e.querySelectorAll(`[data-upgrade]`).forEach(e=>{e.addEventListener(`click`,()=>{let t=e.dataset.upgrade;this.g.spendSkillPoint(t)&&a()})})})};a()}showQuestDetail(){let e=this.g.s,t=Wc.filter(e=>this.g.qStatus(e)===`active`).map(e=>{let t=Uc[e],n=this.g.qBranch(e),r=t.objectives.filter(e=>!e.branch||e.branch===n),i=r.find(t=>!t.optional&&!this.g.qObj(e,t.id)),a=r.map(t=>{let n=this.g.qObj(e,t.id),r=!n&&!!this.g.objectiveBlockReason(e,t.id);return`<div style="font-size:13px;margin:4px 0;line-height:1.45;color:${n?`#86efac`:!n&&t===i?`#fde68a`:`#cbd5e1`}">
+            ${n?`✔`:r?`🔒`:`➜`} ${t.text}
+          </div>`}).join(``),o=i?`<div style="margin:8px 0;padding:7px 9px;border-radius:8px;background:rgba(245,158,11,.11);border-left:3px solid #f59e0b;color:#fde68a;font-size:12px">
+              Bước cần làm trước: ${i.text}
+            </div>`:``;return`
           <div class="card-row">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
               <b>${t.title}</b>
               <span class="tag ${t.type===`main`?`good`:``}">${t.type===`main`?`Chính`:`Phụ`}</span>
             </div>
             <div class="hud-sub" style="margin-bottom:6px">Người giao: <b>${t.giver}</b> · ${t.reason}</div>
-            <div style="margin-left:4px">${r}</div>
+            ${o}
+            <div style="margin-left:4px">${a}</div>
             <div class="hud-sub" style="margin-top:6px;color:#fde68a">Phần thưởng: ${t.reward}</div>
           </div>
         `}).join(``);this.showModal(`
