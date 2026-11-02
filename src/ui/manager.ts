@@ -625,7 +625,7 @@ export class UIManager {
       // Remove only duplicate "Đóng" / "Đóng Menu" buttons.
       // Remove their otherwise empty footer containers to avoid dead space.
       for (const button of closeButtons) {
-        const label = (button.textContent ?? '').replace(/\\s+/g, ' ').trim().toLocaleLowerCase('vi');
+        const label = (button.textContent ?? '').replace(/\s+/g, ' ').trim().toLocaleLowerCase('vi');
         if (label === 'đóng' || label === 'đóng menu') {
           const wrapper = button.parentElement;
           button.remove();
