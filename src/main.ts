@@ -740,6 +740,14 @@ class App {
           },
         };
       case 'workbench':
+        if (g.qStatus('loi_hua_chu_bay') === 'active' &&
+            g.qObj('loi_hua_chu_bay', 'nghe_loi_hua') &&
+            !g.qObj('loi_hua_chu_bay', 'danh_bong_hop')) {
+          return { id, label: `${label}: Đánh bóng hộp gỗ giúp Chú Bảy`, run: () => {
+            g.completeObjective('loi_hua_chu_bay', 'danh_bong_hop');
+            this.ui.toast('Đã hoàn thiện hộp gỗ. Hãy gặp Chú Bảy để hứa gửi quà cho con gái chú.', 'good');
+          } };
+        }
         return {
           id,
           label: `${label}: Lắp ráp ổ cắm điện (${g.s.daily.workUnits}/3)`,
@@ -763,6 +771,8 @@ class App {
           label: `${label}: Lấy hộp mũi khoan`,
           risk: VIOLATIONS.theft.risk,
           run: () => {
+            const reason = g.objectiveBlockReason('mon_no', 'lay_khoan');
+            if (reason) { this.ui.toast(reason, 'warn'); return; }
             const p = g.s.player;
             const seen = this.world.seenByStorageCam(p.x, p.z) || this.npcs.tung.canSee(p.x, p.z, this.world.collision);
             if (seen) {
@@ -781,6 +791,34 @@ class App {
           },
         };
       }
+      case 'clue_crate':
+        if (g.qStatus('manh_moi_kho_7') !== 'active' ||
+            g.qObj('manh_moi_kho_7', 'lay_manh_giay')) return null;
+        return {
+          id,
+          label: !g.qObj('manh_moi_kho_7', 'kiem_tra_tem')
+            ? 'Kiện KHO-07: Kiểm tra tem niêm phong'
+            : 'Kiện KHO-07: Thu thập mảnh vận đơn',
+          run: () => {
+            const step = !g.qObj('manh_moi_kho_7', 'kiem_tra_tem') ? 'kiem_tra_tem' : 'lay_manh_giay';
+            const reason = g.objectiveBlockReason('manh_moi_kho_7', step);
+            if (reason) { this.ui.toast(reason, 'warn'); return; }
+            g.completeObjective('manh_moi_kho_7', step);
+          },
+        };
+      case 'class_fan':
+        if (g.qStatus('sua_quat_phong_hoc') !== 'active' ||
+            g.qObj('sua_quat_phong_hoc', 'thay_vong_bi')) return null;
+        return {
+          id,
+          label: !g.qObj('sua_quat_phong_hoc', 'kiem_tra_quat')
+            ? 'Quạt lớp: Kiểm tra nguyên nhân hỏng'
+            : 'Quạt lớp: Thay vòng bi và siết ốc',
+          run: () => {
+            const step = !g.qObj('sua_quat_phong_hoc', 'kiem_tra_quat') ? 'kiem_tra_quat' : 'thay_vong_bi';
+            g.completeObjective('sua_quat_phong_hoc', step);
+          },
+        };
       case 'exercise':
         return {
           id,
@@ -798,6 +836,26 @@ class App {
           },
         };
       case 'lan_desk':
+        if (g.qStatus('la_thu_que_nha') === 'active' && !g.qObj('la_thu_que_nha', 'nhan_thu')) {
+          return { id, label: 'Bàn cán bộ: Nhận thư từ gia đình', run: () => {
+            g.completeObjective('la_thu_que_nha', 'nhan_thu');
+            g.giveItem('thu_chi_mai');
+            this.ui.toast('Đã nhận thư. Hãy hồi âm cho gia đình khi gặp Chị Mai.', 'good');
+          } };
+        }
+        if (g.qStatus('ho_so_giai_trinh') === 'active' &&
+            !g.qObj('ho_so_giai_trinh', 'tong_hop_chung_cu')) {
+          return { id, label: 'Bàn hồ sơ: Tổng hợp chứng cứ Kho 7', run: () => {
+            const reason = g.objectiveBlockReason('ho_so_giai_trinh', 'tong_hop_chung_cu');
+            if (reason) { this.ui.toast(reason, 'warn'); return; }
+            if (!g.has('manh_van_don_kho_7')) {
+              this.ui.toast('Cần mảnh vận đơn Kho số 7 để tổng hợp chứng cứ trước.', 'warn');
+              return;
+            }
+            g.completeObjective('ho_so_giai_trinh', 'tong_hop_chung_cu');
+            this.ui.toast('Đã tổng hợp hồ sơ. Hãy gặp Quản giáo Lan nộp chứng cứ.', 'good');
+          } };
+        }
         return {
           id,
           label: `${label}: Xem hồ sơ / Giải trình vi phạm`,
@@ -857,8 +915,10 @@ class App {
           id,
           label: `${label}: Nhặt lọ thuốc hen suyễn`,
           run: () => {
-            this.g.giveItem('chai_thuoc_hen');
+            const reason = this.g.objectiveBlockReason('nghi_an_thuoc', 'nhat_thuoc');
+            if (reason) { this.ui.toast(reason, 'warn'); return; }
             this.g.completeObjective('nghi_an_thuoc', 'nhat_thuoc');
+            this.g.giveItem('chai_thuoc_hen');
             this.ui.toast('Đã nhặt lọ thuốc hen của Chú Bảy! Hãy mang về phòng y tế đưa cho Y sĩ An.', 'good');
           },
         };
