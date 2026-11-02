@@ -240,11 +240,7 @@ function bayDialogue(g: GameLogic): DNode {
                   text: 'Vậy hãy giúp chú đánh bóng chiếc hộp tại bàn xưởng trước nhé. Làm xong rồi quay lại hứa với chú.',
                   choices: [{ label: 'Dạ, cháu sẽ ra bàn xưởng.', run: () => null }],
                 };
-                return {
-                  speaker: 'Chú Bảy',
-                  text: 'Được lời hứa của cậu là chú yên tâm rồi. Đây là cuốn cẩm nang sống chú ghi chép bao năm nay, tặng lại cho cậu làm hành trang ngày về.',
-                  choices: [{ label: 'Cảm ơn chú Bảy.', run: () => null }],
-                };
+
               },
             },
           ],
