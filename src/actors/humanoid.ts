@@ -1,37 +1,42 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type { Appearance, Pose } from '../data/npcs';
 
-function stripedTex(c1: string, c2: string): THREE.CanvasTexture {
+/** Chibi geometry only. The scene uses metres, with a nominal 1.7m tall actor.
+ * Keeping the same named pivot groups preserves the existing pose animation.
+ */
+function stripedTex(c1: string, c2: string, stripes = 12): THREE.CanvasTexture {
   const cv = document.createElement('canvas');
-  cv.width = 64;
+  cv.width = 128;
+  cv.height = 256;
+  const ctx = cv.getContext('2d')!;
+  for (let row = 0; row < stripes; row++) {
+    ctx.fillStyle = row % 2 === 0 ? c1 : c2;
+    ctx.fillRect(0, row * 256 / stripes, 128, 256 / stripes + 1);
+  }
+  const texture = new THREE.CanvasTexture(cv);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  return texture;
+}
+
+function numberTexture(number: number): THREE.CanvasTexture {
+  const cv = document.createElement('canvas');
+  cv.width = 128;
   cv.height = 64;
   const ctx = cv.getContext('2d')!;
-  for (let i = 0; i < 8; i++) {
-    ctx.fillStyle = i % 2 === 0 ? c1 : c2;
-    ctx.fillRect(0, i * 8, 64, 8);
-  }
-  const t = new THREE.CanvasTexture(cv);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  return t;
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillRect(0, 0, 128, 64);
+  ctx.fillStyle = '#111827';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 39px system-ui, sans-serif';
+  ctx.fillText(String(number).padStart(2, '0'), 64, 34);
+  const texture = new THREE.CanvasTexture(cv);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
 }
 
 let inmateStripe: THREE.CanvasTexture | null = null;
-
-/** Shared GLB cache: one network request per skin, cloned nodes per actor.
- *  The GLB keeps its relative Textures/texture-X.png references under public/models.
- */
-const characterLoader = new GLTFLoader();
-const characterCache = new Map<string, Promise<{ scene: THREE.Group; animations: THREE.AnimationClip[] }>>();
-function loadCharacter(skin: string) {
-  let promise = characterCache.get(skin);
-  if (!promise) {
-    promise = characterLoader.loadAsync(`${import.meta.env.BASE_URL}models/characters/character-${skin}.glb`)
-      .then((gltf) => ({ scene: gltf.scene, animations: gltf.animations }));
-    characterCache.set(skin, promise);
-  }
-  return promise;
-}
 
 export class HumanoidRig {
   root = new THREE.Group();
@@ -44,196 +49,215 @@ export class HumanoidRig {
   pose: Pose = 'stand';
   phase = Math.random() * 10;
   labelSprite: THREE.Sprite | null = null;
-  private mixer: THREE.AnimationMixer | null = null;
-  private actions = new Map<string, THREE.AnimationAction>();
-  private activeClip = '';
-  private disposed = false;
-  private loadedModel: THREE.Group | null = null;
 
-
+  // The third argument remains for compatibility with the existing player/NPC
+  // constructors. It now identifies the number badge, never loads an external GLB.
   constructor(look: Appearance, labelText?: string, modelSkin?: string) {
     this.root.scale.set(look.build, look.height, look.build);
     this.root.add(this.body);
 
-    const skinMat = new THREE.MeshStandardMaterial({ color: look.skin, roughness: 0.75 });
-    const darkMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 });
-    const accentMat = new THREE.MeshStandardMaterial({ color: look.accent, roughness: 0.65 });
+    const isStriped = look.uniform === 'inmate';
+    const isOrange = look.uniform === 'inmate-orange';
+    const isOfficer = look.uniform === 'officer';
+    const isMedic = look.uniform === 'medic';
+    const isPrisoner = isStriped || isOrange;
+
+    const skinMat = new THREE.MeshStandardMaterial({ color: look.skin, roughness: 0.78 });
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.82 });
+    const accentMat = new THREE.MeshStandardMaterial({ color: look.accent, roughness: 0.66 });
+    const blushMat = new THREE.MeshStandardMaterial({ color: 0xf3a6a9, roughness: 0.9 });
 
     let shirtMat: THREE.MeshStandardMaterial;
     let pantsMat: THREE.MeshStandardMaterial;
-    if (look.uniform === 'inmate') {
-      inmateStripe ??= stripedTex('#e2e8f0', '#1e3a5f');
-      shirtMat = new THREE.MeshStandardMaterial({ map: inmateStripe, roughness: 0.8 });
-      pantsMat = new THREE.MeshStandardMaterial({ color: 0x1e3a5f, roughness: 0.85 });
+    if (isStriped) {
+      inmateStripe ??= stripedTex('#f8fafc', '#0f172a', 12);
+      shirtMat = new THREE.MeshStandardMaterial({ map: inmateStripe, roughness: 0.84 });
+      pantsMat = new THREE.MeshStandardMaterial({ map: inmateStripe, roughness: 0.86 });
+    } else if (isOrange) {
+      shirtMat = new THREE.MeshStandardMaterial({ color: 0xff8c1a, roughness: 0.77 });
+      pantsMat = new THREE.MeshStandardMaterial({ color: 0xff8c1a, roughness: 0.82 });
+    } else if (isMedic) {
+      shirtMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.84 });
+      pantsMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.86 });
+    } else if (isOfficer) {
+      shirtMat = new THREE.MeshStandardMaterial({ color: 0x1e40af, roughness: 0.76 });
+      pantsMat = new THREE.MeshStandardMaterial({ color: 0x172554, roughness: 0.82 });
     } else {
-      shirtMat = new THREE.MeshStandardMaterial({ color: 0x2f5e3d, roughness: 0.7 });
-      pantsMat = new THREE.MeshStandardMaterial({ color: 0x1f3f2b, roughness: 0.8 });
+      // Visiting relatives wear ordinary clothes, not the prison uniform.
+      shirtMat = new THREE.MeshStandardMaterial({ color: 0xe9a4b8, roughness: 0.82 });
+      pantsMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.88 });
     }
 
-    // Thân trên
-    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.19, 0.56, 12), shirtMat);
-    torso.position.y = 1.02;
+    // Squat, rounded torso: nominal y=0.975, reaching just under the head.
+    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.255, 0.27, 0.48, 22, 1), shirtMat);
+    torso.position.y = 0.975;
     torso.castShadow = true;
     this.body.add(torso);
+    const belly = new THREE.Mesh(new THREE.SphereGeometry(0.255, 20, 12), shirtMat);
+    belly.scale.set(1.04, 0.75, 0.94);
+    belly.position.set(0, 0.96, 0.012);
+    belly.castShadow = true;
+    this.body.add(belly);
 
-    // Cổ áo / bảng tên màu nhận diện
-    const collar = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.08, 0.28), accentMat);
-    collar.position.set(0, 1.26, 0.02);
+    // Tiny accent trim: particularly important on the user's own character.
+    const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.165, 0.18, 0.055, 18), isPrisoner ? darkMat : accentMat);
+    collar.position.y = 1.22;
     this.body.add(collar);
 
-    const badge = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.05, 0.02), accentMat);
-    badge.position.set(0.09, 1.12, 0.2);
-    this.body.add(badge);
+    if (isOrange) {
+      // Small WHITE ID plate with black digits on the orange jumpsuit.
+      const seed = (modelSkin ?? labelText ?? '07');
+      const index = Array.from(seed).reduce((v, ch) => v + ch.charCodeAt(0), 0) % 90 + 10;
+      const plate = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.145, 0.075),
+        new THREE.MeshStandardMaterial({
+          map: numberTexture(index),
+          roughness: 0.77,
+          side: THREE.DoubleSide,
+        }),
+      );
+      plate.position.set(0.112, 1.065, 0.270);
+      this.body.add(plate);
+    } else {
+      const badge = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.035, 0.018), isPrisoner ? darkMat : accentMat);
+      badge.position.set(0.13, 1.07, 0.267);
+      this.body.add(badge);
+    }
 
-    // Hông
-    const hips = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.16, 10), pantsMat);
-    hips.position.y = 0.68;
+    const hips = new THREE.Mesh(new THREE.SphereGeometry(0.247, 18, 12), pantsMat);
+    hips.scale.set(1, 0.48, 0.96);
+    hips.position.y = 0.715;
     this.body.add(hips);
 
-    // Đầu
-    this.head.position.set(0, 1.46, 0);
+    // Oversized head: 0.275m radius at y=1.425 => top at 1.70m.
+    this.head.position.set(0, 1.425, 0);
     this.body.add(this.head);
-    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.17, 14, 12), skinMat);
-    skull.scale.set(0.95, 1.06, 0.98);
+    const skull = new THREE.Mesh(new THREE.SphereGeometry(0.275, 24, 18), skinMat);
     skull.castShadow = true;
     this.head.add(skull);
 
-    // Mắt + lông mày
-    const eyeGeo = new THREE.SphereGeometry(0.022, 8, 8);
-    const eyeL = new THREE.Mesh(eyeGeo, darkMat);
-    const eyeR = new THREE.Mesh(eyeGeo, darkMat);
-    eyeL.position.set(-0.055, 0.02, 0.15);
-    eyeR.position.set(0.055, 0.02, 0.15);
-    this.head.add(eyeL, eyeR);
+    // Two widely spaced black dot eyes, with tiny glints.
+    const eyeGeo = new THREE.SphereGeometry(0.038, 14, 10);
+    const glintGeo = new THREE.SphereGeometry(0.010, 9, 7);
+    const glintMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    for (const side of [-1, 1]) {
+      const eye = new THREE.Mesh(eyeGeo, darkMat);
+      eye.position.set(side * 0.095, 0.026, 0.257);
+      this.head.add(eye);
+      const glint = new THREE.Mesh(glintGeo, glintMat);
+      glint.position.set(side * 0.095 - 0.009, 0.039, 0.291);
+      this.head.add(glint);
+      const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.054, 12, 8), blushMat);
+      cheek.scale.set(1, 0.55, 0.25);
+      cheek.position.set(side * 0.165, -0.083, 0.222);
+      this.head.add(cheek);
+    }
+    const smile = new THREE.Mesh(
+      new THREE.TorusGeometry(0.037, 0.006, 5, 18, Math.PI),
+      new THREE.MeshStandardMaterial({ color: 0x944d57, roughness: 0.9 }),
+    );
+    smile.rotation.z = Math.PI;
+    smile.position.set(0, -0.099, 0.265);
+    this.head.add(smile);
 
-    // Tóc / mũ
-    const hairMat = new THREE.MeshStandardMaterial({ color: look.hair, roughness: 0.85 });
-    if (look.hairStyle !== 'bald') {
-      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.178, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.58), hairMat);
-      cap.position.y = 0.02;
-      cap.rotation.x = -0.15;
-      this.head.add(cap);
+    // Scalp fits the new sphere. Officers wear a blue cap instead of hair.
+    const hairMat = new THREE.MeshStandardMaterial({ color: look.hair, roughness: 0.87 });
+    if (!isOfficer && look.hairStyle !== 'bald') {
+      const hairCap = new THREE.Mesh(
+        new THREE.SphereGeometry(0.288, 24, 14, 0, Math.PI * 2, 0, Math.PI * 0.48),
+        hairMat,
+      );
+      hairCap.position.y = 0.025;
+      hairCap.rotation.x = -0.10;
+      hairCap.castShadow = true;
+      this.head.add(hairCap);
       if (look.hairStyle === 'bun') {
-        const bun = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), hairMat);
-        bun.position.set(0, 0.03, -0.17);
+        const bun = new THREE.Mesh(new THREE.SphereGeometry(0.09, 14, 10), hairMat);
+        bun.position.set(0, 0.07, -0.265);
         this.head.add(bun);
       }
     }
-    if (look.cap) {
-      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.09, 12), shirtMat);
-      crown.position.y = 0.13;
-      const visor = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.02, 0.14), darkMat);
-      visor.position.set(0, 0.09, 0.15);
+    if (isOfficer || look.cap) {
+      const capMat = new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.76 });
+      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.248, 0.272, 0.125, 24), capMat);
+      crown.position.y = 0.235;
+      crown.castShadow = true;
+      const visor = new THREE.Mesh(new THREE.SphereGeometry(0.25, 20, 10), capMat);
+      visor.scale.set(1, 0.16, 0.58);
+      visor.position.set(0, 0.18, 0.153);
       this.head.add(crown, visor);
+      const emblem = new THREE.Mesh(
+        new THREE.SphereGeometry(0.028, 10, 8),
+        new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.25, roughness: 0.5 }),
+      );
+      emblem.position.set(0, 0.27, 0.257);
+      this.head.add(emblem);
     }
     if (look.glasses) {
-      const g = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.045, 0.02), darkMat);
-      g.position.set(0, 0.02, 0.165);
-      this.head.add(g);
+      for (const side of [-1, 1]) {
+        const rim = new THREE.Mesh(new THREE.TorusGeometry(0.068, 0.009, 7, 16), darkMat);
+        rim.position.set(side * 0.095, 0.025, 0.276);
+        this.head.add(rim);
+      }
+      const bridge = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.012, 0.012), darkMat);
+      bridge.position.set(0, 0.025, 0.277);
+      this.head.add(bridge);
     }
 
-    // Tay
+    // Chunkier short arms, with rounded hands. Keep armL/armR animation pivots.
     const makeArm = () => {
       const g = new THREE.Group();
-      const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.055, 0.28, 8), shirtMat);
-      upper.position.y = -0.14;
-      const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.045, 0.24, 8), skinMat);
-      lower.position.y = -0.38;
-      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), skinMat);
-      hand.position.y = -0.51;
+      const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.073, 0.265, 12), shirtMat);
+      upper.position.y = -0.13;
+      upper.castShadow = true;
+      const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.067, 0.22, 12), skinMat);
+      lower.position.y = -0.35;
+      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.071, 12, 10), skinMat);
+      hand.position.y = -0.48;
       g.add(upper, lower, hand);
       return g;
     };
     this.armL = makeArm();
     this.armR = makeArm();
-    this.armL.position.set(-0.26, 1.24, 0);
-    this.armR.position.set(0.26, 1.24, 0);
+    this.armL.position.set(-0.31, 1.17, 0);
+    this.armR.position.set(0.31, 1.17, 0);
     this.body.add(this.armL, this.armR);
 
-    // Chân
-    const shoeMat = new THREE.MeshStandardMaterial({ color: look.uniform === 'officer' ? 0x111827 : 0x475569, roughness: 0.85 });
+    const shoeMat = new THREE.MeshStandardMaterial({ color: isOfficer ? 0x111827 : 0x293548, roughness: 0.85 });
     const makeLeg = () => {
       const g = new THREE.Group();
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.06, 0.56, 8), pantsMat);
-      leg.position.y = -0.28;
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.095, 0.48, 14), pantsMat);
+      leg.position.y = -0.265;
       leg.castShadow = true;
-      const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.08, 0.22), shoeMat);
-      shoe.position.set(0, -0.58, 0.04);
+      const shoe = new THREE.Mesh(new THREE.SphereGeometry(0.12, 14, 10), shoeMat);
+      shoe.scale.set(1, 0.76, 1.45);
+      shoe.position.set(0, -0.56, 0.05);
+      shoe.castShadow = true;
       g.add(leg, shoe);
       return g;
     };
     this.legL = makeLeg();
     this.legR = makeLeg();
-    this.legL.position.set(-0.1, 0.62, 0);
-    this.legR.position.set(0.1, 0.62, 0);
+    this.legL.position.set(-0.135, 0.65, 0);
+    this.legR.position.set(0.135, 0.65, 0);
     this.body.add(this.legL, this.legR);
 
-    // Character assets are loaded asynchronously; keep the procedural rig as a
-    // visual fallback only until a valid GLB and its animation clips arrive.
-    // Skin selection is deterministic: NPCs pass their fixed identity, player passes
-    // the saved preset. Rebuilding/loading no longer silently swaps character assets.
-    const skin = modelSkin ?? (look.uniform === 'officer' ? 'j' : 'g');
-    void loadCharacter(skin).then(({ scene, animations }) => {
-      if (this.disposed) return;
-      const model = scene.clone(true);
-      const bounds = new THREE.Box3().setFromObject(model);
-      const height = bounds.max.y - bounds.min.y;
-      if (!Number.isFinite(height) || height <= 0.01) return;
-      // Root already applies appearance.height; model local height stays 1.7m.
-      const scale = 1.7 / height;
-      model.scale.setScalar(scale);
-      model.position.y = -bounds.min.y * scale;
-      model.traverse((obj) => {
-        if (obj instanceof THREE.Mesh) obj.castShadow = true;
-      });
-      this.body.visible = false;
-      this.root.add(model);
-      this.loadedModel = model;
-      this.mixer = new THREE.AnimationMixer(model);
-      for (const clip of animations) {
-        this.actions.set(clip.name.toLowerCase(), this.mixer.clipAction(clip));
-      }
-      this.activeClip = '';
-      this.update(0, 0);
-    }).catch((err) => {
-      console.warn('[Character GLB] Fallback to procedural rig:', skin, err);
-    });
-
     if (labelText) {
-      this.labelSprite = makeLabel(labelText, look.accent);
-      this.labelSprite.position.set(0, 1.92, 0);
+      this.labelSprite = makeLabel(labelText, look.accent, false);
+      this.labelSprite.position.set(0, 2.05, 0);
       this.root.add(this.labelSprite);
     }
   }
 
   dispose() {
-    this.disposed = true;
-    this.mixer?.stopAllAction();
-    if (this.loadedModel) this.mixer?.uncacheRoot(this.loadedModel);
-    this.actions.clear();
-    this.mixer = null;
-    this.loadedModel = null;
+    // No external GLB, mixer or background requests. Nothing to stop here.
+    // Keep the method for the existing player rebuild lifecycle.
+    this.labelSprite?.material.dispose();
+    this.labelSprite?.material.map?.dispose();
   }
 
   update(dt: number, speed = 0) {
-    if (this.mixer) {
-      const clip = this.pose === 'walk' ? 'walk'
-        : this.pose === 'sit' ? 'sit'
-        : this.pose === 'work' ? 'interact-right'
-        : this.pose === 'talk' ? 'emote-yes' : 'idle';
-      if (this.activeClip !== clip) {
-        const next = this.actions.get(clip) ?? this.actions.get('idle');
-        const prev = this.actions.get(this.activeClip);
-        if (prev && prev !== next) prev.fadeOut(0.18);
-        if (next) {
-          next.reset().fadeIn(0.18).play();
-          next.setEffectiveTimeScale(clip === 'walk' ? Math.max(0.7, Math.min(1.6, speed / 3.2)) : 1);
-        }
-        this.activeClip = clip;
-      }
-      this.mixer.update(Math.min(Math.max(dt, 0), 0.1));
-      return;
-    }
+    // Preserve the exact state machine and pose pivots used by the old rig.
     this.phase += dt * (this.pose === 'walk' ? Math.max(4, speed * 2.2) : 2.5);
     const p = this.phase;
     this.body.position.y = 0;
@@ -272,26 +296,29 @@ export class HumanoidRig {
   }
 }
 
-function makeLabel(text: string, colorHex: number): THREE.Sprite {
+function makeLabel(text: string, colorHex: number, player: boolean): THREE.Sprite {
   const cv = document.createElement('canvas');
   cv.width = 256;
   cv.height = 64;
   const ctx = cv.getContext('2d')!;
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+  ctx.fillStyle = '#090d16';
   ctx.beginPath();
-  ctx.roundRect(8, 10, 240, 44, 12);
+  ctx.roundRect(5, 12, 246, 40, 20);
   ctx.fill();
-  ctx.strokeStyle = '#' + colorHex.toString(16).padStart(6, '0');
-  ctx.lineWidth = 3;
-  ctx.stroke();
-  ctx.fillStyle = '#f8fafc';
-  ctx.font = 'bold 24px system-ui, sans-serif';
+  if (player) {
+    ctx.strokeStyle = '#' + colorHex.toString(16).padStart(6, '0');
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 23px system-ui, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(text, 128, 33);
-  const tex = new THREE.CanvasTexture(cv);
-  const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true });
-  const s = new THREE.Sprite(mat);
-  s.scale.set(1.15, 0.29, 1);
-  return s;
+  ctx.fillText(text, 128, 33, 218);
+  const texture = new THREE.CanvasTexture(cv);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const material = new THREE.SpriteMaterial({ map: texture, depthTest: false, transparent: true });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(1.14, 0.29, 1);
+  return sprite;
 }
