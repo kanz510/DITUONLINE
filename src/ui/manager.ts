@@ -1784,15 +1784,36 @@ export class UIManager {
   }
 
   showExerciseMinigame() {
-    this.sfx.click();
-    this.g.addStat('stamina', -15);
-    this.g.addStat('stress', -15);
-    this.g.addStat('health', 5);
-    this.toast('Tập thể dục hoàn thành: −15 căng thẳng, +5 sức khỏe.', 'good');
-    this.g.completeObjective('ren_luyen_the_chat', 'tap_the_duc');
+    const reason = this.g.exerciseReason();
+    if (reason) { this.toast(reason, 'warn'); return; }
+    let reps = 0;
+    this.showModal(`
+      <h2>Tập thể lực ngoài sân</h2>
+      <div class="hud-sub">Thực hiện đủ 3 hiệp mới hoàn thành một buổi tập.</div>
+      <div class="card-row" id="exercise-progress">Hiệp 0/3</div>
+      <button class="btn btn-accent" id="exercise-rep">Thực hiện hiệp tiếp theo</button>
+      <button class="btn" data-close>Thoát</button>
+    `, (el) => {
+      el.querySelector('#exercise-rep')?.addEventListener('click', () => {
+        reps++;
+        const status = el.querySelector('#exercise-progress');
+        if (status) status.textContent = `Hiệp ${reps}/3`;
+        if (reps >= 3) {
+          this.g.exercise(1);
+          this.g.completeObjective('ren_luyen_the_chat', 'tap_the_duc');
+          this.closeModal();
+        }
+      });
+    });
   }
 
   showVocationalMinigame(onDone?: () => void) {
+    if (this.g.qObj('lop_nghe_dau', 'thao_tac')) {
+      this.toast('Đã thực hành xong. Hãy gặp Thầy Phúc để nghe nhận xét.', 'info');
+      return;
+    }
+    const prerequisite = this.g.objectiveBlockReason('lop_nghe_dau', 'thao_tac');
+    if (prerequisite) { this.toast(prerequisite, 'warn'); return; }
     const COLORS = [
       { id: 1, name: 'Dây Đỏ (Pha L1)', color: '#ef4444' },
       { id: 2, name: 'Dây Vàng (Pha L2)', color: '#facc15' },
@@ -1835,9 +1856,9 @@ export class UIManager {
               const correct = playerSeq.every((val, idx) => val === targetSeq[idx]);
               if (correct) {
                 this.sfx.good();
-                this.g.completeObjective('lop_nghe_dau', 'thao_tac');
-                this.g.addReform(3, 'Thực hành nối mạch điện an toàn');
-                this.g.s.skills.vocationalExam++;
+                if (this.g.completeObjective('lop_nghe_dau', 'thao_tac')) {
+                  this.g.addReform(3, 'Thực hành nối mạch điện an toàn');
+                }
                 this.showModal(`
                   <h2>Hoàn thành bài tập học nghề</h2>
                   <div class="card-row" style="color:#4ade80">
@@ -1904,6 +1925,8 @@ export class UIManager {
 
   // ───────────── Hoạt động phụ việc y tế ─────────────
   showMedicineSortingMinigame() {
+    const reason = this.g.objectiveBlockReason('phu_y_te', 'hoan_thanh');
+    if (reason) { this.toast(reason, 'warn'); return; }
     this.showModal(`
       <h2>Tủ thuốc y tế — Phân loại thuốc men</h2>
       <div class="card-row">
@@ -1915,7 +1938,6 @@ export class UIManager {
       <button class="btn btn-accent" id="med-done-btn">Nhận thưởng & Đóng</button>
     `, (el) => {
       el.querySelector('#med-done-btn')?.addEventListener('click', () => {
-        this.g.completeObjective('phu_y_te', 'nhan_viec');
         this.g.completeObjective('phu_y_te', 'hoan_thanh');
         this.closeModal();
       });
@@ -1924,21 +1946,29 @@ export class UIManager {
 
   // ───────────── Đọc sách thư viện ─────────────
   showLibraryReader() {
+    const needsBorrow = this.g.qStatus('sach_thu_vien') === 'active' &&
+      !this.g.qObj('sach_thu_vien', 'muon_sach');
     this.showModal(`
       <h2>Thư viện trại giam An Phú</h2>
       <div class="card-row">
         Giá sách gồm nhiều đầu sách cẩm nang phổ biến giáo dục pháp luật, sổ tay nghề cơ điện và tác phẩm văn học phục vụ cải tạo.
       </div>
       <div class="choice-list">
-        <button class="choice-btn" id="lib-read-law">Đọc Cẩm nang pháp luật & quyền giảm án (−10 căng thẳng, +1 điểm cải tạo)</button>
+        ${needsBorrow
+          ? '<button class="choice-btn important" id="lib-borrow-law">Bước 1: Mượn cẩm nang pháp luật từ giá sách</button>'
+          : '<button class="choice-btn" id="lib-read-law">Đọc Cẩm nang pháp luật & quyền giảm án (−10 căng thẳng, +1 điểm cải tạo)</button>'}
         <button class="choice-btn" id="lib-read-tech">Đọc Sách hướng dẫn kỹ thuật điện dân dụng (−5 căng thẳng)</button>
         <button class="choice-btn" data-close>Rời giá sách</button>
       </div>
     `, (el) => {
+      el.querySelector('#lib-borrow-law')?.addEventListener('click', () => {
+        this.g.completeObjective('sach_thu_vien', 'muon_sach');
+        this.toast('Đã mượn sách. Bước tiếp theo: đọc cẩm nang pháp luật.', 'good');
+        this.showLibraryReader();
+      });
       el.querySelector('#lib-read-law')?.addEventListener('click', () => {
         this.g.addStat('stress', -10);
         this.g.addReform(1, 'Đọc sách pháp luật');
-        this.g.completeObjective('sach_thu_vien', 'muon_sach');
         this.g.completeObjective('sach_thu_vien', 'doc_xong');
         this.sfx.good();
         this.showModal(`
