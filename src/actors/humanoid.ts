@@ -47,7 +47,6 @@ export class HumanoidRig {
   pose: Pose = 'stand';
   phase = Math.random() * 10;
   labelSprite: THREE.Sprite | null = null;
-  private glbModel: THREE.Group | null = null;
   private mixer: THREE.AnimationMixer | null = null;
   private actions = new Map<string, THREE.AnimationAction>();
   private activeClip = '';
@@ -189,7 +188,6 @@ export class HumanoidRig {
       });
       this.body.visible = false;
       this.root.add(model);
-      this.glbModel = model;
       this.mixer = new THREE.AnimationMixer(model);
       for (const clip of animations) {
         this.actions.set(clip.name.toLowerCase(), this.mixer.clipAction(clip));
