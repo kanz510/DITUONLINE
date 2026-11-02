@@ -494,6 +494,8 @@ export class GameLogic {
     this.s.quests[q]?.choices.push(QUESTS[q].branches?.[branch] ?? branch);
     this.event(`Quyết định: ${QUESTS[q].branches?.[branch] ?? branch}`);
     this.completeObjective(q, 'quyet_dinh');
+    // The pay branch may be chosen when the player already has enough clean money.
+    if (q === 'mon_no' && branch === 'pay') this.checkMoneyObjective();
     this.commit();
     return true;
   }
