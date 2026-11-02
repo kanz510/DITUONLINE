@@ -140,3 +140,47 @@ test('landscape HUD is compact and translucent without hiding quest controls', a
   await page.locator('#btn-quest-toggle').click();
   await expect(page.locator('#hud-quest-bar')).toHaveClass(/collapsed/);
 });
+
+
+test('top-right toolbar and labeled mini-map stay usable on iPhone landscape', async ({ page }) => {
+  const toolbar = page.locator('.hud-action-row');
+  await expect(toolbar).toBeVisible();
+  await expect(page.locator('#btn-fullscreen')).toBeVisible();
+  await expect(page.locator('#btn-bag')).toBeVisible();
+  await expect(page.locator('#btn-menu')).toBeVisible();
+  await expect(page.locator('#btn-sprint')).toHaveCount(0);
+  await expect(page.locator('#btn-interact svg')).toBeVisible();
+
+  const boxes = await page.evaluate(() => {
+    const box = (selector: string) => document.querySelector(selector)!.getBoundingClientRect();
+    const actions = box('.hud-action-row');
+    const stats = box('#hud-stats-mini');
+    const map = box('#minimap-box');
+    return {
+      toolbarRight: actions.right,
+      mapRight: map.right,
+      screenWidth: innerWidth,
+      separated: actions.bottom <= stats.top && stats.bottom <= map.top,
+    };
+  });
+  expect(boxes.toolbarRight).toBeLessThanOrEqual(boxes.screenWidth);
+  expect(boxes.mapRight).toBeLessThanOrEqual(boxes.screenWidth);
+  expect(boxes.separated).toBe(true);
+
+  await page.evaluate(() => (window as any).__DITU__.teleport(16, 0.15));
+  await expect(page.locator('#minimap-area')).toHaveText('Xưởng lao động');
+
+  await page.locator('#minimap-box').click();
+  await expect(page.locator('.modal h2')).toContainText('BẢN ĐỒ TRẠI GIAM');
+  await expect(page.locator('.modal')).toContainText('Xưởng lao động');
+  await page.locator('.modal-close-top').click();
+  await expect(page.locator('.modal')).toHaveCount(0);
+
+  // The existing joystick still controls automatic sprint when pushed far enough.
+  await page.evaluate(() => (window as any).__DITU__.teleport(-14.9, -28.6));
+  await expect(page.locator('#btn-interact')).toHaveClass(/is-available/);
+  await expect(page.locator('#btn-interact')).toBeEnabled();
+  await expect(page.locator('#btn-interact')).toHaveAttribute('aria-label', /Nhận chăn màn|Giường/i);
+  const interactWidth = await page.locator('#btn-interact').evaluate((el) => el.getBoundingClientRect().width);
+  expect(interactWidth).toBeLessThanOrEqual(160);
+});
