@@ -100,7 +100,7 @@ export class HumanoidRig {
     this.body.add(belly);
 
     // Tiny accent trim: particularly important on the user's own character.
-    const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.165, 0.18, 0.055, 18), isPrisoner ? darkMat : accentMat);
+    const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.165, 0.18, 0.055, 18), isPrisoner && !!labelText ? darkMat : accentMat);
     collar.position.y = 1.22;
     this.body.add(collar);
 
@@ -242,11 +242,11 @@ export class HumanoidRig {
     this.legR.position.set(0.135, 0.65, 0);
     this.body.add(this.legL, this.legR);
 
-    if (labelText) {
-      this.labelSprite = makeLabel(labelText, look.accent, false);
-      this.labelSprite.position.set(0, 2.05, 0);
-      this.root.add(this.labelSprite);
-    }
+    // NPCs use black-and-white name pills. The player gets a subtle accent
+    // border and "BẠN" because the saved character name is not passed here.
+    this.labelSprite = makeLabel(labelText ?? 'BẠN', look.accent, !labelText);
+    this.labelSprite.position.set(0, 2.05, 0);
+    this.root.add(this.labelSprite);
   }
 
   dispose() {
