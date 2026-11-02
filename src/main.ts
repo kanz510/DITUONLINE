@@ -186,20 +186,8 @@ class App {
     this.ui.btnInteract.addEventListener('click', () => {
       if (!this.ui.paused && !this.cutscene.isActive()) this.currentPrompt?.run();
     });
-    const sprintBtn = this.ui.btnSprint;
-    const startSprint = (e?: Event) => {
-      e?.preventDefault();
-      this.input.sprintTouch = true;
-    };
-    const endSprint = () => {
-      this.input.sprintTouch = false;
-    };
-    sprintBtn.addEventListener('touchstart', startSprint, { passive: false });
-    sprintBtn.addEventListener('touchend', endSprint);
-    sprintBtn.addEventListener('touchcancel', endSprint);
-    sprintBtn.addEventListener('mousedown', startSprint);
-    sprintBtn.addEventListener('mouseup', endSprint);
-    sprintBtn.addEventListener('mouseleave', endSprint);
+    // Sprint remains automatic at high joystick tilt (or Shift on desktop).
+    // No separate mobile sprint button is needed.
 
     const onResize = () => {
       const w = Math.max(window.innerWidth, document.documentElement.clientWidth || 0);
