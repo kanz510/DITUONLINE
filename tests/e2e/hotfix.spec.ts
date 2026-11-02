@@ -108,3 +108,34 @@ test('dismissible information panels use a single X and balanced content', async
   await expect(page.getByRole('button', { name: 'Tiếp tục chơi' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Bắt đầu lượt chơi mới' })).toBeVisible();
 });
+
+test('landscape HUD is compact and translucent without hiding quest controls', async ({ page }) => {
+  for (const size of [{ width: 956, height: 440 }, { width: 844, height: 390 }]) {
+    await page.setViewportSize(size);
+    const metrics = await page.evaluate(() => {
+      const clock = document.querySelector<HTMLElement>('#hud-clock')!;
+      const quest = document.querySelector<HTMLElement>('#hud-quest-bar')!;
+      const left = document.querySelector<HTMLElement>('.hud-left')!;
+      const alpha = (value: string) => {
+        const match = value.match(/rgba?\(([^)]+)\)/);
+        const values = match?.[1].split(',').map(x => x.trim()) || [];
+        return values.length === 4 ? Number(values[3]) : 1;
+      };
+      return {
+        width: left.getBoundingClientRect().width,
+        clockAlpha: alpha(getComputedStyle(clock).backgroundColor),
+        questAlpha: alpha(getComputedStyle(quest).backgroundColor),
+        clockWidth: clock.getBoundingClientRect().width,
+        questWidth: quest.getBoundingClientRect().width,
+      };
+    });
+    expect(metrics.width).toBeLessThanOrEqual(296);
+    expect(metrics.clockAlpha).toBeLessThan(0.7);
+    expect(metrics.questAlpha).toBeLessThan(0.7);
+    expect(metrics.clockWidth).toBeLessThanOrEqual(296);
+    expect(metrics.questWidth).toBeLessThanOrEqual(296);
+  }
+  await expect(page.locator('#btn-quest-autowalk')).toBeVisible();
+  await page.locator('#btn-quest-toggle').click();
+  await expect(page.locator('#hud-quest-bar')).toHaveClass(/collapsed/);
+});
