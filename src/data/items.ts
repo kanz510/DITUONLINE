@@ -30,6 +30,7 @@ export const ITEMS: Record<string, ItemDef> = {
   so_tay_dieu_tra: { id: 'so_tay_dieu_tra', name: 'Sổ tay ghi chép', desc: 'Ghi lại các mâu thuẫn, lời khai nhân chứng và giờ giấc camera.', essential: true },
   sach_phap_luat: { id: 'sach_phap_luat', name: 'Cẩm nang pháp luật & cải tạo', desc: 'Sách mượn từ thư viện. Đọc giúp hồi 10 tinh thần và hiểu rõ quy tắc giảm án.', use: { morale: 10 } },
   qua_luu_niem: { id: 'qua_luu_niem', name: 'Khung ảnh gỗ tự làm', desc: 'Gia công tỉ mỉ tại xưởng để gửi tặng Chị Mai trong phòng thăm gặp.', quest: true, giftable: true },
+  thu_gioi_thieu_viec_lam: { id: 'thu_gioi_thieu_viec_lam', name: 'Thư giới thiệu việc làm', desc: 'Thầy Phúc giới thiệu bạn tới xưởng cơ điện sau khi ra trại.', essential: true, quest: true },
 };
 
 export function itemName(id: string) {
