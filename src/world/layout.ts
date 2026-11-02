@@ -163,7 +163,7 @@ export function zoneName(x: number, z: number): string {
 // ───────── Đồ vật có va chạm ─────────
 export type PropKind =
   | 'bunk' | 'table' | 'counter' | 'canteen' | 'bench' | 'workbench' | 'shelf' | 'board' | 'desk'
-  | 'pullup' | 'stonetable' | 'tree' | 'tank' | 'crate' | 'basin' | 'press' | 'tower' | 'cabinet' | 'chair';
+  | 'pullup' | 'stonetable' | 'tree' | 'tank' | 'crate' | 'basin' | 'press' | 'tower' | 'cabinet' | 'chair' | 'plant' | 'lamp';
 
 export interface PropDef {
   kind: PropKind;
@@ -224,6 +224,9 @@ P.push(
   { kind: 'tree', x: 7, z: 17, w: 0.8, d: 0.8, collide: true },
   { kind: 'tree', x: 26, z: 18.5, w: 0.8, d: 0.8, collide: true },
   { kind: 'tree', x: 0, z: -13, w: 0.8, d: 0.8, collide: true },
+  // New scenery has explicit colliders and is kept outside the existing quest/patrol lanes.
+  { kind: 'lamp', x: -26.6, z: -3.0, w: 0.55, d: 0.55, collide: true, label: 'Đèn sân phía Tây' },
+  { kind: 'plant', x: -16.4, z: 18.45, w: 0.6, d: 0.6, collide: true, label: 'Chậu cây lớp học nghề' },
   { kind: 'tank', x: -27.3, z: -15.5, w: 2, d: 2, collide: true },
   { kind: 'tower', x: -28.2, z: 20.2, w: 2.4, d: 2.4, collide: true },
   { kind: 'tower', x: 28.2, z: -32.2, w: 2.4, d: 2.4, collide: true },
@@ -292,7 +295,7 @@ export const NODES: Record<string, [number, number]> = {
   cor1: [-25.25, -21.6], cor2: [-19.75, -21.6], corC: [-17, -21.6], cor3: [-14.25, -21.6], cor4: [-8.75, -21.6],
   cbOut: [-17, -15.5],
   rc: [-9, -9],
-  yC: [-4, -3], yW: [-18, -4], yEx: [-21, 3.6], yBench: [-10, 3.2], yBench2: [-16, 3.6], yE: [8, -6], ySE: [8, 10], yS: [-4, 7.5],
+  yC: [-4, -3], yW: [-18, -4], yEx: [-21, 3.6], yWestBypass: [-23.9, 0.3], yBench: [-10, 3.2], yBench2: [-16, 3.6], yE: [8, -6], ySE: [8, 10], yS: [-4, 7.5],
   lamCorner: [20, 12.5],
   messOut: [6.25, -15.5], messIn: [6.25, -20], messAisle: [6, -24.2], messCounter: [5, -28.6], messCanteen: [13.5, -29.2],
   medOut: [22.25, -15.5], medIn: [22.25, -20], medDesk: [23, -22], medBed: [25.5, -27],
@@ -310,6 +313,8 @@ const E: [string, string][] = [
   ['cor1', 'cor2'], ['cor2', 'corC'], ['corC', 'cor3'], ['cor3', 'cor4'], ['corC', 'cbOut'],
   ['cbOut', 'rc'], ['cbOut', 'yW'], ['cbOut', 'yC'], ['cbOut', 'messOut'], ['cbOut', 'visitOut'],
   ['rc', 'yC'], ['rc', 'yW'], ['rc', 'visitOut'],
+  // Western detour runs inside the yard, away from the new lamp's 0.55 m collider.
+  ['yW', 'yWestBypass'], ['yWestBypass', 'yEx'],
   ['yC', 'yE'], ['yC', 'yBench'], ['yC', 'yS'], ['yW', 'yEx'], ['yW', 'yBench2'], ['yEx', 'yBench2'], ['yBench2', 'yBench'],
   ['yBench', 'yS'], ['yE', 'messOut'], ['yE', 'medOut'], ['yE', 'wsOut'], ['yE', 'ySE'], ['yS', 'ySE'], ['ySE', 'lamCorner'], ['ySE', 'wsOut'],
   ['messOut', 'messIn'], ['messIn', 'messAisle'], ['messAisle', 'messCounter'], ['messCounter', 'messCanteen'], ['messAisle', 'messCanteen'],
