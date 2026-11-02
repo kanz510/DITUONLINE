@@ -149,6 +149,7 @@ export class UIManager {
             <div class="hud-xp-bar"><div class="hud-xp-fill" id="hud-xp-fill" style="width:0%"></div></div>
           </div>
           <div class="hud-quest-bar interactive" id="hud-quest-bar" title="Nhấp để xem chi tiết / tự đi"></div>
+          <div class="toasts" id="hud-toasts" aria-live="polite"></div>
         </div>
         <div class="hud-right">
           <div class="hud-action-row interactive">
@@ -186,7 +187,6 @@ export class UIManager {
         <span class="autowalk-text" id="autowalk-text">Đang tự đi...</span>
         <button class="btn btn-sm" id="btn-cancel-autowalk">Hủy [X]</button>
       </div>
-      <div class="toasts" id="hud-toasts"></div>
       <div class="prompt-box interactive" id="hud-prompt" style="display:none"></div>
       <div class="joy-zone interactive" id="joy-zone"><div class="joy-knob" id="joy-knob"></div></div>
       <div class="touch-right interactive">
@@ -226,6 +226,19 @@ export class UIManager {
     this.autowalkBannerEl = this.root.querySelector('#autowalk-banner')!;
     this.autowalkTextEl = this.root.querySelector('#autowalk-text')!;
     this.btnCancelAutoWalk = this.root.querySelector('#btn-cancel-autowalk')!;
+
+    // Keep notifications in normal flow below the quest, with room for the joystick.
+    const layoutToasts = () => {
+      const top = this.toastsEl.getBoundingClientRect().top;
+      const controlsTop = this.joyZone.getBoundingClientRect().top;
+      this.toastsEl.style.maxHeight = `${Math.max(0, Math.min(120, controlsTop - top - 8))}px`;
+    };
+    const toastLayoutObserver = new ResizeObserver(layoutToasts);
+    toastLayoutObserver.observe(this.questBarEl);
+    toastLayoutObserver.observe(this.joyZone);
+    window.addEventListener('resize', layoutToasts);
+    window.visualViewport?.addEventListener('resize', layoutToasts);
+    layoutToasts();
 
     this.btnCancelAutoWalk.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1774,30 +1787,40 @@ export class UIManager {
   }
 
   // ───────────── Căn tin ─────────────
-  showCanteen() {
+  showCanteen(feedback?: string) {
+    const status = !this.g.canteenOpen()
+      ? 'Căn tin đang đóng cửa. Mở cửa 16:30–21:00.'
+      : this.g.canteenBanned()
+        ? `Bạn đang bị cấm mua căn tin đến hết ngày ${this.g.s.flags.canteenBanUntil}.`
+        : feedback ?? 'Căn tin đang mở. Chọn món để mua, sau đó dùng trong Túi đồ.';
     const shopIds = Object.keys(ITEMS).filter((k) => ITEMS[k].price);
     const rows = shopIds
       .map((id) => {
         const it = ITEMS[id];
+        const reason = this.g.purchaseError(id);
         return `
         <div class="card-row" style="display:flex;justify-content:space-between;align-items:center">
           <div><b>${it.name}</b> — ${fmtMoney(it.price!)}<div class="hud-sub">${it.desc}</div></div>
-          <button class="btn btn-accent" data-buy="${id}">Mua</button>
+          <div style="text-align:right">
+            <button class="btn btn-accent" data-buy="${id}" ${reason ? 'disabled' : ''}>Mua</button>
+            ${reason ? `<div class="hud-sub" style="max-width:150px">${reason}</div>` : ''}
+          </div>
         </div>`;
       })
       .join('');
     this.showModal(
       `<h2>Quầy căn tin (Tiền hiện có: ${fmtMoney(this.g.s.stats.money)})</h2>
        <div class="hud-sub" style="margin-bottom:8px">Mở cửa 16:30–21:00. Nhu yếu phẩm & đồ ăn bổ sung thể lực.</div>
+       <div class="card-row" id="canteen-status" role="status">${status}</div>
        ${rows}
        <button class="btn" data-close>Đóng</button>`,
       (el) => {
         el.querySelectorAll('[data-buy]').forEach((b) => {
           b.addEventListener('click', () => {
-            const err = this.g.buy((b as HTMLElement).dataset.buy!);
-            if (err) this.toast(err, 'warn');
-            else this.sfx.good();
-            this.showCanteen();
+            const id = (b as HTMLElement).dataset.buy!;
+            const err = this.g.buy(id);
+            if (!err) this.sfx.good();
+            this.showCanteen(err ?? `Đã mua ${ITEMS[id].name}. Vật phẩm đã vào Túi đồ.`);
           });
         });
       },

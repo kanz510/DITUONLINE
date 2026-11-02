@@ -10,7 +10,10 @@ export default defineConfig({
     baseURL: 'http://localhost:4173',
     channel: process.env.PLAYWRIGHT_CHANNEL || (process.platform === 'win32' && !process.env.CI ? 'msedge' : undefined),
     headless: true,
-    launchOptions: { args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] },
+    launchOptions: {
+      executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH || undefined,
+      args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
+    },
   },
   webServer: {
     command: 'npx vite build && npx vite preview --port 4173 --strictPort',

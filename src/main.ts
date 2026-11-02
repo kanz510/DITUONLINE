@@ -488,7 +488,10 @@ class App {
     this.escortTimer += dt;
     const info = AREA_EXIT_MAP[this.escortTargetArea];
     if (!info) {
+      this.tempUnlockedDoors.delete(this.escortTargetArea);
       this.isEscorting = false;
+      this.escortTargetArea = null;
+      this.input.reset();
       return;
     }
 
@@ -505,13 +508,15 @@ class App {
       this.tempUnlockedDoors.delete(this.escortTargetArea);
       this.isEscorting = false;
       this.escortTargetArea = null;
+      this.input.reset();
+      this.playerRig.root.position.set(p.x, 0, p.z);
+      const tung = this.npcs.tung;
+      tung.snapToSchedule(this.g.s.minute);
 
       // Phạt nhẹ 1 lần duy nhất, không ngất
       this.g.recordViolation('disobedience', `escort-${this.g.s.day}-${this.g.s.minute}`, `Không chấp hành hiệu lệnh rời ${info.name} đúng giờ quy định.`);
       this.ui.toast(`Đã áp giải ra sân trại an toàn. Cửa ${info.name} đã được khóa lại.`, 'info');
 
-      const tung = this.npcs.tung;
-      tung.snapToSchedule(this.g.s.minute);
       return;
     }
 

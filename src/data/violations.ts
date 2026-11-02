@@ -12,6 +12,11 @@ export interface ViolationDef {
 }
 
 export const VIOLATIONS: Record<string, ViolationDef> = {
+  disobedience: {
+    type: 'disobedience', title: 'Không rời khu vực sau giờ đóng cửa', severity: 1, reform: -2,
+    penalty: 'Được áp giải ra ngoài, cảnh cáo và trừ 2 điểm cải tạo.',
+    risk: 'Ở lại khu vực đã đóng cửa: được đưa ra ngoài an toàn, −2 điểm cải tạo.',
+  },
   late_rollcall: {
     type: 'late_rollcall', title: 'Trễ điểm danh', severity: 1, reform: -3, morale: -5,
     penalty: 'Cảnh cáo, trừ 3 điểm cải tạo.',

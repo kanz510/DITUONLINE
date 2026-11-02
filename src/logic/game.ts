@@ -252,13 +252,19 @@ export class GameLogic {
     return this.s.minute >= 990 && this.s.minute < 1260;
   }
 
-  buy(id: string): string | null {
+  purchaseError(id: string): string | null {
     const def = ITEMS[id];
     if (!def?.price) return 'Mặt hàng không bán.';
     if (!this.canteenOpen()) return 'Căn tin chỉ mở 16:30–21:00.';
     if (this.canteenBanned()) return `Bạn đang bị cấm mua căn tin đến hết ngày ${this.s.flags.canteenBanUntil}.`;
     if (this.s.stats.money < def.price) return `Không đủ tiền (cần ${fmtMoney(def.price)}).`;
-    this.addStat('money', -def.price);
+    return null;
+  }
+
+  buy(id: string): string | null {
+    const error = this.purchaseError(id);
+    if (error) return error;
+    this.addStat('money', -ITEMS[id].price!);
     this.giveItem(id);
     if (id === 'mi_goi' && this.qStatus('mi_cho_huy') === 'active') this.completeObjective('mi_cho_huy', 'mua');
     this.commit();
@@ -307,6 +313,7 @@ export class GameLogic {
     const fullKey = `${type}:${key}`;
     if (this.s.violations.some((v) => v.key === fullKey)) return null; // một hành vi chỉ một hồ sơ
     const def = VIOLATIONS[type];
+    if (!def) return null; // Never crash the render loop for an unrecognised event.
     const grace = !!opts.grace;
     const v: Violation = {
       id: `V${this.s.nextId++}`,
