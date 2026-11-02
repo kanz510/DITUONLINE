@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -16,6 +16,8 @@ concurrency:
 
 jobs:
   deploy:
+    # A generated-assets commit re-triggers branch-based Pages, but must not rebuild itself.
+    if: ${{ github.event_name != 'push' || !contains(github.event.head_commit.message, 'build(pages): sync generated files') }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -38,6 +40,19 @@ jobs:
 
       - name: Build production bundle
         run: npm run build
+
+      # This repository ALSO has branch-based Pages (Jekyll) enabled.
+      # Keep tracked dist/ in sync with the Vite build so either Pages deploy serves
+      # the same fresh code. The generated commit is skipped by this workflow.
+      - name: Sync generated site for branch-based Pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A dist sw.js release.json
+          if ! git diff --cached --quiet; then
+            git commit -m "build(pages): sync generated files"
+            git push origin HEAD:main
+          fi
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v5
