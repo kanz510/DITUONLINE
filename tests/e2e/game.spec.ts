@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 test('khởi chạy 3D, chuỗi nhiệm vụ → lựa chọn → hậu quả, lưu/tải và kết thúc ra tù', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('#hud-clock')).toContainText('Ngày 1');
-  await expect(page.locator('#hud-quest')).toContainText('Người mới');
+  await expect(page.locator('#hud-quest-bar')).toContainText('Giường của bạn');
 
   // 1. Nhận chăn màn ở giường ngay cạnh vị trí xuất phát
   await expect(page.locator('#hud-prompt')).toContainText('Nhận chăn màn');
@@ -167,4 +167,71 @@ test('khởi chạy 3D, chuỗi nhiệm vụ → lựa chọn → hậu quả, l
     d.app.ui.showEnding(d.logic.s.ending);
   });
   await expect(page.locator('.modal h2')).toContainText('KẾT THÚC');
+});
+
+test('trải nghiệm điện thoại: xoay dọc/ngang, HUD gọn không đè, menu cảm ứng & safe area', async ({ browser }) => {
+  // 1. Khởi tạo mô phỏng iPhone 16 Pro Max ở chế độ dọc (440 x 956)
+  const ctx = await browser.newContext({
+    viewport: { width: 440, height: 956 },
+    hasTouch: true,
+    isMobile: true,
+  });
+  const page = await ctx.newPage();
+  await page.goto('/');
+
+  // Máy đang dọc -> Hiện overlay nhắc xoay ngang
+  const overlay = page.locator('#orientation-overlay');
+  await expect(overlay).toBeVisible();
+  await expect(overlay).toContainText('Xoay ngang điện thoại');
+
+  // Thử bấm "Tiếp tục màn hình dọc"
+  await page.locator('#btn-ignore-portrait').click();
+  await expect(overlay).not.toBeVisible();
+
+  // 2. Xoay sang ngang: iPhone 16 Pro Max landscape (956 x 440)
+  await page.setViewportSize({ width: 956, height: 440 });
+  await page.waitForTimeout(200);
+  await expect(overlay).not.toBeVisible();
+
+  // Kiểm tra các phần tử HUD hiển thị độc lập, không che đè
+  await expect(page.locator('#hud-clock')).toBeVisible();
+  await expect(page.locator('#hud-quest-bar')).toBeVisible();
+  await expect(page.locator('#hud-sentence')).toBeVisible();
+  await expect(page.locator('#btn-menu')).toBeVisible();
+  await expect(page.locator('#hud-stats-mini')).toBeVisible();
+  await expect(page.locator('#joy-zone')).toBeVisible();
+  await expect(page.locator('#btn-interact')).toBeVisible();
+
+  // Kiểm tra không còn nhãn phím tắt trên touch
+  await expect(page.locator('#btn-bag')).toHaveText('🎒 Túi');
+  await expect(page.locator('#btn-menu')).toHaveText('☰ Menu');
+
+  // 3. Mở menu trung tâm
+  await page.locator('#btn-menu').click();
+  await expect(page.locator('.modal h2')).toContainText('MENU TRÒ CHƠI');
+  await expect(page.locator('.menu-card-btn')).toHaveCount(7);
+  // Đóng menu
+  await page.locator('.modal [data-close]').click();
+  await expect(page.locator('.modal')).toHaveCount(0);
+
+  // 4. Mở chi tiết mục tiêu khi chạm thanh quest bar
+  await page.locator('#hud-quest-bar').click();
+  await expect(page.locator('.modal h2')).toContainText('MỤC TIÊU & NHIỆM VỤ');
+  await page.locator('.modal [data-close]').click();
+
+  // 5. Mở chi tiết chỉ số khi chạm thanh stats mini
+  await page.locator('#hud-stats-mini').click();
+  await expect(page.locator('.modal h2')).toContainText('CHỈ SỐ SINH HOẠT');
+  await page.locator('.modal [data-close]').click();
+
+  // 6. Kiểm tra màn hình nhỏ hơn: iPhone tiêu chuẩn landscape (844 x 390)
+  await page.setViewportSize({ width: 844, height: 390 });
+  await page.waitForTimeout(100);
+  await expect(page.locator('#hud-quest-bar')).toBeVisible();
+  await expect(page.locator('#btn-menu')).toBeVisible();
+
+  // 7. Chụp screenshot làm tư liệu giao diện ngang
+  await page.screenshot({ path: 'docs/screenshots/landscape_gameplay.png' });
+
+  await ctx.close();
 });

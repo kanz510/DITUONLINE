@@ -27,15 +27,23 @@ export class UIManager {
   root: HTMLElement;
   joyZone!: HTMLElement;
   joyKnob!: HTMLElement;
+  btnInteract!: HTMLButtonElement;
+  btnSprint!: HTMLElement;
   private clockEl!: HTMLElement;
-  private statsEl!: HTMLElement;
-  private questEl!: HTMLElement;
+  private questBarEl!: HTMLElement;
+  private sentenceEl!: HTMLElement;
+  private statsMiniEl!: HTMLElement;
+  private btnBag!: HTMLElement;
+  private btnMenu!: HTMLElement;
   private promptEl!: HTMLElement;
   private toastsEl!: HTMLElement;
   private modalHost!: HTMLElement;
+  private orientOverlay!: HTMLElement;
   paused = false;
   private modalSeq = 0;
   private activeMinigameCancel: (() => void) | null = null;
+  private dismissedPortrait = false;
+  private pausedByOrientation = false;
 
   constructor(
     container: HTMLElement,
@@ -52,48 +60,136 @@ export class UIManager {
   ) {
     this.root = container;
     this.buildShell();
+    this.checkOrientation();
+    window.addEventListener('resize', () => this.checkOrientation());
+    window.addEventListener('orientationchange', () => this.checkOrientation());
+  }
+
+  private isTouchDevice(): boolean {
+    return 'ontouchstart' in window || (navigator.maxTouchPoints ?? 0) > 0;
+  }
+
+  private hasOpenModal(): boolean {
+    return this.modalHost.innerHTML.trim() !== '';
+  }
+
+  private checkOrientation() {
+    const isPortrait = window.innerWidth < window.innerHeight;
+    const isTouch = this.isTouchDevice();
+
+    if (isPortrait && isTouch && !this.dismissedPortrait) {
+      this.orientOverlay.style.display = 'flex';
+      if (!this.paused) {
+        this.pausedByOrientation = true;
+        this.paused = true;
+      }
+    } else {
+      this.orientOverlay.style.display = 'none';
+      if (this.pausedByOrientation) {
+        if (!this.hasOpenModal()) this.paused = false;
+        this.pausedByOrientation = false;
+      }
+    }
   }
 
   private buildShell() {
+    const isTouch = this.isTouchDevice();
     this.root.innerHTML = `
-      <div class="hud-top">
-        <div class="hud-card" id="hud-clock"></div>
-        <div class="hud-card" id="hud-stats"></div>
-        <div class="nav-btns interactive">
-          <button class="btn" data-panel="journal" title="Phím J">Nhật ký (J)</button>
-          <button class="btn" data-panel="record" title="Phím P">Hồ sơ (P)</button>
-          <button class="btn" data-panel="relations" title="Phím R">Quan hệ (R)</button>
-          <button class="btn" data-panel="bag" title="Phím B">Túi đồ (B)</button>
-          <button class="btn" data-panel="map" title="Phím M">Bản đồ (M)</button>
-          <button class="btn" data-panel="wait">Chờ giờ</button>
-          <button class="btn" data-panel="pause" title="Phím Esc">Menu</button>
+      <div class="hud-header">
+        <div class="hud-left">
+          <div class="hud-card" id="hud-clock"></div>
+          <div class="hud-quest-bar interactive" id="hud-quest-bar" title="Nhấp để xem chi tiết mục tiêu"></div>
+        </div>
+        <div class="hud-right">
+          <div class="hud-action-row interactive">
+            <div class="sentence-tag" id="hud-sentence">Án: 30n</div>
+            <button class="btn" id="btn-bag">${isTouch ? '🎒 Túi' : '🎒 Túi (B)'}</button>
+            <button class="btn btn-accent" id="btn-menu">${isTouch ? '☰ Menu' : '☰ Menu (Esc)'}</button>
+          </div>
+          <div class="hud-stats-mini interactive" id="hud-stats-mini" title="Nhấp để xem chi tiết các chỉ số"></div>
         </div>
       </div>
-      <div class="hud-card hud-quest" id="hud-quest"></div>
       <div class="toasts" id="hud-toasts"></div>
       <div class="prompt-box interactive" id="hud-prompt" style="display:none"></div>
       <div class="joy-zone interactive" id="joy-zone"><div class="joy-knob" id="joy-knob"></div></div>
       <div class="touch-right interactive">
-        <button class="btn btn-accent" id="btn-interact">Tương tác (E)</button>
+        <button class="btn" id="btn-interact" disabled>${isTouch ? 'Tương tác' : 'Tương tác (E)'}</button>
         <button class="btn" id="btn-sprint">Chạy</button>
       </div>
       <div id="modal-host"></div>
+      <div id="orientation-overlay" style="display:none">
+        <svg class="rotate-phone-icon" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="2" width="16" height="20" rx="3" ry="3"></rect>
+          <path d="M12 18h.01"></path>
+          <path d="M19 12a7 7 0 0 0-7-7"></path>
+          <polyline points="15 5 19 5 19 9"></polyline>
+        </svg>
+        <div class="rotate-title">Xoay ngang điện thoại để chơi</div>
+        <div class="rotate-desc">Trò chơi 3D “Đi Tù Online” tối ưu tốt nhất ở màn hình ngang giúp quan sát rộng và di chuyển thuận tiện.</div>
+        <button class="btn" id="btn-ignore-portrait">Tiếp tục màn hình dọc</button>
+      </div>
     `;
+
     this.clockEl = this.root.querySelector('#hud-clock')!;
-    this.statsEl = this.root.querySelector('#hud-stats')!;
-    this.questEl = this.root.querySelector('#hud-quest')!;
+    this.questBarEl = this.root.querySelector('#hud-quest-bar')!;
+    this.sentenceEl = this.root.querySelector('#hud-sentence')!;
+    this.statsMiniEl = this.root.querySelector('#hud-stats-mini')!;
+    this.btnBag = this.root.querySelector('#btn-bag')!;
+    this.btnMenu = this.root.querySelector('#btn-menu')!;
     this.promptEl = this.root.querySelector('#hud-prompt')!;
     this.toastsEl = this.root.querySelector('#hud-toasts')!;
     this.modalHost = this.root.querySelector('#modal-host')!;
     this.joyZone = this.root.querySelector('#joy-zone')!;
     this.joyKnob = this.root.querySelector('#joy-knob')!;
+    this.btnInteract = this.root.querySelector('#btn-interact')!;
+    this.btnSprint = this.root.querySelector('#btn-sprint')!;
+    this.orientOverlay = this.root.querySelector('#orientation-overlay')!;
 
-    this.root.querySelectorAll('[data-panel]').forEach((b) => {
-      b.addEventListener('click', () => {
-        this.sfx.click();
-        this.openPanel((b as HTMLElement).dataset.panel!);
-      });
+    this.btnMenu.addEventListener('click', () => {
+      this.sfx.click();
+      this.tryLockOrientation();
+      this.showMainMenu();
     });
+
+    this.btnBag.addEventListener('click', () => {
+      this.sfx.click();
+      this.tryLockOrientation();
+      this.openPanel('bag');
+    });
+
+    this.questBarEl.addEventListener('click', () => {
+      this.sfx.click();
+      this.tryLockOrientation();
+      this.showQuestDetail();
+    });
+
+    this.statsMiniEl.addEventListener('click', () => {
+      this.sfx.click();
+      this.tryLockOrientation();
+      this.showStatsDetail();
+    });
+
+    this.root.querySelector('#btn-ignore-portrait')?.addEventListener('click', () => {
+      this.sfx.click();
+      this.dismissedPortrait = true;
+      this.orientOverlay.style.display = 'none';
+      if (this.pausedByOrientation) {
+        if (!this.hasOpenModal()) this.paused = false;
+        this.pausedByOrientation = false;
+      }
+    });
+
+    // Thử yêu cầu khóa màn hình ngang khi người dùng tương tác nếu trình duyệt hỗ trợ
+    window.addEventListener('pointerdown', () => this.tryLockOrientation(), { once: true });
+  }
+
+  private tryLockOrientation() {
+    try {
+      const so = screen.orientation as unknown as { lock?: (mode: string) => Promise<void> } | undefined;
+      so?.lock?.('landscape')?.catch?.(() => {});
+    } catch {
+      // Bỏ qua nếu trình duyệt không hỗ trợ (như iOS Safari)
+    }
   }
 
   toast(text: string, kind = 'info') {
@@ -105,56 +201,96 @@ export class UIManager {
     setTimeout(() => d.remove(), 4800);
   }
 
-  updateHUD(prompt: PromptTarget | null, guideTarget: { label: string; dist: number; angle: number } | null) {
+  updateHUD(
+    prompt: PromptTarget | null,
+    guideTarget: { label: string; dist: number; angle: number; isDuty?: boolean } | null,
+  ) {
     const s = this.g.s;
     const cur = blockAt(s.minute);
     const nxt = nextBlock(s.minute);
     const p = this.hooks.playerPos();
     const zn = zoneName(p.x, p.z);
+    const isTouch = this.isTouchDevice();
+
+    // 1. Góc trên trái: Thời gian, khu vực, hoạt động
     this.clockEl.innerHTML = `
       <div class="hud-clock">Ngày ${s.day} · ${fmtTime(s.minute)} — <span style="color:#93c5fd">${zn}</span></div>
-      <div>Hiện tại: <b>${cur.label}</b> (${cur.where})</div>
-      <div class="hud-sub">${nxt ? `Tiếp: ${fmtTime(nxt.start)} ${nxt.label}` : 'Cuối ngày — về giường ngủ'} · Án còn: <b>${s.sentence.remaining} ngày</b></div>
+      <div>Hiện tại: <b style="color:#fde68a">${cur.label}</b> (${cur.where})</div>
+      <div class="hud-sub">${nxt ? `Tiếp: ${fmtTime(nxt.start)} ${nxt.label}` : 'Cuối ngày — về buồng ngủ'}</div>
     `;
 
-    const st = s.stats;
-    const bar = (v: number, col = '#22c55e') =>
-      `<span class="bar"><i style="width:${Math.round(v)}%;background:${col}"></i></span>`;
-    this.statsEl.innerHTML = `
-      <div class="stat-grid">
-        <div>Sức khỏe ${Math.round(st.health)}${bar(st.health, st.health < 35 ? '#ef4444' : '#22c55e')}</div>
-        <div>Thể lực ${Math.round(st.stamina)}${bar(st.stamina, '#38bdf8')}</div>
-        <div>Đói ${Math.round(st.hunger)}${bar(st.hunger, st.hunger > 70 ? '#ef4444' : '#f59e0b')}</div>
-        <div>Căng thẳng ${Math.round(st.stress)}${bar(st.stress, st.stress > 70 ? '#ef4444' : '#a855f7')}</div>
-        <div>Cải tạo: <b>${Math.round(st.reform)}/100</b></div>
-        <div>Tiền: <b>${fmtMoney(st.money)}</b> · Nghi ngờ: ${Math.round(st.suspicion)}</div>
-      </div>
-    `;
+    // 2. Góc trên phải: Án còn lại
+    this.sentenceEl.textContent = `Án: ${s.sentence.remaining}n`;
 
-    // Mục tiêu đang theo
-    const activeQuests = QUEST_ORDER.filter((q) => this.g.qStatus(q) === 'active');
-    let qHtml = `<div style="font-weight:700;color:#fde68a;margin-bottom:3px">Chương ${s.chapter} — Mục tiêu</div>`;
-    for (const qid of activeQuests.slice(0, 2)) {
-      const def = QUESTS[qid];
-      const br = this.g.qBranch(qid);
-      const nextObj = def.objectives.find((o) => (!o.branch || o.branch === br) && !this.g.qObj(qid, o.id));
-      qHtml += `<div>• <b>${def.title}:</b> ${nextObj ? nextObj.text : 'Hoàn tất'}</div>`;
-    }
+    // 3. Thanh mục tiêu 1 dòng gọn gàng
+    let arrowStr = '';
     if (s.settings.guide && guideTarget) {
-      const arrow = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][Math.round(((guideTarget.angle % (Math.PI * 2)) + Math.PI * 2) / (Math.PI / 4)) % 8];
-      qHtml += `<div class="hud-sub" style="margin-top:4px;color:#fde68a">Chỉ đường: ${arrow} ${guideTarget.label} (${Math.round(guideTarget.dist)}m)</div>`;
+      const arrow = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'][
+        Math.round(((guideTarget.angle % (Math.PI * 2)) + Math.PI * 2) / (Math.PI / 4)) % 8
+      ];
+      arrowStr = `${arrow} ${Math.round(guideTarget.dist)}m`;
     }
-    this.questEl.innerHTML = qHtml;
 
+    let questTitle = '';
+    let questTag = '🎯 Mục tiêu';
+    if (guideTarget?.isDuty) {
+      questTag = '🔔 Nghĩa vụ';
+      questTitle = guideTarget.label;
+    } else if (guideTarget) {
+      questTitle = guideTarget.label;
+    } else {
+      const activeQuests = QUEST_ORDER.filter((q) => this.g.qStatus(q) === 'active');
+      if (activeQuests.length > 0) {
+        const def = QUESTS[activeQuests[0]];
+        const br = this.g.qBranch(activeQuests[0]);
+        const nextObj = def.objectives.find((o) => (!o.branch || o.branch === br) && !this.g.qObj(activeQuests[0], o.id));
+        questTitle = `${def.title}: ${nextObj ? nextObj.text : 'Hoàn tất'}`;
+      } else {
+        questTitle = 'Sinh hoạt tự do trong khuôn viên';
+      }
+    }
+
+    this.questBarEl.innerHTML = `
+      <span class="quest-tag">${questTag}:</span>
+      <span class="quest-text" title="${questTitle}">${questTitle}</span>
+      ${arrowStr ? `<span class="quest-arrow">${arrowStr}</span>` : ''}
+    `;
+
+    // 4. Thanh chỉ số mini
+    const st = s.stats;
+    const isWarning =
+      st.health < 30 || st.stamina < 15 || st.hunger > 75 || st.stress > 75 || st.suspicion > 70;
+    if (isWarning) this.statsMiniEl.classList.add('stat-warning');
+    else this.statsMiniEl.classList.remove('stat-warning');
+
+    this.statsMiniEl.innerHTML = `
+      <span class="stat-item ${st.health < 30 ? 'danger' : ''}">❤️${Math.round(st.health)}</span>
+      <span class="stat-item ${st.stamina < 15 ? 'danger' : ''}">⚡${Math.round(st.stamina)}</span>
+      <span class="stat-item ${st.hunger > 70 ? 'danger' : ''}">🍚${Math.round(st.hunger)}</span>
+      <span class="stat-item ${st.stress > 70 ? 'danger' : ''}">🧠${Math.round(st.stress)}</span>
+      <span class="stat-item">💰${fmtMoney(st.money)}</span>
+    `;
+
+    // 5. Nút tương tác và hộp nhắc ngữ cảnh
     if (prompt && !this.paused) {
       this.promptEl.style.display = 'block';
       this.promptEl.innerHTML = `
-        <div><b>[E]</b> ${prompt.label}</div>
+        <div>${isTouch ? '' : '<b>[E]</b> '}<b>${prompt.label}</b></div>
         ${prompt.risk ? `<div class="prompt-risk">⚠ Quy tắc & hậu quả: ${prompt.risk}</div>` : ''}
       `;
       this.promptEl.onclick = () => prompt.run();
+
+      this.btnInteract.disabled = false;
+      this.btnInteract.classList.add('btn-accent');
+      let act = prompt.label;
+      if (act.includes(':')) act = act.split(':')[1].trim();
+      if (act.length > 16) act = act.slice(0, 16) + '…';
+      this.btnInteract.textContent = act;
     } else {
       this.promptEl.style.display = 'none';
+      this.btnInteract.disabled = true;
+      this.btnInteract.classList.remove('btn-accent');
+      this.btnInteract.textContent = isTouch ? 'Tương tác' : 'Tương tác (E)';
     }
   }
 
@@ -164,7 +300,10 @@ export class UIManager {
       this.activeMinigameCancel = null;
     }
     this.modalHost.innerHTML = '';
-    this.paused = false;
+    // Chỉ unpause nếu không bị pause bởi màn hình xoay dọc
+    if (!this.pausedByOrientation) {
+      this.paused = false;
+    }
   }
 
   private showModal(html: string, onMount?: (el: HTMLElement) => void) {
@@ -174,6 +313,160 @@ export class UIManager {
     const m = this.modalHost.querySelector('.modal') as HTMLElement;
     m.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => this.closeModal()));
     if (onMount) onMount(m);
+  }
+
+  // ───────────── Menu Chính Trung Tâm ─────────────
+  showMainMenu() {
+    const isTouch = this.isTouchDevice();
+    this.showModal(
+      `
+      <h2>MENU TRÒ CHƠI</h2>
+      <div class="hud-sub">Quản lý nhật ký, thông tin án, quan hệ và cài đặt trò chơi</div>
+      <div class="menu-grid">
+        <button class="menu-card-btn" data-menu="journal">
+          <span class="icon">📜</span>
+          <span>Nhật ký nhiệm vụ ${isTouch ? '' : '(J)'}</span>
+        </button>
+        <button class="menu-card-btn" data-menu="record">
+          <span class="icon">📋</span>
+          <span>Hồ sơ & Giảm án ${isTouch ? '' : '(P)'}</span>
+        </button>
+        <button class="menu-card-btn" data-menu="relations">
+          <span class="icon">🤝</span>
+          <span>Quan hệ bạn tù ${isTouch ? '' : '(R)'}</span>
+        </button>
+        <button class="menu-card-btn" data-menu="bag">
+          <span class="icon">🎒</span>
+          <span>Túi đồ cá nhân ${isTouch ? '' : '(B)'}</span>
+        </button>
+        <button class="menu-card-btn" data-menu="map">
+          <span class="icon">🗺</span>
+          <span>Bản đồ trại giam ${isTouch ? '' : '(M)'}</span>
+        </button>
+        <button class="menu-card-btn" data-menu="wait">
+          <span class="icon">⏳</span>
+          <span>Chờ giờ / Nghỉ</span>
+        </button>
+        <button class="menu-card-btn" data-menu="pause">
+          <span class="icon">⚙</span>
+          <span>Cài đặt & Âm thanh</span>
+        </button>
+      </div>
+      <div style="text-align:right;margin-top:14px">
+        <button class="btn btn-accent" data-close>Đóng Menu</button>
+      </div>
+    `,
+      (el) => {
+        el.querySelectorAll('[data-menu]').forEach((b) => {
+          b.addEventListener('click', () => {
+            this.sfx.click();
+            const p = (b as HTMLElement).dataset.menu!;
+            this.openPanel(p);
+          });
+        });
+      },
+    );
+  }
+
+  // ───────────── Xem Chi Tiết Nhiệm Vụ ─────────────
+  showQuestDetail() {
+    const s = this.g.s;
+    const activeQuests = QUEST_ORDER.filter((q) => this.g.qStatus(q) === 'active');
+    const rows = activeQuests
+      .map((qid) => {
+        const def = QUESTS[qid];
+        const br = this.g.qBranch(qid);
+        const objsHtml = def.objectives
+          .filter((o) => !o.branch || o.branch === br)
+          .map((o) => {
+            const done = this.g.qObj(qid, o.id);
+            return `<div style="font-size:13px;margin:3px 0;color:${done ? '#86efac' : '#cbd5e1'}">
+            ${done ? '✓' : '○'} ${o.text}
+          </div>`;
+          })
+          .join('');
+        return `
+        <div class="card-row">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <b style="color:#fde68a;font-size:14px">${def.title}</b>
+            <span class="tag good">Đang tiến hành</span>
+          </div>
+          <div style="color:var(--muted);font-size:12px;margin-bottom:6px">${def.reason}</div>
+          <div style="padding-left:4px">${objsHtml}</div>
+        </div>
+      `;
+      })
+      .join('');
+
+    this.showModal(`
+      <h2>MỤC TIÊU & NHIỆM VỤ HIỆN TẠI</h2>
+      <div class="hud-sub" style="margin-bottom:10px">Chương ${s.chapter} — Khám phá và đáp ứng quy chế trại giam</div>
+      ${rows || '<div style="color:var(--muted);padding:10px 0">Hiện không có nhiệm vụ nào cần làm. Hãy tham gia lao động, học nghề hoặc gặp gỡ NPC.</div>'}
+      <div style="text-align:right;margin-top:12px">
+        <button class="btn btn-accent" data-close>Đóng</button>
+      </div>
+    `);
+  }
+
+  // ───────────── Xem Chi Tiết Chỉ Số ─────────────
+  showStatsDetail() {
+    const st = this.g.s.stats;
+    const bar = (v: number, col = '#22c55e') =>
+      `<span class="bar" style="width:100px;height:8px"><i style="width:${Math.round(v)}%;background:${col}"></i></span>`;
+
+    this.showModal(`
+      <h2>CHỈ SỐ SINH HOẠT & CẢI TẠO</h2>
+      <div class="hud-sub" style="margin-bottom:10px">Cân bằng sức khỏe, nhu cầu cơ bản và hồ sơ kỷ luật</div>
+      <div class="card-row">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span>❤️ <b>Sức khỏe</b>: ${Math.round(st.health)}/100</span>
+          ${bar(st.health, st.health < 35 ? '#ef4444' : '#22c55e')}
+        </div>
+        <div class="hud-sub">Giảm khi bị thương tích, lao động quá sức hoặc đói kéo dài. Ngất xỉu khi về 0. Khám tại Phòng y tế để hồi phục.</div>
+      </div>
+      <div class="card-row">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span>⚡ <b>Thể lực</b>: ${Math.round(st.stamina)}/100</span>
+          ${bar(st.stamina, '#38bdf8')}
+        </div>
+        <div class="hud-sub">Tiêu hao khi chạy nhanh và thao tác xưởng. Tự hồi phục khi đi bộ hoặc nghỉ ngơi.</div>
+      </div>
+      <div class="card-row">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span>🍚 <b>Mức đói</b>: ${Math.round(st.hunger)}/100</span>
+          ${bar(st.hunger, st.hunger > 70 ? '#ef4444' : '#f59e0b')}
+        </div>
+        <div class="hud-sub">Tăng dần theo giờ. Cần ăn cơm đúng giờ tại Nhà ăn hoặc mua đồ ăn nhẹ tại quầy căn tin.</div>
+      </div>
+      <div class="card-row">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span>🧠 <b>Căng thẳng</b>: ${Math.round(st.stress)}/100</span>
+          ${bar(st.stress, st.stress > 70 ? '#ef4444' : '#a855f7')}
+        </div>
+        <div class="hud-sub">Tăng khi vi phạm hoặc chịu sức ép. Giảm bằng tập thể dục sân trại, đọc sách thư viện hoặc ngủ đủ giấc.</div>
+      </div>
+      <div class="card-row">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span>🌟 <b>Điểm cải tạo</b>: ${Math.round(st.reform)}/100</span>
+          ${bar(st.reform, '#f59e0b')}
+        </div>
+        <div class="hud-sub">Tiêu chí quan trọng nhất trong kỳ xét giảm án 5 ngày một lần. Tăng khi lao động đủ định mức, học nghề, giúp đỡ người khác.</div>
+      </div>
+      <div class="card-row">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span>👀 <b>Mức nghi ngờ</b>: ${Math.round(st.suspicion)}/100</span>
+          ${bar(st.suspicion, st.suspicion > 50 ? '#ef4444' : '#64748b')}
+        </div>
+        <div class="hud-sub">Tăng khi lảng vảng gần khu cấm, kho vật tư. Khi quá cao sẽ bị quản giáo khám xét bất ngờ.</div>
+      </div>
+      <div class="card-row">
+        <div>💰 <b>Tiền lưu ký / căn tin</b>: <span style="color:#fde68a;font-size:15px;font-weight:700">${fmtMoney(st.money)}</span></div>
+        <div class="hud-sub">Tiền thù lao lao động hoặc người nhà gửi vào. Dùng mua thuốc, đồ dùng căn tin.</div>
+      </div>
+      <div style="text-align:right;margin-top:12px">
+        <button class="btn btn-accent" data-close>Đóng</button>
+      </div>
+    `);
   }
 
   openPanel(name: string) {

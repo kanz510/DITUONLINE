@@ -9,107 +9,365 @@
   --muted: #cbd5e1;
 }
 
-* { box-sizing: border-box; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+* {
+  box-sizing: border-box;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
 html, body {
-  margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
-  background: #0b1120; color: var(--text);
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  background: #0b1120;
+  color: var(--text);
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  touch-action: none; overscroll-behavior: none;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
-#game-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
-#ui { position: fixed; inset: 0; pointer-events: none; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
-.interactive { pointer-events: auto; }
-
-/* HUD trên */
-.hud-top {
-  display: flex; justify-content: space-between; align-items: flex-start;
-  gap: 8px; padding: 8px 12px; flex-wrap: wrap;
+#game-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  display: block;
 }
+
+#ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.interactive {
+  pointer-events: auto;
+}
+
+/* ───────────── Header HUD ───────────── */
+.hud-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+}
+
+.hud-left {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-width: min(340px, 48vw);
+}
+
+.hud-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  max-width: min(340px, 48vw);
+}
+
 .hud-card {
-  background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
-  padding: 6px 10px; backdrop-filter: blur(6px); font-size: 12.5px; line-height: 1.35;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 5px 9px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-size: 12px;
+  line-height: 1.35;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
 }
-.hud-clock { font-size: 16px; font-weight: 700; color: #fde68a; }
-.hud-sub { color: var(--muted); font-size: 11.5px; }
-.stat-grid { display: grid; grid-template-columns: repeat(3, auto); gap: 4px 10px; align-items: center; }
-.bar { width: 58px; height: 7px; background: #1e293b; border-radius: 4px; overflow: hidden; display: inline-block; vertical-align: middle; margin-left: 4px; }
-.bar > i { display: block; height: 100%; background: var(--good); }
 
-.nav-btns { display: flex; gap: 5px; flex-wrap: wrap; }
+.hud-clock {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fde68a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hud-sub {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* Thanh mục tiêu gọn gàng */
+.hud-quest-bar {
+  cursor: pointer;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: 8px;
+  padding: 5px 8px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.15s, border-color 0.15s;
+}
+.hud-quest-bar:active, .hud-quest-bar:hover {
+  background: rgba(30, 41, 59, 0.95);
+  border-color: var(--accent);
+}
+.quest-tag {
+  color: #fde68a;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.quest-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.quest-arrow {
+  color: #38bdf8;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* Nhóm nút góc phải trên */
+.hud-action-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.sentence-tag {
+  background: rgba(30, 41, 59, 0.9);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 4px 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #fde68a;
+  white-space: nowrap;
+}
+
+/* Thanh chỉ số mini */
+.hud-stats-mini {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid var(--border);
+  transition: border-color 0.2s;
+}
+.hud-stats-mini.stat-warning {
+  border-color: #ef4444;
+  animation: pulse-border 1.4s infinite;
+}
+@keyframes pulse-border {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+  50% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2); }
+}
+
+.stat-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.stat-item.danger { color: #fca5a5; }
+
+/* Nút bấm chuẩn mobile (min 44px) */
 .btn {
-  background: #1e293b; color: var(--text); border: 1px solid var(--border);
-  border-radius: 8px; padding: 6px 10px; font-size: 12.5px; font-weight: 600;
-  cursor: pointer; pointer-events: auto;
+  background: #1e293b;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 11px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  touch-action: manipulation;
+  transition: background 0.15s, border-color 0.15s, transform 0.05s;
 }
-.btn:hover { border-color: var(--accent); }
-.btn-accent { background: #b45309; border-color: #f59e0b; }
-.btn-danger { background: #7f1d1d; border-color: #ef4444; }
-.btn:disabled { opacity: 0.45; cursor: not-allowed; }
-
-/* Mục tiêu góc trái */
-.hud-quest {
-  position: absolute; left: 12px; top: 82px; max-width: 280px;
+.btn:active {
+  transform: scale(0.97);
+}
+.btn:hover {
+  border-color: var(--accent);
+}
+.btn-accent {
+  background: #b45309;
+  border-color: #f59e0b;
+  color: #fff;
+}
+.btn-accent:hover {
+  background: #d97706;
+}
+.btn-danger {
+  background: #7f1d1d;
+  border-color: #ef4444;
+}
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
-/* Thông báo nổi */
+/* ───────────── Thông báo nổi ───────────── */
 .toasts {
-  position: absolute; right: 12px; top: 82px; width: 290px;
-  display: flex; flex-direction: column; gap: 5px;
+  position: absolute;
+  right: max(10px, env(safe-area-inset-right));
+  top: 76px;
+  width: min(280px, 80vw);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  pointer-events: none;
+  z-index: 10;
 }
 .toast {
-  background: var(--bg); border-left: 4px solid var(--accent); padding: 7px 10px;
-  border-radius: 6px; font-size: 12.5px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  background: rgba(15, 23, 42, 0.94);
+  border-left: 4px solid var(--accent);
+  padding: 6px 9px;
+  border-radius: 6px;
+  font-size: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 .toast.good { border-color: var(--good); }
 .toast.bad { border-color: var(--bad); }
 
-/* Nút tương tác ngữ cảnh */
+/* ───────────── Nút tương tác ngữ cảnh ở trung tâm ───────────── */
 .prompt-box {
-  position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%);
-  background: rgba(15, 23, 42, 0.94); border: 1.5px solid var(--accent);
-  border-radius: 12px; padding: 8px 14px; text-align: center; max-width: 90vw;
+  position: absolute;
+  left: 50%;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.95);
+  border: 1.5px solid var(--accent);
+  border-radius: 12px;
+  padding: 8px 16px;
+  text-align: center;
+  max-width: min(420px, 92vw);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.55);
+  z-index: 5;
 }
-.prompt-risk { color: #fca5a5; font-size: 11.5px; margin-top: 3px; }
+.prompt-risk {
+  color: #fca5a5;
+  font-size: 11px;
+  margin-top: 3px;
+}
 
-/* Cảm ứng */
+/* ───────────── Vùng cảm ứng Mobile ───────────── */
 .joy-zone {
-  position: absolute; left: 18px; bottom: 18px; width: 112px; height: 112px;
-  border-radius: 50%; background: rgba(15, 23, 42, 0.45);
-  border: 2px solid rgba(248, 250, 252, 0.28);
-  display: flex; align-items: center; justify-content: center;
+  position: absolute;
+  left: max(16px, env(safe-area-inset-left));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.55);
+  border: 2px solid rgba(248, 250, 252, 0.32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  touch-action: none;
 }
 .joy-knob {
-  width: 44px; height: 44px; border-radius: 50%;
-  background: rgba(245, 158, 11, 0.85); pointer-events: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(245, 158, 11, 0.9);
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
 }
+
 .touch-right {
-  position: absolute; right: 18px; bottom: 22px; display: flex; flex-direction: column; gap: 8px;
+  position: absolute;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 5;
+  touch-action: none;
 }
+.touch-right .btn {
+  min-height: 46px;
+  min-width: 68px;
+  padding: 8px 14px;
+  font-size: 13px;
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+}
+.touch-right #btn-interact {
+  min-width: 96px;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .joy-zone, .touch-right { opacity: 0.35; }
   .joy-zone:hover, .touch-right:hover { opacity: 1; }
 }
 
-/* Modal / bảng */
+/* ───────────── Modal & Menu ───────────── */
 .modal-backdrop {
-  position: fixed; inset: 0; background: rgba(2, 6, 23, 0.72);
-  display: flex; align-items: center; justify-content: center; padding: 12px;
-  pointer-events: auto; z-index: 20;
-}
-.modal {
-  background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
-  max-width: 680px; width: 100%; max-height: 88vh; overflow-y: auto;
-  padding: 16px 18px; box-shadow: 0 20px 50px rgba(0,0,0,0.65);
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  pointer-events: auto;
+  z-index: 100;
   touch-action: pan-y;
 }
-.modal h2 { margin: 0 0 8px; font-size: 18px; color: #fde68a; }
-.modal h3 { margin: 12px 0 6px; font-size: 14.5px; color: #93c5fd; }
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  max-width: 660px;
+  width: 100%;
+  max-height: min(90vh, 90dvh);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 18px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+  touch-action: pan-y;
+}
+.modal h2 { margin: 0 0 8px; font-size: 17px; color: #fde68a; }
+.modal h3 { margin: 12px 0 6px; font-size: 14px; color: #93c5fd; }
 .choice-list { display: flex; flex-direction: column; gap: 7px; margin-top: 12px; }
 .choice-btn {
-  text-align: left; padding: 9px 12px; border-radius: 9px;
-  background: #1e293b; border: 1px solid var(--border); color: var(--text);
-  cursor: pointer; font-size: 13.5px;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: #1e293b;
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13.5px;
+  min-height: 44px;
 }
 .choice-btn.important { border-color: var(--accent); background: #292524; }
 .choice-btn:hover:not(:disabled) { border-color: #fde68a; }
@@ -118,3 +376,74 @@ html, body {
 .tag.good { background: #14532d; color: #bbf7d0; }
 .tag.bad { background: #7f1d1d; color: #fecaca; }
 .card-row { border: 1px solid var(--border); border-radius: 9px; padding: 9px 11px; margin-bottom: 8px; background: #111c33; font-size: 13px; }
+
+/* Menu chính dạng lưới */
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+  gap: 9px;
+  margin-top: 12px;
+}
+.menu-card-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 8px;
+  background: #1e293b;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 58px;
+  text-align: center;
+}
+.menu-card-btn:hover, .menu-card-btn:active {
+  background: #334155;
+  border-color: var(--accent);
+}
+.menu-card-btn span.icon {
+  font-size: 20px;
+}
+
+/* ───────────── Màn hình nhắc Xoay Ngang ───────────── */
+#orientation-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 17, 32, 0.96);
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  pointer-events: auto;
+}
+.rotate-phone-icon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 16px;
+  animation: phone-rotate 2.4s ease-in-out infinite;
+}
+@keyframes phone-rotate {
+  0%, 15% { transform: rotate(0deg); }
+  45%, 70% { transform: rotate(-90deg); }
+  85%, 100% { transform: rotate(0deg); }
+}
+.rotate-title {
+  font-size: 19px;
+  font-weight: 700;
+  color: #fde68a;
+  margin-bottom: 8px;
+}
+.rotate-desc {
+  font-size: 13.5px;
+  color: var(--muted);
+  max-width: 310px;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}

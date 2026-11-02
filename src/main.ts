@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import './ui/styles.css';
-import { ACCESS, fmtTime } from './logic/constants';
+import { ACCESS, blockAt, fmtTime } from './logic/constants';
 import { GameLogic } from './logic/game';
 import { SaveManager } from './logic/save';
 import { createInitialState, type NpcId } from './logic/state';
@@ -47,10 +47,9 @@ class App {
     this.world.setQuality(this.g.s.settings.quality, this.renderer);
     this.sfx.volume = this.g.s.settings.volume;
 
-    // Nhân vật người chơi: Minh
+    // Nhân vật người chơi: Minh (không gắn nhãn chữ thường trực trên đầu)
     this.playerRig = new HumanoidRig(
       { uniform: 'inmate', skin: 0xe2b48d, hair: 0x18181b, hairStyle: 'short', accent: 0x22c55e, height: 1.0, build: 1.0 },
-      'Minh (Bạn)',
     );
     this.world.scene.add(this.playerRig.root);
 
@@ -87,23 +86,41 @@ class App {
 
     this.bindEvents();
     this.input.bind(canvas, this.ui.joyZone, this.ui.joyKnob);
-    this.input.onInteract = () => this.currentPrompt?.run();
+    this.input.onInteract = () => {
+      if (!this.ui.paused) this.currentPrompt?.run();
+    };
     this.input.onKeyCommand = (code) => this.handleKey(code);
 
-    document.getElementById('btn-interact')?.addEventListener('click', () => this.currentPrompt?.run());
-    const sprintBtn = document.getElementById('btn-sprint')!;
-    sprintBtn.addEventListener('touchstart', (e) => { e.preventDefault(); this.input.sprintTouch = true; }, { passive: false });
-    sprintBtn.addEventListener('touchend', () => (this.input.sprintTouch = false));
-    sprintBtn.addEventListener('mousedown', () => (this.input.sprintTouch = true));
-    sprintBtn.addEventListener('mouseup', () => (this.input.sprintTouch = false));
-
-    window.addEventListener('resize', () => {
-      this.renderer.setSize(window.innerWidth, window.innerHeight);
-      this.tpCam.cam.aspect = window.innerWidth / window.innerHeight;
-      this.tpCam.cam.updateProjectionMatrix();
+    this.ui.btnInteract.addEventListener('click', () => {
+      if (!this.ui.paused) this.currentPrompt?.run();
     });
-    this.tpCam.cam.aspect = window.innerWidth / window.innerHeight;
-    this.tpCam.cam.updateProjectionMatrix();
+    const sprintBtn = this.ui.btnSprint;
+    const startSprint = (e?: Event) => {
+      e?.preventDefault();
+      this.input.sprintTouch = true;
+    };
+    const endSprint = () => {
+      this.input.sprintTouch = false;
+    };
+    sprintBtn.addEventListener('touchstart', startSprint, { passive: false });
+    sprintBtn.addEventListener('touchend', endSprint);
+    sprintBtn.addEventListener('touchcancel', endSprint);
+    sprintBtn.addEventListener('mousedown', startSprint);
+    sprintBtn.addEventListener('mouseup', endSprint);
+    sprintBtn.addEventListener('mouseleave', endSprint);
+
+    const onResize = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      this.renderer.setSize(w, h, false);
+      this.tpCam.cam.aspect = w / h;
+      this.tpCam.cam.updateProjectionMatrix();
+      this.input.reset();
+    };
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    window.visualViewport?.addEventListener('resize', onResize);
+    onResize();
 
     // Lưu định kỳ & khi đóng tab
     window.addEventListener('beforeunload', () => this.saves.save(this.g.s));
@@ -216,11 +233,20 @@ class App {
       this.playerRig.root.rotation.y = p.rot;
 
       for (const id of Object.keys(this.npcs) as NpcId[]) {
-        this.npcs[id].update(dt, this.g.s.minute);
+        const a = this.npcs[id];
+        a.update(dt, this.g.s.minute);
+        if (a.rig.labelSprite) {
+          const d = Math.hypot(a.x - p.x, a.z - p.z);
+          a.rig.labelSprite.visible = d < 8.0;
+        }
       }
 
       this.g.tick(dt, this.tickCtx(moving, moving && canSprint));
       this.checkRestrictedZone();
+    } else {
+      this.input.reset();
+      this.playerRig.pose = 'stand';
+      this.playerRig.update(dt, 0);
     }
 
     this.world.update(
@@ -499,48 +525,135 @@ class App {
     return null;
   }
 
-  /** Tìm mục tiêu tiếp theo để vẽ mũi tên chỉ đường trên HUD. */
-  private computeGuide(): { label: string; dist: number; angle: number } | null {
+  /** Tìm mục tiêu tiếp theo để vẽ mũi tên chỉ đường trên HUD (phân biệt nghĩa vụ vs nhiệm vụ). */
+  private computeGuide(): { label: string; dist: number; angle: number; isDuty?: boolean } | null {
     const g = this.g;
     const p = g.s.player;
+    const curBlock = blockAt(g.s.minute);
+
+    // 1. ƯU TIÊN NGHĨA VỤ LỊCH TRÌNH BẮT BUỘC
+    if (curBlock.id === 'rollcall' && g.s.daily.rollcall === 'pending') {
+      const dx = -9 - p.x;
+      const dz = -9 - p.z;
+      return {
+        label: 'Ô điểm danh sáng sân trại',
+        dist: Math.hypot(dx, dz),
+        angle: Math.atan2(dx, -dz) - this.input.yaw,
+        isDuty: true,
+      };
+    }
+
+    if (curBlock.id === 'work') {
+      if (!g.s.daily.workClockedIn) {
+        const dx = 13.1 - p.x;
+        const dz = -6 - p.z;
+        return {
+          label: 'Bảng chấm công xưởng (trước 08:30)',
+          dist: Math.hypot(dx, dz),
+          angle: Math.atan2(dx, -dz) - this.input.yaw,
+          isDuty: true,
+        };
+      }
+      if (g.s.daily.workUnits === 0) {
+        const dx = 16 - p.x;
+        const dz = 0.15 - p.z;
+        return {
+          label: 'Bàn xưởng: hoàn thành ca lao động sáng',
+          dist: Math.hypot(dx, dz),
+          angle: Math.atan2(dx, -dz) - this.input.yaw,
+          isDuty: true,
+        };
+      }
+    }
+
+    if (curBlock.id === 'curfew') {
+      const inCell = zonesAt(p.x, p.z).includes('cellblock');
+      if (!inCell) {
+        const dx = -14.9 - p.x;
+        const dz = -28.6 - p.z;
+        return {
+          label: 'Về buồng giam 3 điểm danh tối & ngủ',
+          dist: Math.hypot(dx, dz),
+          angle: Math.atan2(dx, -dz) - this.input.yaw,
+          isDuty: true,
+        };
+      }
+    }
+
+    // 2. NHIỆM VỤ CỐT TRUYỆN & PHỤ
     let tx = 0;
     let tz = 0;
     let label = '';
 
+    const bayWhere = () => {
+      if (curBlock.id === 'work') return 'Chú Bảy (Bàn xưởng #2)';
+      if (curBlock.id === 'breakfast' || curBlock.id === 'lunch' || curBlock.id === 'dinner') return 'Chú Bảy (Nhà ăn)';
+      if (curBlock.id === 'wake' || curBlock.id === 'rest' || curBlock.id === 'curfew') return 'Chú Bảy (Buồng 3)';
+      return 'Chú Bảy (Bàn cờ đá sân trại)';
+    };
+
     if (g.qStatus('nhap_trai') === 'active') {
-      if (!g.qObj('nhap_trai', 'chan_man')) { tx = -14.9; tz = -28.6; label = 'Giường của bạn'; }
-      else if (!g.qObj('nhap_trai', 'noi_quy')) { tx = -27.0; tz = -21.5; label = 'Bảng nội quy'; }
-      else if (!g.qObj('nhap_trai', 'diem_danh')) { tx = -9; tz = -9; label = 'Ô điểm danh sân'; }
-      else if (!g.qObj('nhap_trai', 'gap_bay')) { tx = this.npcs.bay.x; tz = this.npcs.bay.z; label = 'Chú Bảy'; }
+      if (!g.qObj('nhap_trai', 'chan_man')) { tx = -14.9; tz = -28.6; label = 'Giường của bạn (Nhận chăn màn)'; }
+      else if (!g.qObj('nhap_trai', 'noi_quy')) { tx = -27.0; tz = -21.5; label = 'Bảng nội quy buồng giam'; }
+      else if (!g.qObj('nhap_trai', 'diem_danh')) { tx = -9; tz = -9; label = 'Ô điểm danh sáng sân trại'; }
+      else if (!g.qObj('nhap_trai', 'gap_bay')) {
+        tx = this.npcs.bay.x; tz = this.npcs.bay.z;
+        label = bayWhere();
+      }
     } else if (g.qStatus('ca_dau') === 'active') {
       if (!g.qObj('ca_dau', 'cham_cong')) { tx = 13.1; tz = -6; label = 'Bảng chấm công xưởng'; }
-      else if (!g.qObj('ca_dau', 'lap_rap')) { tx = 16; tz = 0.15; label = 'Bàn lắp ráp'; }
-      else { tx = this.npcs.bay.x; tz = this.npcs.bay.z; label = 'Chú Bảy'; }
+      else if (!g.qObj('ca_dau', 'lap_rap')) { tx = 16; tz = 0.15; label = 'Bàn lắp ráp linh kiện'; }
+      else { tx = this.npcs.bay.x; tz = this.npcs.bay.z; label = bayWhere(); }
     } else if (g.qStatus('mon_no') === 'active') {
       const br = g.qBranch('mon_no');
-      if (!g.qObj('mon_no', 'nghe_huy')) { tx = this.npcs.huy.x; tz = this.npcs.huy.z; label = 'Huy'; }
-      else if (!g.qObj('mon_no', 'gap_lam') || !br) { tx = this.npcs.lam.x; tz = this.npcs.lam.z; label = 'Lâm'; }
-      else if (br === 'steal' && !g.qObj('mon_no', 'lay_khoan')) { tx = 26.2; tz = -5.2; label = 'Kệ kho xưởng'; }
-      else if (br === 'steal') { tx = this.npcs.lam.x; tz = this.npcs.lam.z; label = 'Lâm'; }
-      else if (br === 'pay') { tx = this.npcs.lam.x; tz = this.npcs.lam.z; label = 'Lâm (trả 40.000đ)'; }
-      else if (br === 'report') { tx = this.npcs.lan.x; tz = this.npcs.lan.z; label = 'Quản giáo Lan'; }
+      if (!g.qObj('mon_no', 'nghe_huy')) { tx = this.npcs.huy.x; tz = this.npcs.huy.z; label = 'Huy (Buồng 3 / Sân)'; }
+      else if (!g.qObj('mon_no', 'gap_lam') || !br) { tx = this.npcs.lam.x; tz = this.npcs.lam.z; label = 'Lâm (Khu thể thao sân)'; }
+      else if (br === 'steal' && !g.qObj('mon_no', 'lay_khoan')) { tx = 26.2; tz = -5.2; label = 'Kệ kho xưởng (Lẻn lấy hộp khoan)'; }
+      else if (br === 'steal') { tx = this.npcs.lam.x; tz = this.npcs.lam.z; label = 'Lâm (Giao đồ)'; }
+      else if (br === 'pay') { tx = this.npcs.lam.x; tz = this.npcs.lam.z; label = 'Lâm (Trả 40.000đ)'; }
+      else if (br === 'report') { tx = this.npcs.lan.x; tz = this.npcs.lan.z; label = 'Quản giáo Lan (Báo cáo kèm vật chứng)'; }
     } else if (g.qStatus('lop_nghe_dau') === 'active') {
-      if (!g.qObj('lop_nghe_dau', 'den_lop')) { tx = this.npcs.phuc.x; tz = this.npcs.phuc.z; label = 'Thầy Phúc'; }
-      else if (!g.qObj('lop_nghe_dau', 'thao_tac')) { tx = -21.5; tz = 13; label = 'Bàn thực hành nghề'; }
-      else { tx = this.npcs.phuc.x; tz = this.npcs.phuc.z; label = 'Thầy Phúc (Nhận chứng chỉ)'; }
+      const openClass = g.isOpen('classroom');
+      if (!g.qObj('lop_nghe_dau', 'den_lop')) {
+        tx = this.npcs.phuc.x; tz = this.npcs.phuc.z;
+        label = openClass ? 'Thầy Phúc (Lớp học nghề)' : 'Thầy Phúc (Lớp mở 14:00–16:30)';
+      } else if (!g.qObj('lop_nghe_dau', 'thao_tac')) {
+        tx = -21.5; tz = 13;
+        label = openClass ? 'Bàn thực hành nối mạch' : 'Bàn thực hành (Mở 14:00–16:30)';
+      } else {
+        tx = this.npcs.phuc.x; tz = this.npcs.phuc.z;
+        label = 'Thầy Phúc (Nhận chứng chỉ)';
+      }
     } else if (g.qStatus('nghi_an_thuoc') === 'active') {
-      if (!g.qObj('nghi_an_thuoc', 'hoi_an')) { tx = this.npcs.an.x; tz = this.npcs.an.z; label = 'Y sĩ An'; }
-      else if (!g.qObj('nghi_an_thuoc', 'hoi_bay')) { tx = this.npcs.bay.x; tz = this.npcs.bay.z; label = 'Chú Bảy'; }
-      else if (!g.qObj('nghi_an_thuoc', 'nhat_thuoc')) { tx = 22.5; tz = 13; label = 'Lọ thuốc rơi sau xưởng'; }
-      else { tx = this.npcs.an.x; tz = this.npcs.an.z; label = 'Y sĩ An (Giao thuốc cứu chú Bảy)'; }
+      const openMed = g.isOpen('medical');
+      if (!g.qObj('nghi_an_thuoc', 'hoi_an')) {
+        tx = this.npcs.an.x; tz = this.npcs.an.z;
+        label = openMed ? 'Y sĩ An (Phòng y tế)' : 'Y sĩ An (Mở 07:30–11:30 & 13:30–17:00)';
+      } else if (!g.qObj('nghi_an_thuoc', 'hoi_bay')) {
+        tx = this.npcs.bay.x; tz = this.npcs.bay.z;
+        label = bayWhere();
+      } else if (!g.qObj('nghi_an_thuoc', 'nhat_thuoc')) {
+        tx = 22.5; tz = 13;
+        label = 'Lọ thuốc rơi góc sau xưởng';
+      } else {
+        tx = this.npcs.an.x; tz = this.npcs.an.z;
+        label = openMed ? 'Y sĩ An (Giao thuốc cứu chú Bảy)' : 'Y sĩ An (Phòng y tế)';
+      }
     } else if (g.qStatus('phong_tham_gap') === 'active') {
-      tx = -22.5; tz = -8.8; label = 'Vách kính thăm gặp (Chị Mai)';
+      const openVisit = g.isOpen('visitation');
+      tx = -22.5; tz = -8.8;
+      label = openVisit ? 'Vách kính thăm gặp (Chị Mai)' : 'Phòng thăm gặp (Mở 08:30–11:00 & 14:00–16:30)';
     }
 
     if (!label) return null;
     const dx = tx - p.x;
     const dz = tz - p.z;
-    return { label, dist: Math.hypot(dx, dz), angle: Math.atan2(dx, -dz) - this.input.yaw };
+    return {
+      label,
+      dist: Math.hypot(dx, dz),
+      angle: Math.atan2(dx, -dz) - this.input.yaw,
+      isDuty: false,
+    };
   }
 }
 

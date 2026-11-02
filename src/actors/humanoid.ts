@@ -27,6 +27,7 @@ export class HumanoidRig {
   legR = new THREE.Group();
   pose: Pose = 'stand';
   phase = Math.random() * 10;
+  labelSprite: THREE.Sprite | null = null;
 
   constructor(look: Appearance, labelText?: string) {
     this.root.scale.set(look.build, look.height, look.build);
@@ -146,9 +147,9 @@ export class HumanoidRig {
     this.body.add(this.legL, this.legR);
 
     if (labelText) {
-      const sp = makeLabel(labelText, look.accent);
-      sp.position.set(0, 1.92, 0);
-      this.root.add(sp);
+      this.labelSprite = makeLabel(labelText, look.accent);
+      this.labelSprite.position.set(0, 1.92, 0);
+      this.root.add(this.labelSprite);
     }
   }
 
@@ -211,6 +212,6 @@ function makeLabel(text: string, colorHex: number): THREE.Sprite {
   const tex = new THREE.CanvasTexture(cv);
   const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true });
   const s = new THREE.Sprite(mat);
-  s.scale.set(1.35, 0.34, 1);
+  s.scale.set(1.15, 0.29, 1);
   return s;
 }

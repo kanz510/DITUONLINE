@@ -15,10 +15,23 @@ export class InputController {
   private camTouchId: number | null = null;
   private joyTouchId: number | null = null;
   private joyCenter = { x: 0, y: 0 };
+  private joyKnobEl: HTMLElement | null = null;
   onInteract: () => void = () => {};
   onKeyCommand: (code: string) => void = () => {};
 
+  reset() {
+    this.keys.clear();
+    this.joyTouchId = null;
+    this.camTouchId = null;
+    this.joyX = 0;
+    this.joyY = 0;
+    this.dragging = false;
+    this.sprintTouch = false;
+    if (this.joyKnobEl) this.joyKnobEl.style.transform = 'translate(0px, 0px)';
+  }
+
   bind(canvas: HTMLElement, joyZone: HTMLElement, joyKnob: HTMLElement) {
+    this.joyKnobEl = joyKnob;
     window.addEventListener('keydown', (e) => {
       if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
       this.keys.add(e.code);
@@ -27,7 +40,14 @@ export class InputController {
       }
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
-    window.addEventListener('blur', () => this.keys.clear());
+    window.addEventListener('blur', () => this.reset());
+    window.addEventListener('orientationchange', () => this.reset());
+
+    // Chặn zoom gesture ngoài ý muốn trên Safari / iOS
+    const preventGesture = (e: Event) => e.preventDefault();
+    window.addEventListener('gesturestart', preventGesture, { passive: false });
+    window.addEventListener('gesturechange', preventGesture, { passive: false });
+    window.addEventListener('gestureend', preventGesture, { passive: false });
 
     // Chuột kéo xoay camera
     canvas.addEventListener('mousedown', (e) => {
@@ -89,16 +109,20 @@ export class InputController {
     joyZone.addEventListener('touchend', endJoy);
     joyZone.addEventListener('touchcancel', endJoy);
 
-    // Cảm ứng: vuốt trên canvas xoay camera
+    // Cảm ứng: vuốt trên canvas xoay camera (hỗ trợ multitouch độc lập với joystick)
     canvas.addEventListener(
       'touchstart',
       (e) => {
         e.preventDefault();
         if (this.camTouchId !== null) return;
-        const t = e.changedTouches[0];
-        this.camTouchId = t.identifier;
-        this.lastX = t.clientX;
-        this.lastY = t.clientY;
+        for (const t of Array.from(e.changedTouches)) {
+          if (t.identifier !== this.joyTouchId) {
+            this.camTouchId = t.identifier;
+            this.lastX = t.clientX;
+            this.lastY = t.clientY;
+            break;
+          }
+        }
       },
       { passive: false },
     );
