@@ -344,16 +344,27 @@ function huyDialogue(g: GameLogic): DNode {
   // Nhiệm vụ Chương 4: Truyền nghề cho Huy
   if (g.qStatus('truyen_nghe_cho_huy') === 'active' && !g.qObj('truyen_nghe_cho_huy', 'huong_dan_huy')) {
     choices.push({
-      label: 'Huy, cậu muốn học nối mạch điện an toàn không? Ra trại còn kiếm việc.',
+      label: 'Huy, tôi hướng dẫn cậu các nguyên tắc an toàn khi nối mạch điện nhé.',
       important: true,
       run: () => {
         g.completeObjective('truyen_nghe_cho_huy', 'huong_dan_huy');
-        g.completeObjective('truyen_nghe_cho_huy', 'huy_thuc_hanh');
-        g.finishQuest('truyen_nghe_cho_huy', 'done');
         return {
           speaker: 'Huy',
-          text: `Thật hả ${pName}? Tôi muốn học lắm! Ra trại tôi sẽ đi làm công nhân đàng hoàng, không bao giờ cờ bạc vướng vào nợ nần nữa!`,
-          choices: [{ label: 'Tốt lắm, cố gắng lên!', run: () => null }],
+          text: 'Cảm ơn ông. Để tôi luyện tập trình tự nối dây. Lát nữa ông kiểm tra bài cho tôi nhé.',
+          choices: [{ label: 'Nhớ ôn kỹ, tôi sẽ kiểm tra lại.', run: () => null }],
+        };
+      },
+    });
+  } else if (g.qStatus('truyen_nghe_cho_huy') === 'active' && !g.qObj('truyen_nghe_cho_huy', 'huy_thuc_hanh')) {
+    choices.push({
+      label: 'Huy, để tôi kiểm tra bài nối mạch cậu đã tập.',
+      important: true,
+      run: () => {
+        g.completeObjective('truyen_nghe_cho_huy', 'huy_thuc_hanh');
+        return {
+          speaker: 'Huy',
+          text: `Tôi nhớ rồi ${pName} ạ. Ra trại tôi sẽ học nghề và làm ăn chân chính!`,
+          choices: [{ label: 'Tốt lắm!', run: () => null }],
         };
       },
     });
@@ -712,18 +723,29 @@ function phucDialogue(g: GameLogic, openVocational?: () => void): DNode {
   }
 
   // Nhiệm vụ Chương 4: Lời dặn ngày về
-  if (g.qStatus('chia_tay_thay_phuc') === 'active' && !g.qObj('chia_tay_thay_phuc', 'nhan_thu_gt')) {
+  if (g.qStatus('chia_tay_thay_phuc') === 'active' && !g.qObj('chia_tay_thay_phuc', 'tam_su_thay')) {
     choices.push({
       label: 'Thưa thầy, cháu sắp mãn hạn, xin phép đến chào thầy.',
       important: true,
       run: () => {
         g.completeObjective('chia_tay_thay_phuc', 'tam_su_thay');
-        g.completeObjective('chia_tay_thay_phuc', 'nhan_thu_gt');
-        g.giveItem('thu_gioi_thieu_viec_lam', 1);
-        g.finishQuest('chia_tay_thay_phuc', 'done');
         return {
           speaker: 'Thầy Phúc',
-          text: `Thầy mừng cho ${pName}. Đây là lá thư thầy viết gửi cho anh bạn mở xưởng cơ điện ở Bình Dương. Ra trại cầm thư này đến, người ta sẽ nhận cậu vào làm ngay. Cố gắng sống lương thiện nghe con.`,
+          text: 'Thầy mừng vì cháu đã học hành chăm chỉ. Thầy sẽ chuẩn bị lá thư giới thiệu việc làm, gặp lại thầy để nhận nhé.',
+          choices: [{ label: 'Cháu cảm ơn thầy!', run: () => null }],
+        };
+      },
+    });
+  } else if (g.qStatus('chia_tay_thay_phuc') === 'active' && !g.qObj('chia_tay_thay_phuc', 'nhan_thu_gt')) {
+    choices.push({
+      label: 'Thưa thầy, cháu đến nhận thư giới thiệu việc làm.',
+      important: true,
+      run: () => {
+        g.completeObjective('chia_tay_thay_phuc', 'nhan_thu_gt');
+        g.giveItem('thu_gioi_thieu_viec_lam', 1);
+        return {
+          speaker: 'Thầy Phúc',
+          text: `Thầy đã viết xong thư gửi bạn thầy làm xưởng cơ điện tại Bình Dương cho ${pName}. Ra trại cháu cầm theo và làm việc thật tốt nhé.`,
           choices: [{ label: 'Cháu sẽ không phụ lòng thầy!', run: () => null }],
         };
       },
@@ -829,20 +851,37 @@ function maiDialogue(g: GameLogic): DNode {
   const pName = g.s.profile.name || 'Minh';
   const choices: DChoice[] = [];
 
-  if (g.qStatus('phong_tham_gap') === 'active' && !g.qObj('phong_tham_gap', 'thanh_that')) {
+  if (g.qStatus('phong_tham_gap') === 'active' && !g.qObj('phong_tham_gap', 'nhan_tien')) {
     choices.push({
-      label: 'Chị Mai ơi! Em ở đây, em vẫn khỏe mạnh bình an chị đừng lo.',
+      label: 'Chị Mai ơi, em muốn tâm sự với chị một chút.',
       important: true,
       run: () => {
-        g.completeObjective('phong_tham_gap', 'gap_chi');
-        g.completeObjective('phong_tham_gap', 'thanh_that');
-        g.completeObjective('phong_tham_gap', 'nhan_tien');
-        g.finishQuest('phong_tham_gap', 'done');
+        if (!g.qObj('phong_tham_gap', 'gap_chi')) g.completeObjective('phong_tham_gap', 'gap_chi');
         return {
           speaker: 'Chị Mai',
           role: 'Chị gái ruột',
-          text: `Thấy em gầy đi nhưng mắt sáng là chị mừng rồi ${pName} à. Mẹ ở quê ngóng em từng ngày. Chị gửi vào sổ lưu ký 25 ngàn để em ăn thêm. Cố gắng cải tạo thật tốt nghe em!`,
-          choices: [{ label: 'Em hứa với chị sẽ về sớm!', run: () => null }],
+          text: `Chị mừng được thấy em, ${pName}. Ở trong này em sống thế nào? Cứ nói thật cho chị yên tâm.`,
+          choices: [{
+            label: 'Em vẫn khỏe, sẽ chấp hành tốt nội quy và học nghề để sớm về nhà.',
+            run: () => {
+              g.completeObjective('phong_tham_gap', 'thanh_that');
+              return {
+                speaker: 'Chị Mai',
+                text: 'Chị tin em. Chị còn gửi 25.000đ tiếp tế cho em, nhớ nhận trong sổ lưu ký nhé.',
+                choices: [{
+                  label: 'Nhận 25.000đ tiếp tế và cảm ơn chị.',
+                  run: () => {
+                    g.completeObjective('phong_tham_gap', 'nhan_tien');
+                    return {
+                      speaker: 'Chị Mai',
+                      text: 'Cố gắng cải tạo tốt nghe em. Mẹ ở nhà đang ngóng ngày em trở về.',
+                      choices: [{ label: 'Em hứa sẽ về sớm!', run: () => null }],
+                    };
+                  },
+                }],
+              };
+            },
+          }],
         };
       },
     });
