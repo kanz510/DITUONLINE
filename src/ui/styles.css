@@ -979,38 +979,57 @@ html, body {
   margin-bottom: 8px;
 }
 
-/* Close control remains visible at the top while scrolling long panels. */
-.modal-close-top {
-  position: sticky;
-  top: 0;
-  z-index: 15;
-  float: right;
+/* Unified information panels: balanced left/right spacing and an always-visible X.
+   Only the heading reserves space for X; content cards use the full panel width. */
+.modal-shell {
+  position: relative;
+  width: min(720px, 100%);
+  max-height: 94dvh;
+}
+.modal-shell:has(.modal-cc) { width: min(680px, 100%); }
+.modal-shell > .modal {
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+.modal-shell > .modal:not(.modal-cc) {
+  padding: 20px 22px 22px;
+}
+.modal-shell > .modal.has-top-close > h2:first-child {
+  min-height: 40px;
+  padding-right: 52px;
+  box-sizing: border-box;
+}
+.modal-shell > .modal-close-top {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 50;
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
-  margin: -4px -4px 4px 10px;
-  border: 1px solid rgba(148,163,184,.45);
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  border: 1px solid rgba(148, 163, 184, .5);
   border-radius: 12px;
   background: #263449;
   color: #fff;
-  font: 700 28px/1 system-ui, sans-serif;
+  font: 700 26px/1 system-ui, sans-serif;
   cursor: pointer;
   touch-action: manipulation;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, .5);
 }
-.modal-close-top:focus-visible { outline: 3px solid #fbbf24; outline-offset: 2px; }
-
-/* The close button lives outside the scrollable modal so it cannot scroll away. */
-.modal-shell { position: relative; width: min(660px, 100%); max-height: 94dvh; }
-.modal-shell:has(.modal-cc) { width: min(680px, 100%); }
-.modal-shell > .modal { width: 100%; }
-.modal-shell > .modal-close-top {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  float: none;
-  margin: 0;
-  z-index: 50;
-  box-shadow: 0 2px 12px rgba(0,0,0,.55);
+.modal-shell > .modal-close-top:focus-visible {
+  outline: 3px solid #fbbf24;
+  outline-offset: 2px;
 }
-.modal-shell > .modal:not(.modal-cc) { padding-right: 54px; }
+.modal-shell .card-row,
+.modal-shell .journal-section {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+@media (max-width: 600px) {
+  .modal-shell > .modal:not(.modal-cc) { padding: 16px; }
+  .modal-shell > .modal.has-top-close > h2:first-child { padding-right: 48px; }
+  .modal-shell > .modal-close-top { top: 7px; right: 7px; }
+}
