@@ -4,7 +4,7 @@ import type { NpcId } from '../logic/state';
 export type Pose = 'stand' | 'walk' | 'sit' | 'work' | 'talk';
 
 export interface Appearance {
-  uniform: 'inmate' | 'officer';
+  uniform: 'inmate' | 'inmate-orange' | 'officer' | 'medic' | 'visitor';
   skin: number;
   hair: number;
   hairStyle: 'short' | 'bald' | 'bun' | 'buzz';
@@ -67,7 +67,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
     personality: 'Điềm đạm, trọng chữ tín, ghét trò bắt nạt.',
     goal: 'Giữ hồ sơ sạch để về kịp đám cưới con gái và xin lỗi vợ con.',
     story: true,
-    look: { uniform: 'inmate', skin: 0xd8a882, hair: 0xb8bcc2, hairStyle: 'short', accent: 0x2b6cb0, height: 0.96, build: 1.0, glasses: true },
+    look: { uniform: 'inmate', skin: 0xd8a882, hair: 0xb7bec9, hairStyle: 'short', accent: 0x2b6cb0, height: 0.98, build: 1.06, glasses: true },
     whereHint: 'Buồng 3 (sáng sớm/trưa/tối), Nhà ăn (giờ ăn), Bàn lắp ráp #2 (ca sáng), Bàn cờ đá ngoài sân (giờ tự do).',
     schedule: inmateSchedule(
       'c3', [-12.9, -28.8], 0, 0,
@@ -82,7 +82,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
     personality: 'Nóng nảy, sĩ diện, trọng tình bạn.',
     goal: 'Thoát khỏi khoản nợ với Lâm mà không bị kéo sâu hơn.',
     story: true,
-    look: { uniform: 'inmate', skin: 0xe2b48d, hair: 0x1e1b18, hairStyle: 'buzz', accent: 0xd97706, height: 1.0, build: 0.95 },
+    look: { uniform: 'inmate-orange', skin: 0xe9b98f, hair: 0x7c3428, hairStyle: 'buzz', accent: 0xffbd73, height: 1.0, build: 0.96 },
     whereHint: 'Buồng 3 (sáng sớm/trưa/tối), Nhà ăn (giờ ăn), Bàn lắp ráp #3 (ca sáng), Khu xà đơn hoặc căn tin (giờ tự do).',
     schedule: inmateSchedule(
       'c3', [-15.2, -26.5], 1, 1,
@@ -97,7 +97,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
     personality: 'Thực dụng, tính toán, không bao giờ tự làm việc bẩn tay.',
     goal: 'Giữ thế lực trong khu mà hồ sơ vẫn sạch.',
     story: true,
-    look: { uniform: 'inmate', skin: 0xc99672, hair: 0x151515, hairStyle: 'bald', accent: 0x991b1b, height: 1.05, build: 1.15 },
+    look: { uniform: 'inmate', skin: 0xc99672, hair: 0x191614, hairStyle: 'bald', accent: 0x991b1b, height: 1.04, build: 1.18 },
     whereHint: 'Buồng 4, Nhà ăn (giờ ăn), Bàn lắp ráp #4 (ca sáng), Góc khuất sau xưởng (13:30–16:30), Ghế đá sân (tối).',
     schedule: inmateSchedule(
       'c4', [-8.75, -28.4], 2, 4,
@@ -112,7 +112,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
     personality: 'Nghiêm khắc, công bằng, ghét bao biện nhưng luôn lắng nghe khi có căn cứ.',
     goal: 'Giữ trật tự Khu A và giúp người thực tâm cải tạo sớm trở về.',
     story: true,
-    look: { uniform: 'officer', skin: 0xe5b894, hair: 0x1c1917, hairStyle: 'bun', accent: 0x2f5e3d, height: 0.98, build: 0.95, cap: true },
+    look: { uniform: 'officer', skin: 0xe5b894, hair: 0x282128, hairStyle: 'bun', accent: 0x93c5fd, height: 0.99, build: 0.94, cap: true },
     whereHint: 'Ô điểm danh (06:30–07:00), Phòng quản giáo phía Nam sân (07:00–17:00), Tuần tra sân (buổi tối).',
     schedule: [
       { from: 360, to: 390, node: 'offLan', pos: [-4, 17.3], rot: Math.PI, pose: 'stand', activity: 'Chuẩn bị sổ điểm danh' },
@@ -128,7 +128,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
     personality: 'Cẩn thận, đi tuần đúng tuyến.',
     goal: 'Không để thất thoát vật tư xưởng.',
     story: true,
-    look: { uniform: 'officer', skin: 0xd9a982, hair: 0x1f1f1f, hairStyle: 'short', accent: 0x365314, height: 1.03, build: 1.08, cap: true },
+    look: { uniform: 'officer', skin: 0xd9a982, hair: 0x171a26, hairStyle: 'short', accent: 0xbfdbfe, height: 1.03, build: 1.09, cap: true },
     whereHint: 'Xưởng lao động (giờ làm việc), Tuần tra sân & hành lang (ngoài giờ).',
     schedule: [
       { from: 360, to: 480, node: 'cbOut', pose: 'walk', activity: 'Tuần tra buổi sáng', patrol: ['cbOut', 'rc', 'messOut', 'yC'] },
@@ -145,7 +145,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
     personality: 'Hiền lành, ít chuyện.',
     goal: 'Chấp hành xong án.',
     story: false,
-    look: { uniform: 'inmate', skin: 0xd5a27c, hair: 0x2b2b2b, hairStyle: 'short', accent: 0x0f766e, height: 1.0, build: 1.05 },
+    look: { uniform: 'inmate-orange', skin: 0xd5a27c, hair: 0x543a27, hairStyle: 'short', accent: 0xffd28a, height: 0.99, build: 1.08 },
     whereHint: 'Buồng 1, Nhà ăn, Xưởng.',
     schedule: inmateSchedule('c1', [-25.25, -27.8], 3, 2, 'wsRest', [24.2, 4.5], 'yBench2', [-15, 3.6], 'stand', 'Đi dạo sân', 'yC', [-3, -2], 'stand', 'Hóng gió'),
   },
@@ -155,7 +155,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
     personality: 'Hoạt bát.',
     goal: 'Rèn sức khỏe.',
     story: false,
-    look: { uniform: 'inmate', skin: 0xe0b28c, hair: 0x1c1917, hairStyle: 'buzz', accent: 0x7c3aed, height: 1.02, build: 1.02 },
+    look: { uniform: 'inmate', skin: 0xe0b28c, hair: 0x9e4f30, hairStyle: 'buzz', accent: 0x7c3aed, height: 1.01, build: 1.0 },
     whereHint: 'Buồng 2, Nhà ăn, Xưởng, Khu xà đơn.',
     schedule: inmateSchedule('c2', [-19.75, -27.8], 4, 3, 'wsRest', [24.2, 0], 'yEx', [-22.5, 3.6], 'stand', 'Tập thể dục', 'yW', [-17, -4], 'stand', 'Nói chuyện ngoài sân'),
   },
@@ -165,7 +165,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
     personality: 'Hay dò xét.',
     goal: 'Theo đuôi Lâm.',
     story: false,
-    look: { uniform: 'inmate', skin: 0xcf9b74, hair: 0x27272a, hairStyle: 'buzz', accent: 0x64748b, height: 0.98, build: 1.0 },
+    look: { uniform: 'inmate-orange', skin: 0xcf9b74, hair: 0x221e20, hairStyle: 'buzz', accent: 0xffc78e, height: 0.98, build: 1.03 },
     whereHint: 'Buồng 4, Nhà ăn, Xưởng, Góc sau xưởng.',
     schedule: inmateSchedule('c4', [-7.9, -26.8], 5, 5, 'wsRest', [14.2, 6.4], 'lamCorner', [18.5, 13.2], 'stand', 'Canh chừng cho Lâm', 'yE', [8, -6], 'stand', 'Đứng ở sân Đông'),
   },
@@ -175,7 +175,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
     personality: 'Tận tình, nghiêm khắc nhưng nhân hậu.',
     goal: 'Truyền nghề cho các phạm nhân để khi ra trại có công việc lương thiện.',
     story: true,
-    look: { uniform: 'officer', skin: 0xd4a373, hair: 0x333333, hairStyle: 'short', accent: 0x1d4ed8, height: 1.02, build: 1.0, glasses: true },
+    look: { uniform: 'officer', skin: 0xd4a373, hair: 0x59524b, hairStyle: 'short', accent: 0x60a5fa, height: 1.02, build: 1.0, cap: true, glasses: true },
     whereHint: 'Lớp học nghề & Thư viện (chiều 14:00–16:30 & tối 19:00–21:00), Nhà ăn (giờ ăn).',
     schedule: [
       { from: 360, to: 480, node: 'classLib', pos: [-25, 16], rot: 0, pose: 'work', activity: 'Chuẩn bị giáo án tại thư viện' },
@@ -194,7 +194,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
     personality: 'Nhẹ nhàng, chu đáo, tinh ý.',
     goal: 'Đảm bảo sức khỏe cho toàn trại và ngăn chặn tình trạng tuồn thuốc lậu.',
     story: true,
-    look: { uniform: 'officer', skin: 0xf5d0b5, hair: 0x18181b, hairStyle: 'bun', accent: 0x06b6d4, height: 0.98, build: 0.95 },
+    look: { uniform: 'medic', skin: 0xf5d0b5, hair: 0x49312e, hairStyle: 'bun', accent: 0x22d3ee, height: 0.98, build: 0.94 },
     whereHint: 'Phòng y tế (07:30–11:30 & 13:30–17:00), Nhà ăn (giờ ăn).',
     schedule: [
       { from: 360, to: 450, node: 'medDesk', pos: [23, -22], rot: Math.PI, pose: 'stand', activity: 'Kiểm tra hồ sơ bệnh án' },
@@ -213,7 +213,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
     personality: 'Chịu thương chịu khó, nghiêm khắc nhưng giàu tình thương.',
     goal: 'Động viên Minh cải tạo tốt và chuẩn bị cuộc sống ngoài trại.',
     story: true,
-    look: { uniform: 'inmate', skin: 0xe2b48d, hair: 0x1f1f1f, hairStyle: 'bun', accent: 0xec4899, height: 0.97, build: 0.95 },
+    look: { uniform: 'visitor', skin: 0xe2b48d, hair: 0x65402f, hairStyle: 'bun', accent: 0xec4899, height: 0.97, build: 0.94 },
     whereHint: 'Phòng thăm gặp (giờ thăm gặp 08:00–11:00 & 14:00–17:00).',
     schedule: [
       { from: 360, to: 480, node: 'visitMai', pos: [-25.5, -10.25], rot: 0, pose: 'sit', activity: 'Chờ đăng ký vào thăm' },
