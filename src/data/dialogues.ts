@@ -179,7 +179,7 @@ function bayDialogue(g: GameLogic): DNode {
   }
 
   // Nhiệm vụ Chương 3: Cái bẫy vật cấm - Chú Bảy làm chứng
-  if (g.qStatus('bay_vat_cam') === 'active' && !g.qObj('bay_vat_cam', 'cung_cap_bang_chung')) {
+  if (g.qStatus('bay_vat_cam') === 'active' && g.qObj('bay_vat_cam', 'trinh_bay') && !g.qObj('bay_vat_cam', 'cung_cap_bang_chung')) {
     choices.push({
       label: 'Chú Bảy! Có người gài đồ cấm dưới chiếu buồng 3 của cháu!',
       important: true,
@@ -576,6 +576,40 @@ function lanDialogue(g: GameLogic, openAppeal: () => void): DNode {
     });
   }
 
+  // Giải trình chính thức trước khi thu thập lời chứng Chú Bảy / camera.
+  if (g.qStatus('bay_vat_cam') === 'active' &&
+      g.qObj('bay_vat_cam', 'phat_hien_bay') &&
+      !g.qObj('bay_vat_cam', 'trinh_bay')) {
+    choices.push({
+      label: 'Thưa quản giáo, cháu xin giải trình về vật cấm bị gài dưới giường.',
+      important: true,
+      run: () => {
+        g.completeObjective('bay_vat_cam', 'trinh_bay');
+        return {
+          speaker: 'Quản giáo Lan',
+          text: 'Đã tiếp nhận giải trình. Giờ cậu hãy tìm lời chứng Chú Bảy hoặc xin trích xuất camera hành lang để minh oan.',
+          choices: [{ label: 'Cháu sẽ thu thập chứng cứ.', run: () => null }],
+        };
+      },
+    });
+  }
+  if (g.qStatus('bay_vat_cam') === 'active' &&
+      g.qObj('bay_vat_cam', 'trinh_bay') &&
+      !g.qObj('bay_vat_cam', 'cung_cap_bang_chung')) {
+    choices.push({
+      label: 'Xin kiểm tra camera hành lang để xác minh người gài vật cấm.',
+      important: true,
+      run: () => {
+        g.completeObjective('bay_vat_cam', 'cung_cap_bang_chung');
+        return {
+          speaker: 'Quản giáo Lan',
+          text: 'Camera xác nhận có người khác lén vào buồng. Tôi sẽ xóa oan cho cậu và tiến hành điều tra.',
+          choices: [{ label: 'Cảm ơn quản giáo.', run: () => null }],
+        };
+      },
+    });
+  }
+
   // Nhiệm vụ Chương 4: Nộp hồ sơ giải trình kho số 7
   if (g.qStatus('ho_so_giai_trinh') === 'active' && !g.qObj('ho_so_giai_trinh', 'nop_ho_so')) {
     choices.push({
@@ -919,17 +953,17 @@ function tungDialogue(g: GameLogic): DNode {
   const pName = g.s.profile.name || 'Minh';
   const choices: DChoice[] = [];
 
-  // Vụ bẫy vật cấm
-  if (g.qStatus('bay_vat_cam') === 'active' && !g.qObj('bay_vat_cam', 'trinh_bay')) {
+  // Bắt đầu xử lý bẫy vật cấm: ghi nhận kiểm tra, không bỏ qua bước lên gặp Lan.
+  if (g.qStatus('bay_vat_cam') === 'active' && !g.qObj('bay_vat_cam', 'phat_hien_bay')) {
     choices.push({
-      label: 'Báo cáo cán bộ! Em xin giải trình về việc kiểm tra phòng hôm nay.',
+      label: 'Cán bộ Tùng, chuyện kiểm tra đột xuất phòng cháu thế nào ạ?',
       important: true,
       run: () => {
-        g.completeObjective('bay_vat_cam', 'trinh_bay');
+        g.completeObjective('bay_vat_cam', 'phat_hien_bay');
         return {
           speaker: 'Cán bộ Tùng',
-          text: `Tôi phát hiện vật cấm dưới chiếu của ${pName}. Theo quy chế, cậu phải lên phòng Quản giáo Lan làm bản giải trình. Có nhân chứng hay chứng cứ gì thì mang theo.`,
-          choices: [{ label: 'Rõ, thưa cán bộ.', run: () => null }],
+          text: `Tôi vừa phát hiện vật cấm dưới chiếu của ${pName}. Cậu hãy đến Quản giáo Lan để giải trình chính thức rồi mới tìm nhân chứng hoặc camera chứng minh mình bị gài.`,
+          choices: [{ label: 'Rõ, cháu sẽ gặp Quản giáo Lan.', run: () => null }],
         };
       },
     });
