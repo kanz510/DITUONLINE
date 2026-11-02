@@ -5,6 +5,14 @@ import { NODES } from '../world/layout';
 import { findPath, nearestNode } from '../world/nav';
 import { HumanoidRig } from './humanoid';
 
+// Stable Kenney skin per identity. This is visual only; NPC schedule/state remains untouched.
+const NPC_MODEL_SKINS: Record<NpcId, string> = {
+  bay: 'g', huy: 'a', lam: 'c',
+  lan: 'j', tung: 'k', tu: 'b',
+  son: 'd', khai: 'e', phuc: 'q',
+  an: 'i', mai: 'l',
+};
+
 export class NpcActor {
   def: NpcDef;
   rig: HumanoidRig;
@@ -21,7 +29,7 @@ export class NpcActor {
 
   constructor(id: NpcId) {
     this.def = NPCS[id];
-    this.rig = new HumanoidRig(this.def.look, this.def.name);
+    this.rig = new HumanoidRig(this.def.look, this.def.name, NPC_MODEL_SKINS[id]);
   }
 
   /** Đặt thẳng tới vị trí theo giờ hiện tại (khi mới vào ngày / sau khi tua giờ). */
