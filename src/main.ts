@@ -654,7 +654,7 @@ class App {
         if (id === 'tung' && this.isEscorting) {
           // Tùng đã được cập nhật qua updateEscort
         } else {
-          a.update(dt, this.g.s.minute);
+          a.update(dt, this.g.s.minute, this.world.collision);
         }
         if (a.rig.labelSprite) {
           const d = Math.hypot(a.x - p.x, a.z - p.z);
@@ -680,6 +680,26 @@ class App {
             const nz1 = n1.z + dz * push;
             const nx2 = n2.x - dx * push;
             const nz2 = n2.z - dz * push;
+
+            const m1 = n1.isMoving();
+            const m2 = n2.isMoving();
+            if (m1 && m2) {
+              // Cả hai đang di chuyển: bên xa đích hơn dừng chờ tối đa 3 giây cho bên kia qua
+              const d1 = n1.distToTarget();
+              const d2 = n2.distToTarget();
+              if (d1 >= d2) {
+                n1.yield(3.0);
+                n1.noteBlocked(dt, this.world.collision);
+              } else {
+                n2.yield(3.0);
+                n2.noteBlocked(dt, this.world.collision);
+              }
+            } else if (m1 && !m2) {
+              n1.noteBlocked(dt, this.world.collision);
+            } else if (!m1 && m2) {
+              n2.noteBlocked(dt, this.world.collision);
+            }
+
             if (this.world.collision.canPlace(nx1, nz1, 0.25)) n1.moveTo(nx1, nz1, n1.rot);
             if (this.world.collision.canPlace(nx2, nz2, 0.25)) n2.moveTo(nx2, nz2, n2.rot);
           }
@@ -697,13 +717,18 @@ class App {
           const pzNew = p.z + dz * push;
           const nxNew = n.x - dx * push;
           const nzNew = n.z - dz * push;
+
+          // Người chơi luôn được ưu tiên: NPC nhường người chơi
+          n.yield(3.0);
+          n.noteBlocked(dt, this.world.collision);
+
+          if (this.world.collision.canPlace(nxNew, nzNew, 0.25)) {
+            n.moveTo(nxNew, nzNew, n.rot);
+          }
           if (this.world.collision.canPlace(pxNew, pzNew, 0.32)) {
             p.x = pxNew;
             p.z = pzNew;
             this.playerRig.root.position.set(p.x, 0, p.z);
-          }
-          if (this.world.collision.canPlace(nxNew, nzNew, 0.25)) {
-            n.moveTo(nxNew, nzNew, n.rot);
           }
         }
       }

@@ -8,6 +8,18 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-04 — Antigravity — VIỆC 1: Sửa NPC kẹt cản nhau (Nhường đường, Né vuông góc & Đổi tuyến Nav)
+- **Vấn đề đã xử lý:** Trước đây hai NPC hoặc người chơi và NPC khi va chạm trong bán kính tách 0.52m chỉ bị đẩy cơ học, thiếu cơ chế nhường đường dẫn tới kẹt cứng tại các hành lang/cửa hẹp.
+- **Giải pháp:**
+  - `NpcActor`: Bổ sung `yieldTimer`, `blockedTimer`, `dodgeCount`, `stuckTimer`.
+  - Khi 2 NPC di chuyển chạm nhau (< 0.52m): NPC ở xa đích hơn sẽ nhường đường (`yield(3.0)` dừng chờ tối đa 3 giây) để NPC gần đích hơn đi qua.
+  - Người chơi luôn được ưu tiên: NPC luôn nhường người chơi (`yield(3.0)`), không chặn đường người chơi.
+  - Bị cản quá 1.5s: NPC bước lệch sang bên vuông góc với hướng đi khoảng 0.6m (`sidestep`), tối đa 2 lần né.
+  - Bị chặn quá 10s hoặc có đích mà 4s không tiến quá 0.1m: kích hoạt né hoặc đi vòng qua nav node gần nhất (`rerouteViaAlternate`).
+  - Tuyệt đối không dùng dịch chuyển tức thời (teleport), giữ nguyên bán kính tách 0.52m chống xuyên nhau.
+- **Kiểm thử:** Đã thêm `tests/unit/npc-avoidance.test.ts` (4 test cases PASS 100%).
+
+
 ### 2026-11-03 — Antigravity — Tích hợp Furniture Pack v1 (Bàn ghế PBR 3D, Blendstra Canteen Set, Đôn đá, Bàn xưởng & Bàn học) (v0.4.14)
 - **Tích hợp 10 Model GLB PBR Furniture Pack v1 nguyên bản:**
   - **Bàn ăn nhà ăn (Blendstra):** Sử dụng `canteen_table_set_blendstra.glb` (bàn dài + 2 ghế băng tích hợp 2 bên). Kích thước footprint collider `2.6m x 0.90m` (chỉ cản mặt bàn, chừa trống hoàn toàn 2 bên ghế băng). Bù đáy `Y = -bounds.min.y` bảo đảm chân chạm sàn `y = 0.0`. Khay cơm `canteen_meal_tray.glb` đặt trực tiếp trên mặt bàn `y = 0.828m`. Bỏ 8 ghế đơn rời trước đây để không chồng lấn. Cập nhật `MESS_SEATS` bám sát vị trí mặt ghế băng thật trong GLB (`z = table.z ± 0.75m`).

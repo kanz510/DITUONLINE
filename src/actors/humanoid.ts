@@ -5,6 +5,7 @@ import type { Appearance, Pose } from '../data/npcs';
  * Keeping the same named pivot groups preserves the existing pose animation.
  */
 function stripedTex(c1: string, c2: string, stripes = 12): THREE.CanvasTexture {
+  if (typeof document === 'undefined') return new THREE.CanvasTexture({} as any);
   const cv = document.createElement('canvas');
   cv.width = 128;
   cv.height = 256;
@@ -20,6 +21,7 @@ function stripedTex(c1: string, c2: string, stripes = 12): THREE.CanvasTexture {
 }
 
 function numberTexture(number: number): THREE.CanvasTexture {
+  if (typeof document === 'undefined') return new THREE.CanvasTexture({} as any);
   const cv = document.createElement('canvas');
   cv.width = 128;
   cv.height = 64;
@@ -331,6 +333,7 @@ export class HumanoidRig {
 }
 
 function makeLabel(text: string, colorHex: number, player: boolean): THREE.Sprite {
+  if (typeof document === 'undefined') return new THREE.Sprite();
   const cv = document.createElement('canvas');
   cv.width = 256;
   cv.height = 64;
