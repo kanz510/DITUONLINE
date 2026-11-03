@@ -184,3 +184,14 @@ kín các nhu cầu đó. Khi Poly Haven hồi phục có thể bổ sung thêm 
 - Đồ y tế chi tiết (máy móc, giường bệnh chuyên dụng), dụng cụ xưởng
   phức tạp vẫn cần model phù hợp. Vách kính thăm gặp đã có phiên bản
   Three.js gắn trên quầy hiện hữu; có thể thay bằng GLB chất lượng cao.
+
+## Đợt 2 — 5 model nguyên bản, glTF 2.0 (03/11/2026)
+Thêm GLB 2.0 tự dựng, không dùng asset trả phí, không Draco/KTX2, không phụ thuộc texture bên ngoài. Bản nguồn tại `assets/models/special/` và bản dùng trong game tại `public/models/special/` giữ **bytes y hệt nhau**.
+
+- `prison-transfer-bus.glb`: xe chở phạm nhân có cabin, chấn song cửa sổ, bánh, đèn và đường chỉ vàng; thay van ở bãi xe hiện hữu.
+- `hospital-bed.glb`: giường y tế, nệm, thanh chắn, bánh xe và cọc truyền dịch; thay đúng giường y tế hiện hữu.
+- `workshop-drill-press.glb`: máy khoan bàn chi tiết; thay phần nhìn của PROPS `press`, giữ nguyên vị trí/va chạm/logic.
+- `visitation-phone.glb`: 3 điện thoại liên lạc lắp trên quầy thăm gặp và vách kính cũ.
+- `medical-first-aid-kit.glb`: hộp dụng cụ y tế gắn trên tủ phòng y tế.
+
+Mọi đồ mới đều sử dụng collider `PROPS` hiện có, không thêm đường đi, interaction hay thay save/quest. GLB tích hợp qua `GLTFLoader` cache có fallback nếu trình duyệt không tải được; kiểm thử E2E xác nhận mô hình xuất hiện trong scene chứ không chỉ có file trên ổ đĩa.
