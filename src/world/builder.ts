@@ -18,6 +18,20 @@ const propAssets: Record<string, string> = {
   table: 'furniture/table.glb',
   tree: 'nature/tree_detailed.glb',
   cabinet: 'furniture/cabinetBed.glb',
+  // Đợt 1: dùng GLB CC0 đã có trong kho assets, không cần dịch vụ ngoài.
+  'kitchen-fridge': 'furniture/kitchenFridge.glb',
+  'kitchen-sink': 'furniture/kitchenSink.glb',
+  'kitchen-stove': 'furniture/kitchenStoveElectric.glb',
+  'visit-sofa': 'furniture/loungeSofa.glb',
+  'visit-side-table': 'furniture/sideTable.glb',
+  'garden-pot': 'furniture/pottedPlant.glb',
+  'yard-bush': 'nature/plant_bush.glb',
+  'yard-flower': 'nature/flower_redA.glb',
+  'yard-rock': 'nature/rock_largeA.glb',
+  'park-ambulance': 'vehicles/ambulance.glb',
+  'park-police': 'vehicles/police.glb',
+  'park-van': 'vehicles/van.glb',
+  'park-delivery': 'vehicles/delivery.glb',
 };
 const propCache = new Map<string, Promise<THREE.Group>>();
 function loadProp(path: string) {
@@ -408,27 +422,39 @@ export class PrisonWorld {
       if (p.collide) this.collision.boxes.push(propBox(p));
       const placeholder = this.makePropMesh(p);
       const obj = new THREE.Group();
+      obj.name = 'prop.' + p.kind;
       obj.add(placeholder);
-      // Load each unique GLB once, clone its geometry hierarchy per prop.
-      // Preserve existing fallback geometry until the model is ready.
+      // Clone shared CC0 GLBs after a single load, keeping procedural fallback
+      // visible until the corresponding file AND its relative texture load.
       const asset = p.kind === 'bunk' && (p.x > 20 || (p.x > 5 && p.z > 10))
         ? 'furniture/bedSingle.glb'
         : p.kind === 'tree' && Math.floor(Math.abs(p.x * 17 + p.z * 11)) % 2 === 0
           ? 'nature/tree_oak.glb'
-          : propAssets[p.kind];
+          : p.kind === 'yard-flower' && p.x > 0
+            ? 'nature/flower_yellowA.glb'
+            : propAssets[p.kind];
       if (asset) {
         void loadProp(asset).then((template) => {
           const model = template.clone(true);
+          model.name = 'asset.' + asset;
+          const isVehicle = p.kind.startsWith('park-');
+          // Vehicles are authored along the local Z axis; park them lengthwise
+          // along our X-aligned collider before measuring the bounding box.
+          if (isVehicle) model.rotation.y = Math.PI / 2;
           const bounds = new THREE.Box3().setFromObject(model);
           const width = bounds.max.x - bounds.min.x;
           const depth = bounds.max.z - bounds.min.z;
           const height = bounds.max.y - bounds.min.y;
           if (!Number.isFinite(width * depth * height) ||
               Math.min(width, depth, height) <= 0.001) return;
-          // Uniform scale avoids stretched models; fit within the existing
-          // collision footprint and cap height for indoor clearance.
-          const maxHeight = p.kind === 'tree' ? 4.5 : p.kind === 'bunk' ? 2.0 : 1.9;
-          // Tree crowns overhang the trunk collider: scale to real height rather than .8 m footprint.
+          // Uniform scale prevents squashing. The declared PROPS boxes remain
+          // the ONLY collision source (vehicle footprint included).
+          const maxHeight = p.kind === 'tree' ? 4.5
+            : p.kind === 'bunk' ? 2.0
+              : p.kind === 'kitchen-fridge' ? 2.25
+                : isVehicle ? 2.4
+                  : p.kind === 'garden-pot' ? 1.3
+                    : p.kind.startsWith('yard-') ? 0.85 : 1.9;
           const factor = p.kind === 'tree'
             ? 4.5 / height
             : Math.min(p.w / width, p.d / depth, maxHeight / height) * 0.96;
@@ -446,6 +472,8 @@ export class PrisonWorld {
           });
           obj.clear();
           obj.add(model);
+          obj.userData.assetLoaded = true;
+          obj.userData.assetPath = asset;
         }).catch((err) => console.warn('[Prop GLB] Procedural fallback:', asset, err));
       } else if (p.kind === 'lamp') {
         void upgradePropModel(obj, placeholder, 'models/roads/light-square.glb',
