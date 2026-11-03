@@ -8,6 +8,12 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-03 — ChatGPT — Chỉnh lại ban đêm và trời mưa sau khi soi ảnh Playwright
+- Đợt 3 v0.4.4 đầy đủ đã được thử bằng GitHub Actions run `41590487223`: `npm test` **47/47 unit + 12/12 Playwright**, `npm run build` thành công, public Pages đã xác thực build `566cfaf87720`.
+- Quan sát ảnh thực từ `phase3-courtyard-night.png` ban đầu cho thấy mặt sân quá đen. Đã tăng moonlight xanh lạnh + hemispheric night fill trong `src/world/lighting.ts` nhưng vẫn giữ nighttime mood; trời mưa trong `src/world/builder.ts` chuyển sang overcast xanh-xám để tránh trời hồng trong cơn mưa. Đây là chỉnh màu/ánh sáng, không ảnh hưởng save, quest, giờ giấc hay thời tiết logic.
+- Kiểm thử lại trên nhánh QA `verify/phase3-all-20261103` run `41591843659` **SUCCESS**: `npm run test:unit`, `npm run build`, Playwright `tests/e2e/phase3-visual.spec.ts` đạt; đã tải và so trực tiếp ảnh mới ở 4 góc cảnh ngày/đêm/mưa/bụi. Run visual cũ `41591812835` cũng kiểm tra toàn bộ scenery/scene. Không khẳng định FPS trên Safari iPhone vật lý.
+- **Giữ nguyên 0.4.4**, buildHash sẽ tự đổi để bust cache sau khi deploy. Main phải copy đúng blob các file builder/lighting đã được kiểm tra; workflow QA riêng không đưa vào main. Không thay đổi mini-game, `src/world/layout.ts`, NPC paths, quest hay save.
+
 ### 2026-11-03 — ChatGPT — Đợt 3 toàn diện: kiến trúc, PBR, ánh sáng, thời tiết và iPhone (v0.4.4)
 - **Kiến trúc:** `src/world/architecture.ts` dựng chi tiết phủ 8 tòa nhà: gờ mái, cột, mái hiên, bệ tường, khung cửa sổ, ống xuống nước, nắp thông gió và 8 đèn trần. Dùng **7 InstancedMesh draw-call batches**, không mở cửa, thêm collider, sửa WALLS/PROPS hoặc thay đường đi NPC. Kiến trúc chỉ là render-only; không thêm roof collider/camera collider.
 - **PBR:** `src/graphics/pbr.ts` tạo texture 128px grayscale có seed xác định, tái sử dụng cho bump/roughness của gạch, bê tông, asphalt, gỗ và thạch cao. `src/graphics/assets.ts` nối vào `surfaceMaterial` giữ nguyên JPEG color map và đường dẫn; giảm anisotropy 4→2. Không dùng asset trả phí hay Draco/KTX2.
