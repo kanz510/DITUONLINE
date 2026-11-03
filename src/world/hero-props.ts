@@ -149,12 +149,14 @@ function serveCounter(p:PropDef):THREE.Group {
     // the registered counter collision. No new collider / NPC path is needed.
     g.name = 'visitation.glass-booth';
     const glassMat = new THREE.MeshStandardMaterial({
-      color: 0x8ebcce, metalness: 0.08, roughness: .12,
-      transparent: true, opacity: .26, depthWrite: false, side: THREE.DoubleSide,
+      color: 0xdbeafe, metalness: 0.0, roughness: 0.1,
+      transparent: true, opacity: 0.25, depthWrite: false, side: THREE.DoubleSide,
     });
     const pane = new THREE.Mesh(new THREE.PlaneGeometry(w * .93, 1.36), glassMat);
     pane.name = 'visitation.shatterproof-glass';
     pane.position.set(0, 1.75, 0);
+    pane.castShadow = false;
+    pane.receiveShadow = false;
     g.add(pane);
     for (const x of [-w * .47, 0, w * .47]) {
       box(g, 'visitation.window.frame', x, 1.75, 0, .055, 1.50, .065, darkSteel);

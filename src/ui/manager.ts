@@ -562,13 +562,13 @@ export class UIManager {
     // 4. Thanh chỉ số mini (thống nhất 0% xấu, 100% tốt)
     const st = s.stats;
     const isWarning =
-      st.health < 30 || st.stamina < 20 || st.satiety < 25 || st.morale < 25 || st.suspicion > 70;
+      st.health < 30 || st.stamina <= 30 || st.satiety < 25 || st.morale < 25 || st.suspicion > 70;
     if (isWarning) this.statsMiniEl.classList.add('stat-warning');
     else this.statsMiniEl.classList.remove('stat-warning');
 
     const statsHTML = `
       <span class="stat-item ${st.health < 30 ? 'danger' : ''}">❤️${Math.round(st.health)}</span>
-      <span class="stat-item ${st.stamina < 20 ? 'danger' : ''}">⚡${Math.round(st.stamina)}</span>
+      <span class="stat-item ${st.stamina <= 30 ? 'danger' : ''}">⚡${Math.round(st.stamina)}</span>
       <span class="stat-item ${st.satiety < 25 ? 'danger' : ''}">🍚${Math.round(st.satiety)}</span>
       <span class="stat-item ${st.morale < 25 ? 'danger' : ''}">🧠${Math.round(st.morale)}</span>
       <span class="stat-item">💰${fmtMoney(st.money)}</span>
@@ -1988,6 +1988,18 @@ export class UIManager {
     });
   }
 
+  showNotice(title: string, message: string) {
+    this.showModal(`
+      <h2>${title}</h2>
+      <div class="card-row" style="white-space: pre-wrap; line-height: 1.6; margin: 12px 0;">
+        ${message}
+      </div>
+      <button class="btn btn-accent" id="btn-notice-close" style="width:100%; margin-top:8px">Đã hiểu</button>
+    `, (el) => {
+      el.querySelector('#btn-notice-close')?.addEventListener('click', () => this.closeModal());
+    });
+  }
+
   showDaySummary(sum: DaySummary) {
     this.sfx.good();
     const relHtml = sum.relationChanges.map((r) => `
@@ -2003,8 +2015,31 @@ export class UIManager {
         <div>Tiền công & biến động: <b style="color:#fde68a">${fmtMoney(sum.moneyDelta)}</b></div>
       </div>
       ${sum.review ? `
-        <div class="card-row" style="border-color:#f59e0b">
-          <b style="color:#fde68a">🌟 KỲ XÉT GIẢM ÁN NGÀY ${sum.day}: GIẢM −${sum.review.reduction} NGÀY!</b>
+        <div class="card-row" style="border-color:#f59e0b; background: rgba(245, 158, 11, 0.08); padding: 12px">
+          <div style="font-weight:700; color:#fde68a; font-size:15px; margin-bottom:8px">
+            📋 HỘI ĐỒNG XÉT DUYỆT GIẢM ÁN ĐỢT ${Math.ceil(sum.day / 4)} (NGÀY ${sum.day})
+          </div>
+          <table style="width:100%; font-size:13px; border-collapse:collapse; margin-bottom:8px">
+            <tbody>
+              ${sum.review.breakdown.map((b) => `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.08)">
+                  <td style="padding: 4px 0">${b.label}</td>
+                  <td style="text-align:right; font-weight:700; color:${b.value > 0 ? '#86efac' : (b.value < 0 ? '#f87171' : '#94a3b8')}">
+                    ${b.value > 0 ? '+' : ''}${b.value}
+                  </td>
+                </tr>
+              `).join('')}
+              <tr style="border-top: 1px solid rgba(245,158,11,0.4); font-weight:700">
+                <td style="padding: 6px 0; color:#fde68a">Tổng điểm đánh giá</td>
+                <td style="text-align:right; color:#fde68a; font-size:14px">${sum.review.score.toFixed(1)} / 2.0</td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="font-size:13px; text-align:center; padding: 6px; background: rgba(0,0,0,0.3); border-radius:6px; font-weight:700; color: ${sum.review.reduction > 0 ? '#86efac' : '#fca5a5'}">
+            ${sum.review.reduction > 0
+              ? `⭐ KẾT QUẢ: ĐẠT TIÊU CHUẨN XÉT GIẢM −${sum.review.reduction} NGÀY ÁN PHẠT!`
+              : `⚠️ KẾT QUẢ: Chưa đủ điều kiện xét giảm kỳ này (cần cải tạo & nhiệm vụ tích cực hơn)`}
+          </div>
         </div>
       ` : ''}
       <div class="card-row">

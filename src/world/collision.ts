@@ -43,6 +43,21 @@ export class Collision {
     return [nx, nz];
   }
 
+  /** Kiểm tra điểm (x, z) với bán kính r có bị kẹt vào hộp va chạm không. */
+  canPlace(x: number, z: number, r = 0.3): boolean {
+    const all = this.boxes.concat(this.dynamic());
+    for (const b of all) {
+      if (x > b.x1 - r && x < b.x2 + r && z > b.z1 - r && z < b.z2 + r) {
+        const cx = Math.max(b.x1, Math.min(x, b.x2));
+        const cz = Math.max(b.z1, Math.min(z, b.z2));
+        const ddx = x - cx;
+        const ddz = z - cz;
+        if (ddx * ddx + ddz * ddz < r * r) return false;
+      }
+    }
+    return true;
+  }
+
   /** Đoạn thẳng có bị tường chắn không (dùng cho tầm nhìn). */
   blocked(ax: number, az: number, bx: number, bz: number): boolean {
     for (const b of this.sightBlockers) if (segBox(ax, az, bx, bz, b)) return true;

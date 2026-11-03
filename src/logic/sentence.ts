@@ -7,6 +7,14 @@ export function isReviewDay(day: number) {
   return day > 0 && day % REVIEW_INTERVAL === 0;
 }
 
+/** Kiểm tra người chơi đã hoàn thành hồ sơ giải trình / Chương 4 chưa */
+export function isChapter4Done(s: GameState): boolean {
+  return Boolean(
+    s.quests?.ho_so_giai_trinh?.status === 'done' ||
+    s.quests?.ky_xet_cuoi_cung?.status === 'done'
+  );
+}
+
 export function nextReviewDay(s: GameState): number {
   let d = Math.ceil(s.day / REVIEW_INTERVAL) * REVIEW_INTERVAL;
   if (d === 0) d = REVIEW_INTERVAL;
@@ -28,18 +36,17 @@ export function computeReview(s: GameState, day: number): ReviewResult {
   const breakdown: { label: string; value: number }[] = [];
 
   // 1. Điểm cải tạo hiện tại & tiến bộ
-  // Người đạt từ 85-100 và duy trì tốt nhận điểm cao nhất, không bị phụ thuộc vào chênh lệch tăng
   const reformGain = s.stats.reform - s.sentence.reformAtLastReview;
   let reformPts = 0;
   if (s.stats.reform >= 90) {
-    reformPts = 1.0;
-    breakdown.push({ label: `Duy trì điểm cải tạo xuất sắc (${s.stats.reform}/100)`, value: 1.0 });
-  } else if (s.stats.reform >= 75 || reformGain >= 15) {
     reformPts = 0.8;
-    breakdown.push({ label: `Điểm cải tạo tốt (${s.stats.reform}/100, tăng +${Math.max(0, reformGain)})`, value: 0.8 });
-  } else if (reformGain >= 8 || s.stats.reform >= 60) {
-    reformPts = 0.5;
-    breakdown.push({ label: `Cải tạo mức khá (${s.stats.reform}/100)`, value: 0.5 });
+    breakdown.push({ label: `Duy trì điểm cải tạo xuất sắc (${s.stats.reform}/100)`, value: 0.8 });
+  } else if (s.stats.reform >= 75 || reformGain >= 12) {
+    reformPts = 0.6;
+    breakdown.push({ label: `Điểm cải tạo tốt (${s.stats.reform}/100, tăng +${Math.max(0, reformGain)})`, value: 0.6 });
+  } else if (reformGain >= 6 || s.stats.reform >= 55) {
+    reformPts = 0.4;
+    breakdown.push({ label: `Cải tạo mức khá (${s.stats.reform}/100)`, value: 0.4 });
   } else {
     breakdown.push({ label: `Mức cải tạo còn thấp (${s.stats.reform}/100)`, value: 0.2 });
     reformPts = 0.2;
@@ -47,20 +54,33 @@ export function computeReview(s: GameState, day: number): ReviewResult {
 
   // 2. Nghĩa vụ lao động
   let workPts = 0;
-  if (workDays >= periodDays) workPts = 0.6;
-  else if (workDays >= Math.ceil(periodDays * 0.6)) workPts = 0.3;
+  if (workDays >= periodDays) workPts = 0.5;
+  else if (workDays >= Math.ceil(periodDays * 0.75)) workPts = 0.25;
   breakdown.push({ label: `Lao động chấp hành ${workDays}/${periodDays} ngày`, value: workPts });
 
   // 3. Điểm danh
-  const rollPts = rollOk >= periodDays ? 0.4 : (rollOk >= Math.ceil(periodDays * 0.7) ? 0.2 : 0);
+  const rollPts = rollOk >= periodDays ? 0.3 : (rollOk >= Math.ceil(periodDays * 0.75) ? 0.15 : 0);
   breakdown.push({ label: `Điểm danh đúng giờ ${rollOk}/${periodDays} ngày`, value: rollPts });
 
-  // 4. Thành tích giúp đỡ, học nghề, đóng góp
+  // 4. Thành tích học tập, nhiệm vụ cốt truyện & chứng chỉ nghề thật (KHÔNG dựa vào cấp độ)
   let deedsPts = 0;
-  const deedsCount = Object.keys(s.quests).filter((k) => s.quests[k].status === 'done').length;
-  if (deedsCount >= 3 || s.progression.level >= 3) deedsPts = 0.4;
-  else if (deedsCount >= 1) deedsPts = 0.2;
-  breakdown.push({ label: `Thành tích học tập & giúp đỡ (${deedsCount} mục)`, value: deedsPts });
+  const doneQuests = Object.keys(s.quests ?? {}).filter((k) => s.quests[k].status === 'done');
+  const hasCert = Boolean((s.inventory && s.inventory['chung_chi_nghe']) || (s.skills?.vocationalExam ?? 0) > 0);
+  const hasClearedContraband = s.quests?.bay_vat_cam?.status === 'done';
+  const hasBriefSubmitted = s.quests?.ho_so_giai_trinh?.status === 'done';
+
+  if (hasBriefSubmitted || (hasClearedContraband && doneQuests.length >= 6)) {
+    deedsPts = 0.6;
+    breakdown.push({ label: `Hoàn tất giải trình vụ án & thành tích lớn (${doneQuests.length} mục)`, value: 0.6 });
+  } else if (hasCert || doneQuests.length >= 3) {
+    deedsPts = 0.4;
+    breakdown.push({ label: `Chứng chỉ nghề & hoàn thành nhiệm vụ giúp đỡ (${doneQuests.length} mục)`, value: 0.4 });
+  } else if (doneQuests.length >= 1) {
+    deedsPts = 0.2;
+    breakdown.push({ label: `Có tiến triển nhiệm vụ cải tạo (${doneQuests.length} mục)`, value: 0.2 });
+  } else {
+    breakdown.push({ label: 'Chưa có thành tích nhiệm vụ trong kỳ', value: 0 });
+  }
 
   // 5. Vi phạm
   const vio = s.violations.filter((v) => v.day >= from && v.day <= day && v.status !== 'overturned');
@@ -79,8 +99,8 @@ export function computeReview(s: GameState, day: number): ReviewResult {
   }
 
   let reduction = 0;
-  if (score >= 1.6) reduction = 2;
-  else if (score >= 0.8) reduction = 1;
+  if (score >= 2.0 && deedsPts >= 0.4) reduction = 2;
+  else if (score >= 1.3) reduction = 1;
   reduction = Math.max(0, Math.min(MAX_REVIEW_REDUCTION, reduction));
 
   return { day, reduction, breakdown, score: Number(score.toFixed(2)) };
@@ -91,6 +111,11 @@ export function serveDay(s: GameState, day: number): boolean {
   if (s.sentence.lastServedDay >= day) return false;
   s.sentence.lastServedDay = day;
   if (s.sentence.remaining > 0) {
+    // Không thể ra tù (remaining = 0) nếu chưa hoàn thành Chương 4
+    if (s.sentence.remaining === 1 && !isChapter4Done(s)) {
+      s.flags.release_pending_chapter4 = true;
+      return true;
+    }
     s.sentence.remaining -= 1;
     s.sentence.served += 1;
   }
@@ -101,7 +126,11 @@ export function serveDay(s: GameState, day: number): boolean {
 export function applyReview(s: GameState, day: number): ReviewResult | null {
   if (!isReviewDay(day) || s.sentence.reviewsDone.includes(day)) return null;
   const r = computeReview(s, day);
-  const amount = Math.min(r.reduction, s.sentence.remaining);
+  let amount = Math.min(r.reduction, s.sentence.remaining);
+  // Nếu chưa xong Chương 4, giữ án còn lại tối thiểu 1 ngày
+  if (!isChapter4Done(s) && s.sentence.remaining - amount < 1) {
+    amount = Math.max(0, s.sentence.remaining - 1);
+  }
   r.reduction = amount;
   s.sentence.reviewsDone.push(day);
   s.sentence.reformAtLastReview = s.stats.reform;

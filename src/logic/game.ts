@@ -50,6 +50,7 @@ type Listener = (...args: any[]) => void;
 export class GameLogic {
   s: GameState;
   private listeners: Record<string, Listener[]> = {};
+  private staminaWarned = false;
 
   constructor(state?: GameState) {
     this.s = state ?? createInitialState();
@@ -1248,12 +1249,22 @@ export class GameLogic {
     // Giảm dần độ no theo thời gian (5% mỗi giờ)
     this.addStat('satiety', -5 * hours);
 
-    // Thể lực: chạy tiêu hao (bền bỉ giảm hao phí thể lực)
+    // Thể lực: chạy tiêu hao giảm mạnh (2.5/s, bền bỉ giảm thêm), ngồi nghỉ hồi 6/s
     const regenMul = (st.satiety < 25 ? 0.5 : 1) * (1 + this.s.skills.fitness / 20) * enduranceBonus;
-    if (ctx.sprinting) this.addStat('stamina', (-7 * dtSec) / enduranceBonus);
+    if (ctx.sprinting) this.addStat('stamina', (-2.5 * dtSec) / enduranceBonus);
     else if (ctx.resting) this.addStat('stamina', 6 * dtSec * regenMul);
     else if (ctx.moving) this.addStat('stamina', 0.6 * dtSec * regenMul);
     else this.addStat('stamina', 1.5 * dtSec * regenMul);
+
+    // Cảnh báo sớm thể lực khi xuống <= 30
+    if (st.stamina <= 30) {
+      if (!this.staminaWarned) {
+        this.notify(`Thể lực xuống thấp (⚡ ${Math.round(st.stamina)}). Hãy ngồi ghế nghỉ ngơi hoặc ăn uống để hồi sức.`, 'warn');
+        this.staminaWarned = true;
+      }
+    } else if (st.stamina >= 45) {
+      this.staminaWarned = false;
+    }
 
     // Nghỉ ngơi hồi phục tinh thần nếu độ no không quá thấp
     if (ctx.resting && st.satiety >= 25) this.addStat('morale', 1.5 * hours);

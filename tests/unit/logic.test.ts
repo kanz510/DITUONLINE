@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { GameLogic } from '../../src/logic/game';
 import { SaveManager, deserialize, serialize, type StorageLike } from '../../src/logic/save';
 import { addSentence, applyReview, computeReview, project, serveDay } from '../../src/logic/sentence';
-import { MAX_TOTAL_ADDITION } from '../../src/logic/constants';
+import { MAX_TOTAL_ADDITION, START_SENTENCE } from '../../src/logic/constants';
 import { QUESTS } from '../../src/data/quests';
 
 class MemStorage implements StorageLike {
@@ -37,7 +37,7 @@ describe('Án & xét giảm án', () => {
     const g = new GameLogic();
     expect(serveDay(g.s, 1)).toBe(true);
     expect(serveDay(g.s, 1)).toBe(false);
-    expect(g.s.sentence.remaining).toBe(23);
+    expect(g.s.sentence.remaining).toBe(START_SENTENCE - 1);
   });
 
   it('kỳ xét giảm án không áp dụng trùng và không làm án âm', () => {
@@ -76,8 +76,8 @@ describe('Án & xét giảm án', () => {
   it('dự kiến ngày ra tù hợp lý', () => {
     const g = new GameLogic();
     const p = project(g.s);
-    expect(p.releaseNoReduction).toBe(24);
-    expect(p.releaseEstimated).toBeLessThanOrEqual(24);
+    expect(p.releaseNoReduction).toBe(START_SENTENCE);
+    expect(p.releaseEstimated).toBeLessThanOrEqual(START_SENTENCE);
     expect(p.nextReview).toBe(4);
   });
 });
@@ -396,6 +396,7 @@ describe('Hệ thống Cấp độ, Điểm kỹ năng & Xuất thân', () => {
 describe('Lượt chơi trọn vẹn', () => {
   it('cải tạo tốt → ra tù sớm hơn 30 ngày và nhận kết thúc', () => {
     const g = new GameLogic();
+    g.s.quests.ho_so_giai_trinh = { id: 'ho_so_giai_trinh', status: 'done', objectives: {} };
     let guard = 0;
     while (!g.s.ending && guard++ < 40) g.simulateGoodDay();
     expect(g.s.ending).not.toBeNull();
@@ -405,6 +406,7 @@ describe('Lượt chơi trọn vẹn', () => {
 
   it('ngày nhiều vi phạm vẫn có đường ra tù (án không tăng vô hạn)', () => {
     const g = new GameLogic();
+    g.s.quests.ho_so_giai_trinh = { id: 'ho_so_giai_trinh', status: 'done', objectives: {} };
     let guard = 0;
     while (!g.s.ending && guard++ < 80) {
       if (g.s.day % 3 === 0) g.recordViolation('fight', `f${g.s.day}`, 'x');

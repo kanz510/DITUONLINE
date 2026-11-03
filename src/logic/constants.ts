@@ -5,7 +5,7 @@ export const DAY_END = 22 * 60; // 22:00 tắt đèn
 /** 960 phút game ≈ 420 giây thực (7 phút) → 960/420 phút game mỗi giây thực. */
 export const GAME_MIN_PER_SEC = (DAY_END - DAY_START) / 420;
 
-export const START_SENTENCE = 24;
+export const START_SENTENCE = 30;
 export const REVIEW_INTERVAL = 4;
 export const MAX_REVIEW_REDUCTION = 2;
 /** Trần cộng án tổng cộng để người chơi không bao giờ mất đường tiến triển. */

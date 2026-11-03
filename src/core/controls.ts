@@ -184,7 +184,16 @@ export class InputController {
       fwd /= len;
       right /= len;
     }
-    const sprint = this.sprintTouch || this.keys.has('ShiftLeft') || this.keys.has('ShiftRight') || len > 0.92;
+    const hasKeyInput = this.keys.has('KeyW') || this.keys.has('ArrowUp') ||
+      this.keys.has('KeyS') || this.keys.has('ArrowDown') ||
+      this.keys.has('KeyD') || this.keys.has('ArrowRight') ||
+      this.keys.has('KeyA') || this.keys.has('ArrowLeft');
+    const hasShift = this.keys.has('ShiftLeft') || this.keys.has('ShiftRight');
+    const joyLen = Math.hypot(this.joyX, this.joyY);
+
+    const sprint = hasKeyInput
+      ? hasShift
+      : (this.sprintTouch || hasShift || joyLen > 0.96);
     return { fwd, right, sprint };
   }
 }
@@ -225,7 +234,7 @@ export class ThirdPersonCamera {
     let maxD = desiredDist;
     this.ray.set(target, offset);
     this.ray.far = desiredDist;
-    const hits = this.ray.intersectObjects(obstacles, false);
+    const hits = this.ray.intersectObjects(obstacles, true);
     if (hits.length > 0) {
       maxD = Math.max(0.65, hits[0].distance - 0.28);
     }

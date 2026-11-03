@@ -66,15 +66,32 @@ export function migrate(raw: any, storage?: StorageLike | null): GameState | nul
     },
   };
 
-  // Nếu án cũ đang để 30 ngày (chuẩn v1), chuyển đổi tương thích sang 24 ngày chuẩn v2
+  // Chuẩn hóa án phạt khởi điểm: chuẩn mới là 30 ngày (đủ hoàn thành trọn vẹn Chương 4)
   const oldTotal = st.sentence?.total ?? START_SENTENCE;
+  let remaining = st.sentence?.remaining ?? START_SENTENCE;
+  let total = Math.max(START_SENTENCE, oldTotal);
+  let sentenceExtendedDays = 0;
+
+  const isCh4Done = Boolean(
+    st.quests?.ho_so_giai_trinh?.status === 'done' ||
+    st.quests?.ky_xet_cuoi_cung?.status === 'done'
+  );
+
+  if (oldTotal === 24) {
+    // Save cũ từ chuẩn 24 ngày được điều chỉnh tăng +6 ngày để khớp tiến độ cốt truyện mới
+    sentenceExtendedDays = 6;
+    remaining = Math.min(total, remaining + 6);
+  } else if (!isCh4Done && (st.day ?? 1) >= 10 && remaining <= 8) {
+    sentenceExtendedDays = Math.max(6, 12 - remaining);
+    remaining += sentenceExtendedDays;
+    total = Math.max(total, (st.sentence?.served ?? 0) + remaining);
+  }
+
   const sentence = {
     ...def.sentence,
     ...st.sentence,
-    total: START_SENTENCE,
-    remaining: oldTotal === 30
-      ? Math.max(0, Math.min(START_SENTENCE, Math.round((st.sentence.remaining ?? 30) * (24 / 30))))
-      : (st.sentence?.remaining ?? START_SENTENCE),
+    total,
+    remaining,
   };
 
   // Migration chỉ số (v2 -> v3): độ no = 100 - hunger, tinh thần = 100 - stress
@@ -107,8 +124,17 @@ export function migrate(raw: any, storage?: StorageLike | null): GameState | nul
     skills: { ...def.skills, ...st.skills },
     settings: { ...def.settings, ...st.settings },
     relations: { ...def.relations, ...st.relations },
+    flags: { ...def.flags, ...st.flags },
     version: SAVE_VERSION,
   };
+  if (sentenceExtendedDays > 0) {
+    merged.flags.sentence_extended_for_reform = sentenceExtendedDays;
+    merged.sentence.additions.push({
+      day: merged.day,
+      amount: sentenceExtendedDays,
+      reason: 'Gia hạn thời hạn để hoàn tất chương trình cải tạo và giải trình vụ án'
+    });
+  }
   healStuckQuests(merged);
   return merged;
 }

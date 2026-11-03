@@ -309,6 +309,25 @@ export class HumanoidRig {
       this.head.rotation.y = Math.sin(p * 0.4) * 0.08;
     }
   }
+
+  setOpacity(alpha: number) {
+    const isTrans = alpha < 0.99;
+    this.root.traverse((obj) => {
+      if (obj instanceof THREE.Mesh && obj.material) {
+        if (Array.isArray(obj.material)) {
+          for (const m of obj.material) {
+            m.transparent = isTrans;
+            m.opacity = alpha;
+          }
+        } else {
+          obj.material.transparent = isTrans;
+          obj.material.opacity = alpha;
+        }
+      } else if (obj instanceof THREE.Sprite && obj.material) {
+        obj.material.opacity = alpha;
+      }
+    });
+  }
 }
 
 function makeLabel(text: string, colorHex: number, player: boolean): THREE.Sprite {

@@ -8,6 +8,61 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-03 — Antigravity — Sửa đồ họa 8 ảnh & Cân bằng Gameplay (Ghế ngồi, Bot tách mềm, Stamina, Nhịp giảm án) (v0.4.13)
+- **FIX 1 & FIX A — Ghế ngồi, Va chạm & Camera Obstacles:**
+  - **8 Ghế ăn nhà ăn:** Bổ sung 8 ghế đơn khớp chính xác 8 vị trí `MESS_SEATS` (`[0.6, -24.7]`, `[2.4, -24.7]`, `[0.6, -27.7]`, `[2.4, -27.7]`, `[9.6, -24.7]`, `[11.4, -24.7]`, `[9.6, -20.7]`, `[0.6, -20.7]`).
+  - **Ghế sân & phòng ốc:** Bổ sung ghế bàn cờ đá `[-10, 3.3]`, chỉnh ghế đá sân `[-16, 3.6]` khớp chỗ Lâm ngồi; bổ sung ghế lớp học nghề, ghế đọc sách thư viện, ghế phòng y tế `[23, -23.1]` và ghế phòng thăm gặp.
+  - **Procedural Mesh cho `chair`:** Bổ sung `case 'chair'` trong `makePropMesh`: mặt ghế cao chuẩn `y = 0.45m` (khớp hông nhân vật `y = 0.455m`, chân chạm sàn, không bay lơ lửng, không lún bàn), 4 chân kim loại và tựa lưng.
+  - **Chống camera xuyên đồ vật:** Đăng ký tất cả đồ ngồi / đồ lớn vào `cameraObstacles` (`bench, table, desk, workbench, counter, canteen, stonetable, bunk, cabinet, press, tank, cell-toilet, medical-trolley`).
+  - **Raycast đệ quy:** Đổi `ray.intersectObjects(obstacles, false)` thành `true` trong `controls.ts`, xuyên qua group để bắt trúng các mesh con bên trong bàn ghế.
+- **FIX 2 — Vách ngăn phòng thăm gặp:**
+  - Mesh `visitation.shatterproof-glass` chuyển sang `MeshStandardMaterial`: `color: 0xdbeafe`, `metalness: 0.0` (loại bỏ phản xạ đen), `roughness: 0.1`, `transparent: true`, `opacity: 0.25`, `depthWrite: false`, `side: THREE.DoubleSide`, tắt `castShadow` và `receiveShadow`. Kính trong suốt, nhìn rõ cả 2 phía.
+- **FIX 3 — Tủ đồ hiển thị tên vật phẩm:**
+  - Thêm đầy đủ định nghĩa vào `ITEMS` trong `src/data/items.ts` cho `manh_chung_tu_kho_7` ("Mảnh chứng từ kho 7") và `manh_van_don_kho_7` ("Mảnh vận đơn kho 7").
+  - Đảm bảo 100% ID vật phẩm từng phát qua `giveItem()` đều có trong `ITEMS` (có unit test tự động quét mã nguồn).
+- **FIX 4 — Trùng điểm đứng NPC & Chìm đồ đạc:**
+  - Y sĩ An: dời điểm làm việc `medDesk` ra ghế sau bàn `[23, -23.1]`, xoay `rot: 0` nhìn ra cửa phòng khám, không chìm vào bàn.
+  - Phạm nhân Tư: buổi tối dời điểm hóng gió từ `[-3, -2]` sang `[-3.8, -5.2]` để không đứng đè lên đường tuần tra của Quản giáo Lan (`[-4, -3]`).
+  - Y sĩ An buổi tối: dời từ `[-10, 3.2]` sang `[-12.5, 3.3]` để không ngồi trùng Chú Bảy (`[-10, 3.3]`).
+- **FIX 5 — Ánh sáng nội thất ban ngày:**
+  - Bổ sung hệ thống đèn trần nội thất tĩnh cho các tòa nhà (`cellblock`, `mess`, `medical`, `visitation`, `classroom`, `office`, `workshop`) với độ suy giảm theo khoảng cách (`distance: 14`, `decay: 2`).
+  - Duy trì ánh sáng nội thất `~0.8` vào ban ngày để khi nhìn từ ngoài sân qua cửa hay hành lang không bị tối đen hoàn toàn, đồng thời không làm cháy sáng môi trường ngoài trời.
+- **FIX B — Bot tách mềm (Soft Separation & Camera Occlusion Fade):**
+  - **Tách mềm Player–NPC & NPC–NPC:** Mỗi frame kiểm tra khoảng cách; nếu nhỏ hơn `0.52m`, tự động đẩy nhẹ cả hai ra ngoài theo hướng đối diện có kiểm tra va chạm tường `collision.canPlace()`.
+  - **Làm mờ NPC chắn camera:** Khi NPC nằm giữa đoạn thẳng từ camera đến nhân vật (chiếu hình chiếu vuông góc `< 0.65m` và nằm giữa), NPC tự động chuyển `opacity = 0.25` để người chơi luôn nhìn rõ nhân vật của mình.
+- **FIX C — Cân bằng Thể lực (Stamina):**
+  - Giảm tốc độ hao thể lực khi chạy nhanh từ `7.0/s` xuống `2.5/s` (có tính thêm chỉ số bền bỉ `enduranceBonus`).
+  - Cảnh báo sớm thể lực khi xuống `<= 30`: hiển thị thông báo toast và thanh HUD cảnh báo sớm trước khi kiệt sức.
+  - Ngồi nghỉ hồi `6.0/s`, đứng/nói chuyện hồi `1.5/s`, đi bộ hồi `0.6/s`. Bàn phím chỉ chạy nhanh khi giữ phím Shift; joystick chỉ chạy khi đẩy kịch viền (>0.96).
+  - Không cạn thể lực trước bữa trưa: một ngày bình thường (điểm danh, ăn sáng, ca sáng làm việc 3 units, chạy vội 10s) thể lực tại bữa trưa còn `> 65/100`.
+- **FIX D — Nhịp giảm án & Tiến độ Chương 4:**
+  - **Án khởi điểm:** Tăng từ 24 ngày lên **30 ngày** chuẩn hóa.
+  - **Điểm thành tích xét giảm:** Bỏ phụ thuộc vào cấp độ (`level >= 3`); yêu cầu hoàn thành nhiệm vụ cốt truyện thật (`doneQuests`, chứng chỉ nghề, minh oan bẫy vật cấm, nộp hồ sơ giải trình). Ngưỡng đạt giảm -2 ngày đòi hỏi `score >= 2.0` và có thành tích nhiệm vụ rõ rệt.
+  - **Chặn ra tù trước khi xong Chương 4:** Nếu người chơi chưa hoàn thành nhiệm vụ `ho_so_giai_trinh` hoặc `ky_xet_cuoi_cung`, án phạt còn lại không bao giờ giảm xuống 0 (giữ tối thiểu 1 ngày và thông báo chờ hoàn tất hồ sơ).
+  - **Bảng điểm xét giảm chi tiết:** Đêm xét giảm hiện bảng điểm breakdown chi tiết (Cải tạo, Lao động, Điểm danh, Thành tích, Vi phạm) trong modal tổng kết ngày.
+  - **Tự động gia hạn án cho save cũ:** Khi load save cũ dở dang (ngày `>= 10` mà án còn `<= 8` ngày và chưa xong Chương 4), game tự động gia hạn thêm án còn lại (đảm bảo còn ít nhất 10–12 ngày) và hiện thông báo từ Giám thị để người chơi hoàn tất trọn vẹn cốt truyện.
+- **Bảng số liệu cân bằng:**
+  - *Bảng tiêu hao & hồi phục thể lực:*
+    | Hoạt động | Biến động thể lực / giây | Ghi chú |
+    |---|---|---|
+    | Chạy nhanh (Sprint) | -2.5 / s (hoặc ~2.27/s với +1 endurance) | Giảm mạnh từ mức cũ 7.0/s |
+    | Ngồi nghỉ (Rest) | +6.0 / s | Hồi đầy từ 30 lên 100 trong ~12s |
+    | Đi bộ (Walk) | +0.6 / s | Vừa đi vừa hồi nhẹ thể lực |
+    | Đứng / Nói chuyện (Idle/Talk) | +1.5 / s | Hồi phục tự nhiên |
+    | Lao động công xưởng | 0 / s | Lao động tay chân không trừ thể lực |
+    | Ăn uống căn tin / nhà ăn | +10 đến +15 / lần | Hồi thể lực tức thì |
+  - *Bảng tiến trình & Ngày ra tù dự kiến:*
+    | Đối tượng người chơi | Điểm xét mỗi kỳ | Mức giảm mỗi kỳ | Mốc xong Chương 4 | Ngày ra tù dự kiến |
+    |---|---|---|---|---|
+    | **Người chơi ngoan** (Làm đủ việc, làm quest đều, không vi phạm) | 2.2 – 2.4 | -2 ngày / kỳ | Ngày 16 – 18 | **Ngày 20 – 21** |
+    | **Người chơi trung bình** (Lao động/điểm danh cơ bản, làm quest vừa phải) | 1.3 – 1.8 | -1 ngày / kỳ | Ngày 18 – 21 | **Ngày 24 – 25** |
+    | **Người chơi vi phạm** (Bỏ việc, đánh nhau, bị kỷ luật) | < 1.0 (hoặc trừ điểm) | 0 ngày (hoặc +2 đến +4 ngày phạt) | Ngày 22+ | **Ngày 30 – 34+** |
+- **Kiểm thử tự động:**
+  - Thêm unit test `tests/unit/visual-balance.test.ts` (7 bài test): audit giveItem vs ITEMS, cameraObstacles, MESS_SEATS ghế, mô phỏng thể lực không cạn trước trưa, chặn ra tù trước Chương 4, auto-extend save cũ.
+  - Thêm E2E test `tests/e2e/visual-balance.spec.ts`: kiểm tra ghế nhà ăn, kính thăm gặp trong suốt, khoảng cách tách NPC, Y sĩ An không lún bàn, bảng điểm xét giảm án chi tiết.
+  - Kết quả kiểm thử: **90/90 unit tests PASS (100%)**, **16/16 Playwright E2E tests PASS (100%)**.
+- **Đóng gói & Cache:** Tăng version lên `0.4.13`, chạy `npm run build` tạo gói phân phối sạch trong `dist/`, cập nhật `release.json` (buildHash: `b06e24114cbc`) và `sw.js`.
+
 ### 2026-11-03 — Antigravity — Sửa nhiệm vụ "Lời đề nghị im lặng" (cam_do_im_lang) & Tự sửa save cũ kẹt (v0.4.12)
 - **Sửa dứt điểm lỗi kẹt nhiệm vụ `cam_do_im_lang` ("Lời đề nghị im lặng"):**
   - **Nguyên nhân cốt lõi:** `finishQuest('cam_do_im_lang', 'done')` có guard kiểm tra branch flag nếu quest có `branches`. Trước đây, đoạn hội thoại Lâm (`src/data/dialogues.ts`) gọi thẳng `completeObjective` và `finishQuest` mà không gọi `chooseBranch` và không ghi `cam_do_im_lang:branch`. Ngoài ra, `chooseBranch` trước đây hardcode bước `'quyet_dinh'` trong khi `cam_do_im_lang` đặt tên bước là `'quyet_dinh_im_lang'`. Dẫn đến nhiệm vụ kẹt `active` mãi, không đóng, không trả 70 XP thưởng, và nhánh nhận tiền còn không mở `bay_vat_cam`.

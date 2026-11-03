@@ -257,6 +257,15 @@ class App {
       onContinue: () => {
         this.ui.paused = false;
         this.ui.checkOrientation();
+        if (this.g.s.flags?.sentence_extended_for_reform) {
+          const days = this.g.s.flags.sentence_extended_for_reform;
+          delete this.g.s.flags.sentence_extended_for_reform;
+          this.saves.save(this.g.s);
+          this.ui.showNotice(
+            '🏛️ THÔNG BÁO TỪ GIÁM THỊ TRẠI GIAM',
+            `Thời hạn chấp hành án của bạn được điều chỉnh gia hạn (+${days} ngày) nhằm đảm bảo bạn có đủ thời gian hoàn thành đầy đủ chương trình giáo dục cải tạo, học nghề và nộp hồ sơ giải trình minh oan vai trò trong vụ án Kho số 7 trước ngày tự do.`
+          );
+        }
       },
       onReset: () => {
         this.saves.clear();
@@ -653,6 +662,52 @@ class App {
         }
       }
 
+      // Soft separation: Player vs NPC & NPC vs NPC (khoảng cách tối thiểu ~0.52m)
+      const allNpcs = Object.values(this.npcs);
+      const MIN_DIST = 0.52;
+      for (let i = 0; i < allNpcs.length; i++) {
+        const n1 = allNpcs[i];
+        for (let j = i + 1; j < allNpcs.length; j++) {
+          const n2 = allNpcs[j];
+          let dx = n1.x - n2.x;
+          let dz = n1.z - n2.z;
+          let d = Math.hypot(dx, dz);
+          if (d < MIN_DIST) {
+            if (d < 1e-4) { dx = 0.01; dz = 0; d = 0.01; }
+            const overlap = MIN_DIST - d;
+            const push = (overlap * 0.5) / d;
+            const nx1 = n1.x + dx * push;
+            const nz1 = n1.z + dz * push;
+            const nx2 = n2.x - dx * push;
+            const nz2 = n2.z - dz * push;
+            if (this.world.collision.canPlace(nx1, nz1, 0.25)) n1.moveTo(nx1, nz1, n1.rot);
+            if (this.world.collision.canPlace(nx2, nz2, 0.25)) n2.moveTo(nx2, nz2, n2.rot);
+          }
+        }
+      }
+      for (const n of allNpcs) {
+        let dx = p.x - n.x;
+        let dz = p.z - n.z;
+        let d = Math.hypot(dx, dz);
+        if (d < MIN_DIST) {
+          if (d < 1e-4) { dx = 0.01; dz = 0; d = 0.01; }
+          const overlap = MIN_DIST - d;
+          const push = (overlap * 0.5) / d;
+          const pxNew = p.x + dx * push;
+          const pzNew = p.z + dz * push;
+          const nxNew = n.x - dx * push;
+          const nzNew = n.z - dz * push;
+          if (this.world.collision.canPlace(pxNew, pzNew, 0.32)) {
+            p.x = pxNew;
+            p.z = pzNew;
+            this.playerRig.root.position.set(p.x, 0, p.z);
+          }
+          if (this.world.collision.canPlace(nxNew, nzNew, 0.25)) {
+            n.moveTo(nxNew, nzNew, n.rot);
+          }
+        }
+      }
+
       this.g.tick(dt, this.tickCtx(moving || this.autoWalking, moving && mv.sprint));
       this.checkRestrictedZone();
       this.checkAreaLockoutsAndWarnings();
@@ -678,6 +733,29 @@ class App {
     this.updateCameraMode();
 
     this.tpCam.update(p.x, p.z, this.input.yaw, this.input.pitch, this.input.distance, this.world.cameraObstacles, camMode);
+
+    // Kiểm tra NPC chắn giữa camera và người chơi để làm mờ (opacity ~0.25)
+    if (camMode === 'third') {
+      const camPos = this.tpCam.cam.position;
+      const playerPos = new THREE.Vector3(p.x, 1.25, p.z);
+      const camToP = playerPos.clone().sub(camPos);
+      const rayDist = camToP.length();
+      const rayDir = camToP.clone().normalize();
+      for (const npc of Object.values(this.npcs)) {
+        const npcPos = new THREE.Vector3(npc.x, 1.0, npc.z);
+        const toNpc = npcPos.clone().sub(camPos);
+        const proj = toNpc.dot(rayDir);
+        if (proj > 0.4 && proj < rayDist - 0.35) {
+          const perp = toNpc.sub(rayDir.clone().multiplyScalar(proj)).length();
+          if (perp < 0.65) {
+            npc.rig.setOpacity(0.25);
+            continue;
+          }
+        }
+        npc.rig.setOpacity(1.0);
+      }
+    }
+
     this.currentPrompt = this.findPrompt();
     this.ui.updateHUD(this.currentPrompt, this.computeGuide());
     this.renderer.render(this.world.scene, this.tpCam.cam);

@@ -102,6 +102,7 @@ export class PrisonWorld {
   camAngle = 0;
   private camSweep = 0;
   private gateLights: THREE.PointLight[] = [];
+  private buildingLights: THREE.PointLight[] = [];
   readonly architecture: ArchitectureVisuals;
   readonly atmosphere: PrisonAtmosphere;
   private readonly indoorLight = new THREE.PointLight(0xffd8a1, 0, 12, 2);
@@ -129,6 +130,25 @@ export class PrisonWorld {
     this.scene.add(this.architecture.root);
     this.indoorLight.castShadow = false;
     this.scene.add(this.indoorLight);
+
+    const interiorSpots: [number, number, number][] = [
+      [-17.0, 3.1, -21.6], // cellblock corridor
+      [-17.0, 3.1, -29.0], // cellblock back
+      [6.5, 3.1, -25.0],   // mess hall
+      [22.5, 3.1, -25.0],  // medical
+      [-24.0, 3.1, -9.5],  // visitation
+      [-21.5, 3.1, 15.0],  // classroom
+      [-1.0, 3.1, 15.0],   // office
+      [19.5, 3.1, -2.5],   // workshop
+    ];
+    for (const [ix, iy, iz] of interiorSpots) {
+      const pl = new THREE.PointLight(0xfff3db, 0.8, 14, 2);
+      pl.position.set(ix, iy, iz);
+      pl.castShadow = false;
+      this.scene.add(pl);
+      this.buildingLights.push(pl);
+    }
+
     this.atmosphere = new PrisonAtmosphere(this.scene);
     this.buildPerimeterDetails();
     this.buildDoors();
@@ -599,7 +619,12 @@ export class PrisonWorld {
           }
         }).catch((error) => console.warn('[Books GLB] Shelf remains usable:', error));
       }
-      if (p.kind === 'tree' || p.kind === 'lamp' || p.kind === 'shelf' || p.kind === 'tower' || p.kind === 'cell-locker') this.cameraObstacles.push(obj);
+      const cameraObstacleKinds = new Set([
+        'tree', 'lamp', 'shelf', 'tower', 'cell-locker',
+        'bench', 'table', 'desk', 'workbench', 'counter', 'canteen', 'stonetable',
+        'bunk', 'cabinet', 'press', 'tank', 'cell-toilet', 'medical-trolley'
+      ]);
+      if (cameraObstacleKinds.has(p.kind)) this.cameraObstacles.push(obj);
       obj.position.set(p.x, 0, p.z);
       if (p.rot) obj.rotation.y = p.rot;
       this.scene.add(obj);
@@ -634,6 +659,27 @@ export class PrisonWorld {
     const green = new THREE.MeshStandardMaterial({ color: 0x2e6f40, roughness: 0.85 });
 
     switch (p.kind) {
+      case 'chair': {
+        const seatH = 0.05;
+        const seatY = 0.45;
+        const seat = new THREE.Mesh(new THREE.BoxGeometry(p.w || 0.45, seatH, p.d || 0.45), wood);
+        seat.position.y = seatY;
+        g.add(seat);
+        const legR = 0.02;
+        const legGeo = new THREE.CylinderGeometry(legR, legR, seatY, 6);
+        for (const dx of [-(p.w || 0.45) / 2 + 0.04, (p.w || 0.45) / 2 - 0.04]) {
+          for (const dz of [-(p.d || 0.45) / 2 + 0.04, (p.d || 0.45) / 2 - 0.04]) {
+            const leg = new THREE.Mesh(legGeo, steel);
+            leg.position.set(dx, seatY / 2, dz);
+            g.add(leg);
+          }
+        }
+        const backH = 0.38;
+        const back = new THREE.Mesh(new THREE.BoxGeometry(p.w || 0.45, backH, 0.04), wood);
+        back.position.set(0, seatY + backH / 2, -(p.d || 0.45) / 2 + 0.02);
+        g.add(back);
+        break;
+      }
       case 'bunk': {
         const m1 = new THREE.Mesh(new THREE.BoxGeometry(p.w, 0.1, p.d), wood);
         m1.position.y = 0.42;
@@ -866,6 +912,10 @@ export class PrisonWorld {
     for (const light of this.gateLights) {
       light.intensity = this.visualQuality === 'low' ? 0
         : 0.09 + night * (this.visualQuality === 'high' ? 1.1 : .64);
+    }
+    const baseBuildingLight = this.visualQuality === 'low' ? 0.35 : 0.8;
+    for (const light of this.buildingLights) {
+      light.intensity = baseBuildingLight * (0.85 + night * 0.3);
     }
     const indoors = Object.values(BUILDINGS).some((b) =>
       playerX > b.x1 && playerX < b.x2 && playerZ > b.z1 && playerZ < b.z2);

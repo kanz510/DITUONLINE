@@ -31,6 +31,8 @@ export const ITEMS: Record<string, ItemDef> = {
   sach_phap_luat: { id: 'sach_phap_luat', name: 'Cẩm nang pháp luật & cải tạo', desc: 'Sách mượn từ thư viện. Đọc giúp hồi 10 tinh thần và hiểu rõ quy tắc giảm án.', use: { morale: 10 } },
   qua_luu_niem: { id: 'qua_luu_niem', name: 'Khung ảnh gỗ tự làm', desc: 'Gia công tỉ mỉ tại xưởng để gửi tặng Chị Mai trong phòng thăm gặp.', quest: true, giftable: true },
   thu_gioi_thieu_viec_lam: { id: 'thu_gioi_thieu_viec_lam', name: 'Thư giới thiệu việc làm', desc: 'Thầy Phúc giới thiệu bạn tới xưởng cơ điện sau khi ra trại.', essential: true, quest: true },
+  manh_chung_tu_kho_7: { id: 'manh_chung_tu_kho_7', name: 'Mảnh chứng từ kho 7', desc: 'Mảnh tài liệu kế toán bị cháy xém ghi nhận lệnh xuất hàng bất thường đêm xảy ra vụ án Kho số 7.', essential: true, quest: true },
+  manh_van_don_kho_7: { id: 'manh_van_don_kho_7', name: 'Mảnh vận đơn kho 7', desc: 'Tem vận đơn thu thập từ kiện hàng niêm phong, chứng minh nguồn gốc lô hàng cấm tại xưởng.', essential: true, quest: true },
 };
 
 export function itemName(id: string) {
