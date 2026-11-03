@@ -8,6 +8,20 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-04 — Antigravity — VIỆC 4: Nút "Tự đi" và bộ phân giải đích đến theo dữ liệu cho mọi nhiệm vụ (24/24 quests)
+- **Vấn đề đã xử lý:** Trước đây nút "Tự đi" chỉ hỗ trợ 5 nhiệm vụ đầu do hardcode trong `main.ts`, 19 nhiệm vụ còn lại không có đích tự đi. Khi chọn theo dõi nhiệm vụ trong Nhật ký, thanh HUD không đổi mục tiêu theo nhiệm vụ được chọn.
+- **Giải pháp:**
+  - Xây dựng mô-đun `src/logic/quest-guide.ts` chứa bảng dữ liệu `QUEST_DESTINATIONS` bao quát toàn bộ 24 nhiệm vụ xuyên suốt 4 chương.
+  - Phân giải đích theo 4 cấp độ ưu tiên nghiêm ngặt:
+    1. Điểm tương tác cố định `SPOTS` (giường, bảng nội quy, bàn xưởng, kệ kho, bàn tiếp nhận, tủ thuốc...).
+    2. Vị trí thực tế thời gian thực của NPC liên quan (`liveNpcs` hoặc lịch trình fallback).
+    3. Tọa độ cố định của bước nhiệm vụ.
+    4. Các bước suy nghĩ/đọc sách/tại chỗ: trả về gợi ý `hint` cụ thể, không vẽ nút chết.
+  - Tự động phát hiện trạng thái đóng/mở cửa của khu vực (`isOpen`) và thiết lập điểm chờ an toàn bên ngoài cửa khi chưa đến giờ mở.
+  - Cập nhật `computeGuide()` trong `src/main.ts`: ưu tiên nghĩa vụ theo lịch trình bắt buộc (`rollcall`, `work`, `curfew`) trước, sau đó dẫn đường theo nhiệm vụ đang được theo dõi (`trackedQuestId`) hoặc nhiệm vụ hoạt động đầu tiên.
+  - Thêm chức năng chọn "🎯 Theo dõi" và "🚶 Tự đi" ngay trong từng thẻ nhiệm vụ ở Nhật ký (`showJournal`). Bấm "Tự đi" trong nhật ký tự động bám sát nhiệm vụ, đóng modal và kích hoạt tự đi đến mục tiêu.
+- **Kiểm thử:** Thêm `tests/unit/quest-guide.test.ts` (6 bài test kiểm tra 24/24 quest, phân giải SPOTS, live NPC, khu vực khóa an toàn, hint-only steps). Toàn bộ 116 bài unit test PASS 100%.
+
 ### 2026-11-04 — Antigravity — VIỆC 3: Nút "Bỏ qua nhiệm vụ" (chịu phạt) & Bỏ qua việc ngày chống treo nhiệm vụ
 - **Vấn đề đã xử lý:** Người chơi bị treo nhiệm vụ khi quá giờ hoặc không muốn tiếp tục làm một nhiệm vụ phụ/cốt truyện bị lỡ; việc ngày nếu chưa xong cũng cần cơ chế bỏ qua rõ ràng để không ảnh hưởng đến trải nghiệm.
 - **Giải pháp:**

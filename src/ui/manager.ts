@@ -106,6 +106,9 @@ export class UIManager {
       onRestoreBackup?: () => void;
       onAutoWalk?: (tx: number, tz: number, isLocked?: boolean, safeX?: number, safeZ?: number, targetName?: string) => void;
       onCancelAutoWalk?: () => void;
+      onTrackQuest?: (qid: string) => void;
+      getTrackedQuest?: () => string | null;
+      getQuestGuide?: (qid: string) => { tx?: number; tz?: number; label: string; isLocked?: boolean; safeX?: number; safeZ?: number; targetName: string; stepDesc?: string; hint?: string } | null;
     },
   ) {
     this.root = container;
@@ -1659,6 +1662,33 @@ export class UIManager {
           }
         };
       });
+      el.querySelectorAll<HTMLButtonElement>('.btn-journal-autowalk').forEach((btn) => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          this.sfx.click();
+          const qid = btn.dataset.questId;
+          if (qid) {
+            this.hooks.onTrackQuest?.(qid);
+            const g = this.hooks.getQuestGuide?.(qid);
+            this.closeModal();
+            if (g && g.tx !== undefined && g.tz !== undefined) {
+              this.hooks.onAutoWalk?.(g.tx, g.tz, g.isLocked, g.safeX, g.safeZ, g.targetName);
+            }
+          }
+        };
+      });
+      el.querySelectorAll<HTMLButtonElement>('.btn-journal-track').forEach((btn) => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          this.sfx.click();
+          const qid = btn.dataset.questId;
+          if (qid) {
+            this.hooks.onTrackQuest?.(qid);
+            this.showJournal();
+            this.toast(`Đang theo dõi: ${QUESTS[qid]?.title || qid}`, 'info');
+          }
+        };
+      });
       el.querySelectorAll<HTMLButtonElement>('.btn-skip-quest').forEach((btn) => {
         btn.onclick = (e) => {
           e.stopPropagation();
@@ -1711,19 +1741,41 @@ export class UIManager {
         return `<div style="margin-left:8px">○ ${o.text}</div>`;
       })
       .join('');
-    const canSkip = this.g.qStatus(qid) === 'active' && overdue.overdue && !q.failure.startsWith('Không thể thất bại');
-    const skipBtnHtml = canSkip
-      ? `<div style="margin-top:6px;display:flex;justify-content:flex-end">
-          <button class="btn btn-sm btn-danger btn-skip-quest" data-quest-id="${qid}" style="background:#dc2626;color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer">Bỏ qua (chịu phạt)</button>
-        </div>`
+    const isActive = this.g.qStatus(qid) === 'active';
+    const canSkip = isActive && overdue.overdue && !q.failure.startsWith('Không thể thất bại');
+    const isTracked = this.hooks.getTrackedQuest?.() === qid;
+    const guide = isActive ? this.hooks.getQuestGuide?.(qid) : null;
+
+    const actionBtns: string[] = [];
+    if (isActive) {
+      if (guide?.tx !== undefined && guide?.tz !== undefined) {
+        actionBtns.push(`<button class="btn btn-sm btn-accent btn-journal-autowalk" data-quest-id="${qid}" style="padding:3px 8px;font-size:11px;font-weight:700">🚶 Tự đi</button>`);
+      }
+      actionBtns.push(`<button class="btn btn-sm ${isTracked ? 'btn-primary' : 'btn-outline'} btn-journal-track" data-quest-id="${qid}" style="padding:3px 8px;font-size:11px;font-weight:700">${isTracked ? '🎯 Đang theo dõi' : '🎯 Theo dõi'}</button>`);
+    }
+    if (canSkip) {
+      actionBtns.push(`<button class="btn btn-sm btn-danger btn-skip-quest" data-quest-id="${qid}" style="background:#dc2626;color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer">Bỏ qua (chịu phạt)</button>`);
+    }
+
+    const actionRow = actionBtns.length > 0
+      ? `<div style="margin-top:6px;display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap">${actionBtns.join('')}</div>`
       : '';
+
+    const hintRow = guide?.hint && guide.tx === undefined
+      ? `<div class="hud-sub" style="color:#93c5fd;margin-top:4px">💡 Gợi ý: ${guide.hint}</div>`
+      : '';
+
     return `
-      <div class="card-row">
-        <div><span class="tag ${q.type === 'main' ? 'good' : ''}">${q.type === 'main' ? 'Chính' : 'Phụ'}</span><b>${q.title}</b> — Người giao: ${q.giver}</div>
+      <div class="card-row" style="${isTracked ? 'border-left:3px solid #38bdf8;' : ''}">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><span class="tag ${q.type === 'main' ? 'good' : ''}">${q.type === 'main' ? 'Chính' : 'Phụ'}</span><b>${q.title}</b> — Người giao: ${q.giver}</div>
+          ${isTracked ? `<span class="tag good" style="font-size:10px">Đang bám sát</span>` : ''}
+        </div>
         <div class="hud-sub">${q.reason}</div>
         <div style="margin-top:4px">${objs}</div>
+        ${hintRow}
         <div class="hud-sub" style="margin-top:4px">Phần thưởng: ${q.reward}</div>
-        ${skipBtnHtml}
+        ${actionRow}
       </div>
     `;
   }

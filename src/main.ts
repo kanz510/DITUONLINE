@@ -7,6 +7,8 @@ import { GameLogic } from './logic/game';
 import { SaveManager } from './logic/save';
 import { createInitialState, type NpcId } from './logic/state';
 import { NPCS } from './data/npcs';
+import { QUESTS, QUEST_ORDER } from './data/quests';
+import { resolveQuestDestination } from './logic/quest-guide';
 import { VIOLATIONS } from './data/violations';
 import { buildDialogue } from './data/dialogues';
 import { DOORS, NODES, SPOTS, ZONES, inBox, zonesAt, type Box } from './world/layout';
@@ -92,6 +94,7 @@ class App {
   private restrictedEpisode = 0;
   private wasInStorage = false;
   private currentPrompt: PromptTarget | null = null;
+  private trackedQuestId: string | null = null;
 
   init() {
     const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
@@ -183,6 +186,16 @@ class App {
       },
       onCancelAutoWalk: () => {
         this.cancelAutoWalk(true);
+      },
+      onTrackQuest: (qid) => {
+        this.trackedQuestId = qid;
+        this.currentPrompt = this.findPrompt();
+        this.ui.updateHUD(this.currentPrompt, this.computeGuide());
+      },
+      getTrackedQuest: () => this.trackedQuestId,
+      getQuestGuide: (qid) => {
+        const liveNpcs = Object.fromEntries(Object.entries(this.npcs).map(([id, npc]) => [id, { x: npc.x, z: npc.z }]));
+        return resolveQuestDestination(qid, this.g.s, liveNpcs);
       },
     });
 
@@ -1114,6 +1127,7 @@ class App {
     tz: number,
     isDuty: boolean,
     details?: {
+      questId?: string;
       questTitle?: string;
       stepDesc?: string;
       progress?: string;
@@ -1252,110 +1266,48 @@ class App {
       }
     }
 
-    // 2. NHIỆM VỤ CỐT TRUYỆN & PHỤ
-    let tx = 0;
-    let tz = 0;
-    let label = '';
-    let details: Parameters<typeof this.guideTo>[4] = {};
-
-    const bayWhere = () => {
-      if (curBlock.id === 'work') return 'Chú Bảy (Bàn xưởng #2)';
-      if (curBlock.id === 'breakfast' || curBlock.id === 'lunch' || curBlock.id === 'dinner') return 'Chú Bảy (Nhà ăn)';
-      if (curBlock.id === 'wake' || curBlock.id === 'rest' || curBlock.id === 'curfew') return 'Chú Bảy (Buồng 3)';
-      return 'Chú Bảy (Bàn cờ đá sân trại)';
-    };
-
-    if (g.qStatus('nhap_trai') === 'active') {
-      if (!g.qObj('nhap_trai', 'chan_man')) {
-        tx = -14.9; tz = -28.6; label = 'Giường của bạn (Nhận chăn màn)';
-        details = { questTitle: 'Chương 1: Nhập trại', stepDesc: 'Đến giường của bạn (buồng số 3) nhận chăn màn & đồ cá nhân.', progress: '0/4', targetName: 'Giường của bạn' };
-      } else if (!g.qObj('nhap_trai', 'noi_quy')) {
-        tx = -27.0; tz = -21.5; label = 'Bảng nội quy buồng giam';
-        details = { questTitle: 'Chương 1: Nhập trại', stepDesc: 'Đọc kỹ bảng nội quy trại giam trên tường buồng A.', progress: '1/4', targetName: 'Bảng nội quy' };
-      } else if (!g.qObj('nhap_trai', 'diem_danh')) {
-        tx = -9; tz = -9; label = 'Ô điểm danh sáng sân trại';
-        details = { questTitle: 'Chương 1: Nhập trại', stepDesc: 'Có mặt điểm danh tại ô vàng ngoài sân trại (06:30–06:45).', progress: '2/4', targetName: 'Ô điểm danh' };
-      } else if (!g.qObj('nhap_trai', 'gap_bay')) {
-        tx = this.npcs.bay.x; tz = this.npcs.bay.z;
-        label = bayWhere();
-        details = { questTitle: 'Chương 1: Nhập trại', stepDesc: 'Gặp và làm quen Chú Bảy (bạn cùng buồng giam).', progress: '3/4', targetName: 'Chú Bảy' };
-      }
-    } else if (g.qStatus('ca_dau') === 'active') {
-      const openWs = g.isOpen('workshop');
-      if (!g.qObj('ca_dau', 'cham_cong')) {
-        tx = 13.1; tz = -6; label = 'Bảng chấm công xưởng';
-        details = { questTitle: 'Nhiệm vụ: Ca đầu tiên', stepDesc: 'Bấm thẻ chấm công tại xưởng bắt đầu ca làm.', progress: '0/3', targetName: 'Bảng chấm công', safeX: 10.5, safeZ: -2.75, isLocked: !openWs, openCondition: '08:00–11:30' };
-      } else if (!g.qObj('ca_dau', 'lap_rap')) {
-        tx = 16; tz = 0.15; label = 'Bàn lắp ráp linh kiện';
-        details = { questTitle: 'Nhiệm vụ: Ca đầu tiên', stepDesc: 'Hoàn thành lắp ráp linh kiện đạt định mức.', progress: `${g.s.daily.workUnits}/3 ổ cắm`, targetName: 'Bàn xưởng', safeX: 10.5, safeZ: -2.75, isLocked: !openWs, openCondition: '08:00–11:30' };
-      } else {
-        tx = this.npcs.bay.x; tz = this.npcs.bay.z; label = bayWhere();
-        details = { questTitle: 'Nhiệm vụ: Ca đầu tiên', stepDesc: 'Báo cáo hoàn thành ca làm với Chú Bảy.', progress: '2/3', targetName: 'Chú Bảy' };
-      }
-    } else if (g.qStatus('mon_no') === 'active') {
-      const br = g.qBranch('mon_no');
-      if (!g.qObj('mon_no', 'nghe_huy')) {
-        tx = this.npcs.huy.x; tz = this.npcs.huy.z; label = 'Huy (Buồng 3 / Sân)';
-        details = { questTitle: 'Nhiệm vụ: Món nợ buồng 3', stepDesc: 'Nghe Huy tâm sự về áp lực nợ nần với Lâm.', progress: '0/3', targetName: 'Huy' };
-      } else if (!g.qObj('mon_no', 'gap_lam') || !br) {
-        tx = this.npcs.lam.x; tz = this.npcs.lam.z; label = 'Lâm (Khu thể thao sân)';
-        details = { questTitle: 'Nhiệm vụ: Món nợ buồng 3', stepDesc: 'Gặp Lâm tìm cách giải quyết món nợ.', progress: '1/3', targetName: 'Lâm' };
-      } else if (br === 'steal' && !g.qObj('mon_no', 'lay_khoan')) {
-        tx = 26.2; tz = -5.2; label = 'Kệ kho xưởng (Lẻn lấy hộp khoan)';
-        details = { questTitle: 'Nhiệm vụ: Món nợ buồng 3', stepDesc: 'Tránh camera kho, lấy trộm hộp mũi khoan cho Lâm.', progress: '2/3', targetName: 'Kệ kho xưởng', safeX: 20.6, safeZ: -7, isLocked: true, openCondition: 'Khu vực cấm camera' };
-      } else if (br === 'steal') {
-        tx = this.npcs.lam.x; tz = this.npcs.lam.z; label = 'Lâm (Giao đồ)';
-        details = { questTitle: 'Nhiệm vụ: Món nợ buồng 3', stepDesc: 'Giao hộp mũi khoan cho Lâm để xóa nợ cho Huy.', progress: '2/3', targetName: 'Lâm' };
-      } else if (br === 'pay') {
-        tx = this.npcs.lam.x; tz = this.npcs.lam.z; label = 'Lâm (Trả 40.000đ)';
-        details = { questTitle: 'Nhiệm vụ: Món nợ buồng 3', stepDesc: 'Trả tiền chuộc nợ cho Huy.', progress: '2/3', targetName: 'Lâm' };
-      } else if (br === 'report') {
-        tx = this.npcs.lan.x; tz = this.npcs.lan.z; label = 'Quản giáo Lan (Báo cáo kèm vật chứng)';
-        details = { questTitle: 'Nhiệm vụ: Món nợ buồng 3', stepDesc: 'Báo cáo hành vi bảo kê, cờ bạc cho Quản giáo Lan.', progress: '2/3', targetName: 'Quản giáo Lan' };
-      }
-    } else if (g.qStatus('lop_nghe_dau') === 'active') {
-      const openClass = g.isOpen('classroom');
-      if (!g.qObj('lop_nghe_dau', 'den_lop')) {
-        tx = this.npcs.phuc.x; tz = this.npcs.phuc.z;
-        label = openClass ? 'Thầy Phúc (Lớp học nghề)' : 'Thầy Phúc (Lớp mở 14:00–16:30)';
-        details = { questTitle: 'Nhiệm vụ: Nghề tương lai', stepDesc: 'Đến lớp học nghề gặp Thầy Phúc.', progress: '0/3', targetName: 'Thầy Phúc', safeX: -20.75, safeZ: 8.5, isLocked: !openClass, openCondition: 'Mở cửa 14:00–16:30' };
-      } else if (!g.qObj('lop_nghe_dau', 'thao_tac')) {
-        tx = -21.5; tz = 13;
-        label = openClass ? 'Bàn thực hành nối mạch' : 'Bàn thực hành (Mở 14:00–16:30)';
-        details = { questTitle: 'Nhiệm vụ: Nghề tương lai', stepDesc: 'Thực hành nối mạch an toàn tại bàn học.', progress: '1/3', targetName: 'Bàn thực hành', safeX: -20.75, safeZ: 8.5, isLocked: !openClass, openCondition: 'Mở cửa 14:00–16:30' };
-      } else {
-        tx = this.npcs.phuc.x; tz = this.npcs.phuc.z;
-        label = 'Thầy Phúc (Nhận chứng chỉ)';
-        details = { questTitle: 'Nhiệm vụ: Nghề tương lai', stepDesc: 'Báo cáo bài tập với Thầy Phúc để nhận chứng nhận.', progress: '2/3', targetName: 'Thầy Phúc', safeX: -20.75, safeZ: 8.5, isLocked: !openClass, openCondition: 'Mở cửa 14:00–16:30' };
-      }
-    } else if (g.qStatus('nghi_an_thuoc') === 'active') {
-      const openMed = g.isOpen('medical');
-      if (!g.qObj('nghi_an_thuoc', 'hoi_an')) {
-        tx = this.npcs.an.x; tz = this.npcs.an.z;
-        label = openMed ? 'Y sĩ An (Phòng y tế)' : 'Y sĩ An (Mở 07:30–11:30 & 13:30–17:00)';
-        details = { questTitle: 'Nhiệm vụ: Nghi án lọ thuốc', stepDesc: 'Đến phòng y tế hỏi Y sĩ An về thuốc của Chú Bảy.', progress: '0/4', targetName: 'Y sĩ An', safeX: 22.25, safeZ: -16.5, isLocked: !openMed, openCondition: '07:30–11:30 & 13:30–17:00' };
-      } else if (!g.qObj('nghi_an_thuoc', 'hoi_bay')) {
-        tx = this.npcs.bay.x; tz = this.npcs.bay.z;
-        label = bayWhere();
-        details = { questTitle: 'Nhiệm vụ: Nghi án lọ thuốc', stepDesc: 'Hỏi Chú Bảy về địa điểm làm rơi lọ thuốc.', progress: '1/4', targetName: 'Chú Bảy' };
-      } else if (!g.qObj('nghi_an_thuoc', 'nhat_thuoc')) {
-        tx = 22.5; tz = 13;
-        label = 'Lọ thuốc rơi góc sau xưởng';
-        details = { questTitle: 'Nhiệm vụ: Nghi án lọ thuốc', stepDesc: 'Tìm nhặt lọ thuốc hen suyễn bị rơi góc sau xưởng.', progress: '2/4', targetName: 'Lọ thuốc hen' };
-      } else {
-        tx = this.npcs.an.x; tz = this.npcs.an.z;
-        label = openMed ? 'Y sĩ An (Giao thuốc cứu chú Bảy)' : 'Y sĩ An (Phòng y tế)';
-        details = { questTitle: 'Nhiệm vụ: Nghi án lọ thuốc', stepDesc: 'Đem lọ thuốc về phòng y tế giao cho Y sĩ An.', progress: '3/4', targetName: 'Y sĩ An', safeX: 22.25, safeZ: -16.5, isLocked: !openMed, openCondition: '07:30–11:30 & 13:30–17:00' };
-      }
-    } else if (g.qStatus('phong_tham_gap') === 'active') {
-      const openVisit = g.isOpen('visitation');
-      tx = -22.5; tz = -8.8;
-      label = openVisit ? 'Vách kính thăm gặp (Chị Mai)' : 'Phòng thăm gặp (Mở 08:30–11:00 & 14:00–16:30)';
-      details = { questTitle: 'Nhiệm vụ: Tiếng vọng gia đình', stepDesc: 'Vào phòng thăm gặp nhấc ống nghe trò chuyện với Chị Mai.', progress: 'Chờ gặp', targetName: 'Vách kính thăm gặp', safeX: -18.5, safeZ: -10.25, isLocked: !openVisit, openCondition: '08:30–11:00 & 14:00–16:30' };
+    // 2. NHIỆM VỤ CỐT TRUYỆN & PHỤ (Data-driven cho toàn bộ 24 nhiệm vụ)
+    let targetQid: string | null = null;
+    if (this.trackedQuestId && g.qStatus(this.trackedQuestId) === 'active') {
+      targetQid = this.trackedQuestId;
+    } else {
+      const activeMain = QUEST_ORDER.find((qid) => QUESTS[qid].type === 'main' && g.qStatus(qid) === 'active');
+      const activeSide = QUEST_ORDER.find((qid) => QUESTS[qid].type === 'side' && g.qStatus(qid) === 'active');
+      targetQid = activeMain || activeSide || null;
     }
 
-    if (!label) return null;
-    return this.guideTo(label, tx, tz, false, details);
+    if (!targetQid) return null;
+
+    const liveNpcs = Object.fromEntries(Object.entries(this.npcs).map(([id, npc]) => [id, { x: npc.x, z: npc.z }]));
+    const dest = resolveQuestDestination(targetQid, g.s, liveNpcs);
+    if (!dest) return null;
+
+    const qDef = QUESTS[targetQid];
+    if (dest.tx === undefined || dest.tz === undefined) {
+      return {
+        label: dest.label,
+        dist: 0,
+        angle: 0,
+        questId: targetQid,
+        isDuty: false,
+        questTitle: qDef?.title || dest.label,
+        stepDesc: dest.stepDesc,
+        targetName: dest.targetName,
+        openCondition: dest.openCondition,
+        isLocked: dest.isLocked,
+      };
+    }
+
+    return this.guideTo(dest.label, dest.tx, dest.tz, false, {
+      questId: targetQid,
+      questTitle: qDef?.title || dest.label,
+      stepDesc: dest.stepDesc,
+      targetName: dest.targetName,
+      safeX: dest.safeX,
+      safeZ: dest.safeZ,
+      isLocked: dest.isLocked,
+      openCondition: dest.openCondition,
+    });
   }
 }
 
