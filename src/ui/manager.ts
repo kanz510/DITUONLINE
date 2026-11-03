@@ -1765,18 +1765,47 @@ export class UIManager {
     const q = QUESTS[qid];
     const br = this.g.qBranch(qid);
     const overdue = getQuestOverdueStatus(qid, this.g.s);
+    const isActive = this.g.qStatus(qid) === 'active';
     const objs = q.objectives
       .filter((o) => !o.branch || o.branch === br)
       .map((o) => {
         const isDone = this.g.qObj(qid, o.id);
-        if (isDone) return `<div style="margin-left:8px">✔ ${o.text}</div>`;
-        if (overdue.overdue && !isDone) {
-          return `<div style="margin-left:8px;color:#fca5a5">⚠️ ${o.text} — <b style="color:#f87171">${overdue.message}</b></div>`;
+        const optBadge = o.optional ? `<span style="color:#f59e0b;font-weight:700">[Thử thách (tùy chọn)]</span> ` : '';
+        const displayText = o.text.startsWith('Thử thách (tùy chọn):') ? o.text : (optBadge + o.text);
+
+        // Hướng dẫn nếu chưa đủ ngưỡng chỉ số / kỹ năng (11c)
+        let thresholdHint = '';
+        if (!isDone && isActive) {
+          const s = this.g.s;
+          const mSta = o.text.match(/Cần thể lực ≥\s*(\d+)/i);
+          if (mSta && s.stats.stamina < parseInt(mSta[1], 10)) {
+            thresholdHint = `<div style="margin-left:18px;font-size:11px;color:#93c5fd">💡 Chưa đủ thể lực (${Math.round(s.stats.stamina)}/${mSta[1]}): Tập xà đơn ngoài sân hoặc nghỉ ngơi để hồi phục.</div>`;
+          }
+          const mMor = o.text.match(/Cần tinh thần ≥\s*(\d+)/i);
+          if (mMor && s.stats.morale < parseInt(mMor[1], 10)) {
+            thresholdHint = `<div style="margin-left:18px;font-size:11px;color:#93c5fd">💡 Chưa đủ tinh thần (${Math.round(s.stats.morale)}/${mMor[1]}): Đọc sách thư viện, tắm gội hoặc dạo sân để hồi phục.</div>`;
+          }
+          const mRef = o.text.match(/Cần điểm cải tạo ≥\s*(\d+)/i);
+          if (mRef && s.stats.reform < parseInt(mRef[1], 10)) {
+            thresholdHint = `<div style="margin-left:18px;font-size:11px;color:#93c5fd">💡 Chưa đủ cải tạo (${Math.round(s.stats.reform)}/${mRef[1]}): Lao động đủ định mức và tham gia các hoạt động giáo dục.</div>`;
+          }
+          const mCha = o.text.match(/Cần kỹ năng Giao tiếp ≥\s*(\d+)/i);
+          if (mCha && (s.progression.attrs.charisma ?? 0) < parseInt(mCha[1], 10)) {
+            thresholdHint = `<div style="margin-left:18px;font-size:11px;color:#93c5fd">💡 Chưa đủ kỹ năng Giao tiếp (${s.progression.attrs.charisma ?? 0}/${mCha[1]}): Lên cấp để cộng điểm vào Giao tiếp hoặc đọc sách.</div>`;
+          }
+          const mSus = o.text.match(/Cần mức nghi ngờ <\s*(\d+)/i);
+          if (mSus && s.stats.suspicion >= parseInt(mSus[1], 10)) {
+            thresholdHint = `<div style="margin-left:18px;font-size:11px;color:#93c5fd">💡 Mức nghi ngờ còn cao (${Math.round(s.stats.suspicion)}/100): Tránh lảng vảng khu vực cấm và chấp hành nội quy.</div>`;
+          }
         }
-        return `<div style="margin-left:8px">○ ${o.text}</div>`;
+
+        if (isDone) return `<div style="margin-left:8px">✔ ${displayText}</div>`;
+        if (overdue.overdue && !isDone) {
+          return `<div style="margin-left:8px;color:#fca5a5">⚠️ ${displayText} — <b style="color:#f87171">${overdue.message}</b></div>${thresholdHint}`;
+        }
+        return `<div style="margin-left:8px">○ ${displayText}</div>${thresholdHint}`;
       })
       .join('');
-    const isActive = this.g.qStatus(qid) === 'active';
     const canSkip = isActive && overdue.overdue && !q.failure.startsWith('Không thể thất bại');
     const isTracked = this.hooks.getTrackedQuest?.() === qid;
     const guide = isActive ? this.hooks.getQuestGuide?.(qid) : null;

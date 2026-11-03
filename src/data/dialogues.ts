@@ -100,8 +100,27 @@ function bayDialogue(g: GameLogic): DNode {
         g.completeObjective('ca_dau', 'bao_bay');
         return {
           speaker: 'Chú Bảy',
-          text: 'Tốt lắm. Tay nghề chưa quen mà làm đủ chỉ tiêu là có cố gắng. Cứ giữ nhịp đó. À… hồi trưa thằng Huy tìm cháu ngoài sân đấy, mặt mũi xanh mét.',
-          choices: [{ label: 'Để cháu ra sân hỏi Huy xem sao.', run: () => null }],
+          text: 'Tốt lắm. Tay nghề chưa quen mà làm đủ chỉ tiêu là có cố gắng. À… hồi trưa thằng Huy tìm cháu ngoài sân đấy, mặt mũi xanh mét.',
+          choices: [
+            {
+              label: 'Cháu làm cẩn thận từng chi tiết theo đúng quy chuẩn an toàn. Để cháu ra sân hỏi Huy.',
+              run: () => {
+                g.addReform(2, 'Lao động kỷ luật, cẩn trọng');
+                g.changeRel('bay', 8, 'Chú Bảy ưng ý thái độ làm việc cẩn thận');
+                g.addStat('stamina', -10);
+                return null;
+              },
+            },
+            {
+              label: 'Cháu tập trung đẩy tốc độ để kịp định mức và học thao tác nhanh. Để cháu ra sân hỏi Huy.',
+              run: () => {
+                g.gainXp(20, 'Tối ưu tốc độ thao tác xưởng');
+                g.changeRel('bay', 3, 'Chú Bảy dặn dò về sự nóng vội');
+                g.addStat('suspicion', 5);
+                return null;
+              },
+            },
+          ],
         };
       },
     });
@@ -219,11 +238,31 @@ function bayDialogue(g: GameLogic): DNode {
       label: 'Cháu đã đánh bóng và lắp khóa hộp gỗ. Cháu hứa sẽ mang về cho con gái chú.',
       important: true,
       run: () => {
-        g.completeObjective('loi_hua_chu_bay', 'hua_gui_ve');
         return {
           speaker: 'Chú Bảy',
-          text: 'Chú cảm ơn cậu. Chú gửi cậu cuốn cẩm nang làm hành trang ngày ra trại.',
-          choices: [{ label: 'Cháu sẽ giữ lời.', run: () => null }],
+          text: 'Đẹp quá cháu ơi! Từng thớ gỗ bóng loáng, cháu làm khéo tay lắm. Chú có chút tiền công dành dụm và cuốn cẩm nang nghề, cháu nhận lấy nhé?',
+          choices: [
+            {
+              label: 'Cháu xin nhận cuốn cẩm nang học nghề, còn tiền chú giữ lại để bồi dưỡng.',
+              run: () => {
+                g.completeObjective('loi_hua_chu_bay', 'hua_gui_ve');
+                g.changeRel('bay', 25, 'Minh từ chối nhận tiền của người già');
+                g.addReform(4, 'Tấm lòng tương thân tương ái');
+                g.addStat('morale', 15);
+                return null;
+              },
+            },
+            {
+              label: 'Cháu xin nhận cả cẩm nang và tiền công để trang trải ngày đầu ra trại.',
+              run: () => {
+                g.completeObjective('loi_hua_chu_bay', 'hua_gui_ve');
+                g.addStat('money', 30);
+                g.gainXp(35, 'Thù lao lao động danh chính ngôn thuận');
+                g.changeRel('bay', 15, 'Chú Bảy vui vì Minh nhận quà');
+                return null;
+              },
+            },
+          ],
         };
       },
     });
@@ -686,14 +725,37 @@ function lanDialogue(g: GameLogic, openAppeal: () => void): DNode {
           text: reason,
           choices: [{ label: 'Cháu sẽ làm đúng bước.', run: () => null }],
         };
-        g.completeObjective('ho_so_giai_trinh', 'nop_ho_so');
-        g.completeObjective('ho_so_giai_trinh', 'ket_luan_lan');
-        g.s.flags.ho_so_kho_7_cleared = true;
-        g.finishQuest('ho_so_giai_trinh', 'done');
         return {
           speaker: 'Quản giáo Lan',
-          text: `Tôi đã xem xét kỹ vận đơn và bản đối chiếu chữ ký mà cậu và Thầy Phúc gửi lên. Chứng cứ này chứng minh ${pName} chỉ là người bị lừa gạt, không phải kẻ chủ mưu vụ cháy kho số 7. Tôi sẽ chuyển văn bản chính thức đến Hội đồng xét giảm án!`,
-          choices: [{ label: 'Cháu biết ơn Quản giáo rất nhiều!', run: () => null }],
+          text: `Tôi đã xem xét kỹ vận đơn và bản đối chiếu chữ ký mà cậu và Thầy Phúc gửi lên. Chứng cứ này chứng minh ${pName} chỉ là người bị lừa gạt, không phải kẻ chủ mưu vụ cháy kho số 7. Cậu muốn tôi ghi nhận hồ sơ này theo hướng nào trước Hội đồng?`,
+          choices: [
+            {
+              label: 'Đề nghị phân loại mức độ cải tạo Tốt và bảo lưu hạnh kiểm cao nhất.',
+              run: () => {
+                g.completeObjective('ho_so_giai_trinh', 'nop_ho_so');
+                g.completeObjective('ho_so_giai_trinh', 'ket_luan_lan');
+                g.s.flags.ho_so_kho_7_cleared = true;
+                g.addReform(5, 'Giải trình minh bạch vụ kho 7');
+                g.changeRel('lan', 15, 'Quản giáo Lan đánh giá cao tinh thần thượng tôn kỷ luật');
+                g.finishQuest('ho_so_giai_trinh', 'done');
+                return null;
+              },
+            },
+            {
+              label: 'Xin cứu xét toàn diện cho các bạn tù liên đới đã dũng cảm làm chứng.',
+              run: () => {
+                g.completeObjective('ho_so_giai_trinh', 'nop_ho_so');
+                g.completeObjective('ho_so_giai_trinh', 'ket_luan_lan');
+                g.s.flags.ho_so_kho_7_cleared = true;
+                g.gainXp(40, 'Nghĩa khí bảo vệ người làm chứng');
+                g.changeRel('bay', 20, 'Chú Bảy vô cùng cảm kích');
+                g.changeRel('huy', 20, 'Huy nể phục tấm lòng');
+                g.changeRel('lan', 10, 'Quản giáo Lan ghi nhận nghĩa cử');
+                g.finishQuest('ho_so_giai_trinh', 'done');
+                return null;
+              },
+            },
+          ],
         };
       },
     });
@@ -705,17 +767,48 @@ function lanDialogue(g: GameLogic, openAppeal: () => void): DNode {
       label: 'Nghe kết luận của Hội đồng xét giảm án đặc xá.',
       important: true,
       run: () => {
-        // Hoàn tất trình tự phiên xét: có mặt, nghe kết luận rồi nhận quyết định.
-        g.completeObjective('ky_xet_cuoi_cung', 'den_hoi_truong');
-        g.completeObjective('ky_xet_cuoi_cung', 'nhan_quyet_dinh');
-        g.finishQuest('ky_xet_cuoi_cung', 'done');
-        // Kích hoạt kết thúc phân nhánh
-        const endCode = g.computeEnding();
-        g.s.ending = endCode;
         return {
           speaker: 'Quản giáo Lan',
-          text: `Hội đồng Trại giam An Phú đã họp và quyết định: Phạm nhân ${pName} đã hoàn thành tốt quá trình cải tạo, được giảm hết thời hạn chấp hành án còn lại. Ngày mai cậu chính thức được tự do!`,
-          choices: [{ label: 'Bước ra cổng trại và đón nhận tương lai', run: () => null }],
+          text: `Hội đồng Trại giam An Phú đã họp và quyết định: Phạm nhân ${pName} đã hoàn thành tốt quá trình cải tạo, được giảm hết thời hạn chấp hành án còn lại. Ngày mai cậu chính thức được tự do! Trước khi nhận quyết định, cậu có lời tâm huyết nào gửi tới Hội đồng?`,
+          choices: [
+            {
+              label: 'Phát biểu lòng biết ơn về sự rèn giũa nghiêm khắc và công bằng của cán bộ trại.',
+              run: () => {
+                g.completeObjective('ky_xet_cuoi_cung', 'den_hoi_truong');
+                g.completeObjective('ky_xet_cuoi_cung', 'nhan_quyet_dinh');
+                g.addReform(5, 'Lời phát biểu chuẩn mực trước Hội đồng');
+                g.changeRel('lan', 15, 'Cán bộ xúc động trước sự trưởng thành của Minh');
+                g.changeRel('tung', 15, 'Cán bộ Tùng hài lòng');
+                g.finishQuest('ky_xet_cuoi_cung', 'done');
+                const endCode = g.computeEnding();
+                g.s.ending = endCode;
+                return {
+                  speaker: 'Quản giáo Lan',
+                  text: 'Hội đồng ghi nhận sự tiến bộ vượt bậc của cậu. Chúc mừng cậu trở lại với xã hội!',
+                  choices: [{ label: 'Bước ra cổng trại và đón nhận tương lai', run: () => null }],
+                };
+              },
+            },
+            {
+              label: 'Chia sẻ bài học sâu sắc và cam kết sống lương thiện, giúp đỡ bạn bè cùng buồng.',
+              run: () => {
+                g.completeObjective('ky_xet_cuoi_cung', 'den_hoi_truong');
+                g.completeObjective('ky_xet_cuoi_cung', 'nhan_quyet_dinh');
+                g.gainXp(50, 'Ý chí hoàn lương kiên định');
+                g.addStat('morale', 20);
+                g.changeRel('bay', 20, 'Chú Bảy tự hào');
+                g.changeRel('huy', 20, 'Huy lấy Minh làm tấm gương');
+                g.finishQuest('ky_xet_cuoi_cung', 'done');
+                const endCode = g.computeEnding();
+                g.s.ending = endCode;
+                return {
+                  speaker: 'Quản giáo Lan',
+                  text: 'Biết đứng dậy sau vấp ngã là điều đáng quý nhất. Cánh cổng trại đã mở cho cậu!',
+                  choices: [{ label: 'Bước ra cổng trại và đón nhận tương lai', run: () => null }],
+                };
+              },
+            },
+          ],
         };
       },
     });
@@ -798,12 +891,33 @@ function phucDialogue(g: GameLogic, openVocational?: () => void): DNode {
         label: 'Thưa Thầy Phúc, em đã hoàn thành xong bài nối mạch an toàn rồi ạ.',
         important: true,
         run: () => {
-          g.completeObjective('lop_nghe_dau', 'nhan_xet');
-          g.finishQuest('lop_nghe_dau', 'done', 'Hoàn thành bài học nghề');
           return {
             speaker: 'Thầy Phúc',
-            text: 'Khá lắm! Nối đúng trình tự, thao tác dứt khoát và cẩn thận. Đây là Chứng chỉ nghề cơ điện bậc sơ cấp của em. Giữ lấy nó làm nền tảng trong hồ sơ xét giảm án.',
-            choices: [{ label: 'Em cảm ơn thầy nhiều lắm!', run: () => null }],
+            text: 'Thầy vừa quan sát bài thực hành của em, nối đúng trình tự và dứt khoát. Đây là Chứng chỉ nghề cơ điện bậc sơ cấp của em. Em định hướng phát triển tay nghề theo hướng nào?',
+            choices: [
+              {
+                label: 'Em muốn học chuyên sâu kỹ thuật điện công nghiệp an toàn.',
+                run: () => {
+                  g.completeObjective('lop_nghe_dau', 'nhan_xet');
+                  g.changeRel('phuc', 10, 'Thầy Phúc đánh giá cao tính chuyên cần');
+                  g.addReform(3, 'Định hướng học nghề an toàn');
+                  g.addStat('stamina', -10);
+                  g.finishQuest('lop_nghe_dau', 'done', 'Học chuyên sâu điện an toàn');
+                  return null;
+                },
+              },
+              {
+                label: 'Em muốn học thực hành sửa chữa đồ cơ khí - thiết bị sinh hoạt xưởng.',
+                run: () => {
+                  g.completeObjective('lop_nghe_dau', 'nhan_xet');
+                  g.gainXp(25, 'Mở rộng tay nghề cơ khí');
+                  g.changeRel('phuc', 5, 'Thầy Phúc ghi nhận tinh thần thực tế');
+                  g.addStat('morale', 10);
+                  g.finishQuest('lop_nghe_dau', 'done', 'Học thực hành cơ khí sửa chữa');
+                  return null;
+                },
+              },
+            ],
           };
         },
       });
@@ -816,14 +930,35 @@ function phucDialogue(g: GameLogic, openVocational?: () => void): DNode {
       label: 'Thầy Phúc ơi, nhờ thầy xem giúp cháu mảnh vận đơn Kho số 7 này với ạ.',
       important: true,
       run: () => {
-        g.completeObjective('doi_chieu_chung_tu', 'dua_chung_tu');
-        g.completeObjective('doi_chieu_chung_tu', 'doi_chieu');
-        g.completeObjective('doi_chieu_chung_tu', 'phat_hien');
-        g.finishQuest('doi_chieu_chung_tu', 'done');
         return {
           speaker: 'Thầy Phúc',
-          text: `Để thầy xem... Mảnh giấy này có dấu mộc và chữ ký người nhận là "Trần Văn Định". Đây chính là đầu mối từng giao dịch thiết bị với bên Lâm trước khi xảy ra hỏa hoạn. Chứng cứ này rất có giá trị đấy ${pName}!`,
-          choices: [{ label: 'Cháu cảm ơn thầy nhiều!', run: () => null }],
+          text: `Để thầy xem... Mảnh giấy này có dấu mộc và chữ ký người nhận là "Trần Văn Định". Đây chính là đầu mối từng giao dịch thiết bị với bên Lâm trước khi xảy ra hỏa hoạn. Em định xử lý manh mối này thế nào?`,
+          choices: [
+            {
+              label: 'Nhờ thầy giữ cẩn thận bản gốc, cháu chỉ ghi nhớ thông tin.',
+              run: () => {
+                g.completeObjective('doi_chieu_chung_tu', 'dua_chung_tu');
+                g.completeObjective('doi_chieu_chung_tu', 'doi_chieu');
+                g.completeObjective('doi_chieu_chung_tu', 'phat_hien');
+                g.changeRel('phuc', 10, 'Tin tưởng giao chứng cứ cho Thầy Phúc');
+                g.addReform(2, 'Bảo vệ chứng cứ an toàn');
+                g.finishQuest('doi_chieu_chung_tu', 'done');
+                return null;
+              },
+            },
+            {
+              label: 'Cháu xin phép tự giữ kín bên mình để chủ động giải trình.',
+              run: () => {
+                g.completeObjective('doi_chieu_chung_tu', 'dua_chung_tu');
+                g.completeObjective('doi_chieu_chung_tu', 'doi_chieu');
+                g.completeObjective('doi_chieu_chung_tu', 'phat_hien');
+                g.gainXp(30, 'Tự quản lý chứng cứ nhạy cảm');
+                g.addStat('suspicion', 8);
+                g.finishQuest('doi_chieu_chung_tu', 'done');
+                return null;
+              },
+            },
+          ],
         };
       },
     });
@@ -915,8 +1050,27 @@ function anDialogue(g: GameLogic): DNode {
         g.takeItem('chai_thuoc_hen');
         return {
           speaker: 'Y sĩ An',
-          text: 'May quá! Đúng là thuốc đặc trị của Chú Bảy rồi. Tôi sẽ cho chú thở khí dung ngay. Cảm ơn cậu đã cứu mạng một con người.',
-          choices: [{ label: 'Cháu mừng vì chú Bảy qua khỏi.', run: () => null }],
+          text: 'May quá! Đúng là thuốc đặc trị của Chú Bảy rồi. Tôi sẽ cho chú thở khí dung ngay. Cậu tìm thấy thuốc trong hoàn cảnh nào?',
+          choices: [
+            {
+              label: 'Cháu tìm thấy ở góc tường sau xưởng, có dấu hiệu bị ai đó cố tình giấu.',
+              run: () => {
+                g.changeRel('an', 15, 'Minh báo cáo trung thực, chi tiết tình trạng giấu thuốc');
+                g.addReform(3, 'Tố giác hành vi giấu thuốc bệnh');
+                g.addStat('suspicion', 5);
+                return null;
+              },
+            },
+            {
+              label: 'Cháu chỉ tình cờ nhặt được rơi ngoài sân thôi ạ, miễn cứu người là được.',
+              run: () => {
+                g.gainXp(30, 'Giữ kín chuyện tế nhị để tránh xáo trộn');
+                g.changeRel('an', 10, 'Y sĩ An cảm kích');
+                g.changeRel('bay', 15, 'Chú Bảy biết ơn');
+                return null;
+              },
+            },
+          ],
         };
       },
     });

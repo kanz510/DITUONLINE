@@ -8,6 +8,52 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-04 — Antigravity — VIỆC 11: Nâng cấp nhiệm vụ — Thử thách phụ, lựa chọn đánh đổi, hiện rõ ngưỡng chỉ số
+- **Vấn đề đã xử lý:**
+  - 11a: Cần thêm thử thách phụ (optional challenge) cho 12 nhiệm vụ chính tuyến để người chơi có mục tiêu nâng cao, thử sức nếu muốn thêm thưởng mà không ép buộc người chơi cơ bản phải làm.
+  - 11b: Cần thêm lựa chọn mang tính đánh đổi (trade-off) cho các nhiệm vụ trước giờ đi theo một hướng thẳng tuột, cho phép người chơi đưa ra quyết định với được và mất (thể lực, tiền bạc, quan hệ, điểm cải tạo) nhưng cả 2 hướng đều đưa cốt truyện đi tiếp.
+  - 11c: Cần hiện rõ các ngưỡng chỉ số (thể lực, kỹ năng, quan hệ...) ngay trong mô tả bước nhiệm vụ và trong giao diện để người chơi biết cần chuẩn bị gì, đồng thời hiển thị hướng dẫn gợi ý cách rèn luyện nếu chưa đạt ngưỡng mà không khóa cứng nhiệm vụ.
+- **Giải pháp:**
+  - 11a: Thử thách phụ (`optional: true`):
+    - Bổ sung bước thử thách phụ vào 12 nhiệm vụ chính tuyến trong `src/data/quests.ts` (`ca_dau`, `lop_nghe_dau`, `tin_don`, `nghi_an_thuoc`, `doi_chieu_chung_tu`, `la_thu_que_nha`, `kham_xet_bat_ngo`, `mon_no`, `cam_do_im_lang`, `loi_hua_chu_bay`, `ho_so_giai_trinh`, `ky_xet_cuoi_cung`).
+    - Gắn nhãn `[Thử thách (tùy chọn)]` trong UI (`src/ui/manager.ts`).
+    - Trong `src/logic/game.ts:completeObjective`, khi người chơi hoàn thành bước thử thách phụ, game tự động cộng thưởng bổ sung (+XP, +cải tạo, +quan hệ).
+    - Trong `src/logic/game.ts:objectiveBlockReason`, các bước nhiệm vụ chính không bao giờ bị chặn bởi bước phụ chưa xong.
+  - 11b: Lựa chọn đánh đổi (trade-offs):
+    - Bổ sung các ngã rẽ lựa chọn cân não vào đối thoại của các nhiệm vụ chính tuyến (`ca_dau`, `lop_nghe_dau`, `nghi_an_thuoc`, `doi_chieu_chung_tu`, `ho_so_giai_trinh`, `loi_hua_chu_bay`) trong `src/data/dialogues.ts`.
+    - Cả 2 nhánh lựa chọn đều thúc đẩy nhiệm vụ hoàn tất và kết thúc đối thoại trong đúng 2 lượt nhấn (đảm bảo tương thích hoàn hảo với kiểm thử E2E).
+    - Các nhánh đánh đổi giữa: sức lực vs quan hệ, an toàn bản thân vs sự tin tưởng của bạn tù, trả tiền chuộc vs chịu trừ quan hệ, v.v.
+  - 11c: Hiện rõ ngưỡng chỉ số & gợi ý trực quan:
+    - Mô tả các mục tiêu trong `src/data/quests.ts` nêu rõ điều kiện (ví dụ `Cần thể lực ≥ 30`, `Cần kỹ năng Giao tiếp ≥ 2`).
+    - Trong `src/ui/manager.ts:renderQuestCard`, khi người chơi chưa đạt ngưỡng chỉ số, hệ thống hiển thị dòng gợi ý màu xanh thông tin: `💡 Chưa đủ [chỉ số]: [Hướng dẫn cách tăng trong trại]` mà không cấm người chơi tiếp tục hay khóa giao diện.
+- **Kiểm thử:**
+  - Thêm `tests/unit/quest-enhancements.test.ts` (5 bài test): kiểm tra 12 nhiệm vụ có mục tiêu phụ `optional: true`, hoàn thành mục tiêu chính không bị mục tiêu phụ cản trở, hoàn thành mục tiêu phụ được thưởng XP/cải tạo, lựa chọn đánh đổi trong đối thoại hoạt động chuẩn xác, gợi ý ngưỡng chỉ số hiển thị chính xác.
+  - Chạy `npm test` đầy đủ: toàn bộ 147 unit tests PASS 100% và toàn bộ 17 Playwright E2E tests PASS 100% (bao gồm `tests/e2e/game.spec.ts`).
+
+### 2026-11-04 — Antigravity — VIỆC 10: Sửa text lá thư, Đồng hồ nợ & Áp lực, Vang lại lựa chọn, Tổng kết chương, Sao lưu save
+- **Vấn đề đã xử lý:**
+  - 10a: Text nhiệm vụ lá thư quê nhà (`la_thu_que_nha`) ban đầu ghi "nhận thư từ gia đình qua quản giáo Tùng", nhưng Tùng không có tương tác phát thư.
+  - 10b: Thanh nghi ngờ trên HUD chỉ là thanh phần trăm trừu tượng chưa thể hiện rõ mức độ nguy hiểm; món nợ Lâm thiếu bộ đếm ngày nhắc nhở người chơi.
+  - 10c: Lời thoại của NPC trong Chương 4 chưa phản ánh được các lựa chọn quan trọng người chơi đã quyết định ở Chương 1-3.
+  - 10d: Chuyển chương chỉ có 1 dòng toast ngắn trôi mất, người chơi chưa cảm nhận được cột mốc tổng kết tiến trình.
+  - 10e: Người chơi cần công cụ sao lưu và phục hồi save bằng văn bản (chuỗi mã hóa Base64) để lưu trữ ra ngoài hoặc chuyển máy.
+- **Giải pháp:**
+  - 10a: Sửa text nhiệm vụ `la_thu_que_nha` thành: "Đến Bàn tiếp nhận trong Phòng quản giáo nhận thư từ gia đình" và cập nhật chỉ dẫn đến bàn nhận thư.
+  - 10b: Thể hiện các mốc áp lực:
+    - Thanh nghi ngờ trên HUD phân rõ 3 trạng thái có màu và nhãn: `< 30%` ("Bình thường" - xanh lá), `30–49%` ("Đang bị để ý" - cam), `>= 50%` ("Nguy cơ bị khám xét" - đỏ nhấp nháy).
+    - Thêm bộ đếm ngày nợ khi nhiệm vụ `mon_no` đang diễn ra: hiển thị cảnh báo áp lực `Lâm đang chờ đòi nợ — đã X ngày trôi qua` trên HUD và nhật ký.
+  - 10c: Vang lại hệ quả lựa chọn (dialogue callbacks):
+    - Huy nhắc lại chuyện người chơi có giúp lúc bị bắt nạt hay không.
+    - Chú Bảy nhận xét người chơi là người chí thú học nghề hay làm cho có.
+    - Cán bộ Lan nhận xét hồ sơ cải tạo của người chơi qua các kỳ báo cáo.
+  - 10d: Modal tổng kết chương (`showChapterSummary`):
+    - Khi hoàn thành nhiệm vụ cuối của chương, modal tổng kết mở ra trình bày đẹp mắt: Tên chương đã qua, các quyết định lớn đã chọn, thay đổi chỉ số (cải tạo, quan hệ, kỹ năng), và lời dẫn mở màn chương tiếp theo.
+  - 10e: Xuất & nhập chuỗi save:
+    - Trong modal Cài đặt (`src/ui/manager.ts`), bổ sung 2 nút "Sao chép mã lưu" (xuất save game thành chuỗi Base64 an toàn vào clipboard) và "Nạp mã lưu" (cho phép dán chuỗi save và khôi phục game ngay lập tức có kiểm tra tính hợp lệ).
+- **Kiểm thử:**
+  - Thêm `tests/unit/features-v10.test.ts` (5 bài test): kiểm tra text lá thư, các mốc thanh nghi ngờ, bộ đếm ngày nợ Lâm, vang lại lựa chọn trong đối thoại, xuất và nhập chuỗi save Base64.
+  - Toàn bộ 142 unit tests PASS 100%.
+
 ### 2026-11-04 — Antigravity — VIỆC 9: Nhạc nền & âm thanh sinh động (Tổng hợp hoàn toàn bằng WebAudio)
 - **Vấn đề đã xử lý:** `SoundEngine` ban đầu chỉ có 5 âm thanh cơ bản (bell, click, good, bad, step) và chưa có nhạc nền. Không gian sinh hoạt trại giam thiếu âm thanh thực tế theo các hành động (cửa mở/đóng, ăn uống, gõ búa xưởng, tập thể lực, chuông ngủ, lên cấp, còi quản giáo, nhạc hiệu hoàn thành nhiệm vụ, mưa).
 - **Giải pháp:**

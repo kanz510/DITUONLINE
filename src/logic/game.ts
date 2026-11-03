@@ -711,6 +711,7 @@ export class GameLogic {
     const targetIndex = def.objectives.findIndex((o) => o.id === obj);
     if (targetIndex < 0) return 'Bước nhiệm vụ không tồn tại.';
     const target = def.objectives[targetIndex];
+    if (target.optional) return null;
     const branch = this.qBranch(q);
     if (target.branch && target.branch !== branch) {
       return branch
@@ -738,7 +739,36 @@ export class GameLogic {
     this.s.flags[k] = true;
     const def = QUESTS[q];
     const o = def.objectives.find((x) => x.id === obj);
-    if (o) this.notify(`✔ ${o.text}`, 'quest');
+    if (o) {
+      this.notify(`✔ ${o.text}`, 'quest');
+      if (o.optional) {
+        if (obj === 'thu_thach_nhap_trai') {
+          this.gainXp(15, 'Thử thách: Nắm vững nề nếp');
+        } else if (obj === 'thu_thach_ca_dau') {
+          this.gainXp(20, 'Thử thách: Vượt định mức');
+          this.addReform(2, 'Thử thách lao động');
+        } else if (obj === 'thu_thach_lop_nghe_dau') {
+          this.gainXp(25, 'Thử thách: Tay nghề chuẩn');
+        } else if (obj === 'thu_thach_nghi_an_thuoc') {
+          this.addReform(2, 'Thử thách: Thu hồi an toàn');
+        } else if (obj === 'thu_thach_kho_7') {
+          this.gainXp(25, 'Thử thách: Thu thập khéo léo');
+        } else if (obj === 'thu_thach_doi_chieu') {
+          this.addReform(3, 'Thử thách: Đối chiếu sâu');
+        } else if (obj === 'thu_thach_im_lang') {
+          this.gainXp(25, 'Thử thách: Bản lĩnh vững vàng');
+        } else if (obj === 'thu_thach_bay_vat_cam') {
+          this.gainXp(25, 'Thử thách: Giải trình mạch lạc');
+        } else if (obj === 'thu_thach_ho_so') {
+          this.gainXp(35, 'Thử thách: Hồ sơ hoàn hảo');
+        } else if (obj === 'thu_thach_loi_hua') {
+          this.gainXp(25, 'Thử thách: Hộp gỗ tinh xảo');
+          this.changeRel('bay', 10, 'Hộp gỗ tinh xảo');
+        } else if (obj === 'thu_thach_ky_xet') {
+          this.gainXp(50, 'Thử thách: Cải tạo xuất sắc');
+        }
+      }
+    }
     this.checkDailyTasks({ category: 'personal' });
     this.checkQuest(q);
     this.commit();
