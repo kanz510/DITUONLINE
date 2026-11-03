@@ -86,6 +86,7 @@ export function showLandingPage(options: LandingOptions): void {
         <button id="landing-rules" class="landing-guide" type="button">HƯỚNG DẪN CHƠI ↗</button>
       </div>
       <div class="landing-rules-panel" id="landing-rules-panel" hidden>
+        <button id="landing-close-rules" class="landing-panel-close" type="button" aria-label="Đóng hướng dẫn">×</button>
         <b>QUY TẮC SINH TỒN</b>
         <p>Điểm danh đúng giờ, hoàn thành công việc theo thứ tự và giữ quan hệ với bạn tù. Vi phạm có thể tăng án, cải tạo tốt có cơ hội về sớm.</p>
         <p>Điện thoại: joystick trái, tương tác phải. Máy tính: WASD và E.</p>
@@ -130,6 +131,10 @@ export function showLandingPage(options: LandingOptions): void {
   overlay.querySelector('#landing-rules')?.addEventListener('click', () => {
     const panel = overlay.querySelector<HTMLElement>('#landing-rules-panel');
     if (panel) panel.hidden = !panel.hidden;
+  });
+  overlay.querySelector('#landing-close-rules')?.addEventListener('click', () => {
+    const panel = overlay.querySelector<HTMLElement>('#landing-rules-panel');
+    if (panel) panel.hidden = true;
   });
   overlay.querySelector<HTMLButtonElement>('#landing-primary')?.focus({ preventScroll: true });
 }
