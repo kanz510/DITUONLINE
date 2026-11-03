@@ -1,10 +1,13 @@
 # Asset staging cho ĐI TÙ ONLINE (DITUONLINE)
 
-Đây là **kho asset nguồn**. Một phần đã được nối vào game từ 03/11/2026:
-nhân vật dùng Kenney GLB/AnimationMixer, giường tầng/đơn, bàn/ghế/tủ/cây
-dùng GLB, sàn và tường dùng texture PNG/JPG, sân có đèn và bụi cây GLB.
-Các vật thể phục vụ nhiệm vụ, cửa khóa, camera và biển chữ vẫn dùng mesh
-hiện có để bảo toàn gameplay. Các asset chưa được chọn vẫn để nguyên ở đây.
+Đây là **kho asset nguồn**. Đợt nâng cấp đầu tiên ngày 03/11/2026 đã
+đưa GLB vào nhà ăn, phòng thăm gặp, sân vườn và xe đỗ. **Quản giáo Lan
+và cán bộ Tùng** sử dụng model Kenney `character-j.glb` màu xanh
+cảnh sát và 27 clip gốc qua AnimationMixer; người chơi, phạm nhân, y sĩ,
+khách thăm và Thầy Phúc vẫn dùng chibi procedural, không trộn lại skin
+blocky cho tù nhân. Đạo cụ nhiệm vụ và phần lớn kết cấu trại giam được
+dựng Three.js chi tiết để giữ nguyên chức năng.
+Asset nguồn chưa dùng vẫn giữ tại đây.
 
 Quy ước bản chạy: asset nhân vật/nội thất chính dưới `public/models/`,
 mô hình bổ sung và texture bề mặt dưới `public/assets/`. Mỗi GLB luôn đi
@@ -12,7 +15,9 @@ cùng thư mục `Textures/` của nó. Không tải file từ thư mục nguồ
 lúc chạy; Vite chỉ xuất `src/` và `public/`. Các lần nối tiếp theo cần
 tránh copy hai lần cùng một GLB sang các thư mục public khác nhau.
 
-Tổng cộng: 78 file model (3,50 MB) + 16 texture (0,55 MB) + file này = 4,05 MB.
+Đếm trực tiếp trên `main`: **58 GLB nguồn (~3,34 MB)** trong
+`assets/models/`, kèm texture nguồn. Không cộng bản copy trong `public/`
+thành tài nguyên mới; catalog cũ ghi 78 model là không khớp Git tree.
 
 Quy ước kỹ thuật (bắt buộc khi gắn asset):
 - Engine: Three.js 0.170 + Vite + TypeScript. Load GLB bằng `GLTFLoader`
@@ -98,17 +103,17 @@ Toàn bộ tự chứa (unlit, không cần texture ngoài).
 | `desk.glb` | 15 KB | Bàn lớp học, bàn phòng quản giáo |
 | `chair.glb` | 11 KB | Ghế lớp học, ghế phòng làm việc |
 | `bookcaseOpen.glb` | 18 KB | Kệ sách thư viện |
-| `books.glb` | 7 KB | Sách đặt lên kệ (hiện kệ thư viện chưa có sách) |
+| `books.glb` | 7 KB | Đã trưng lên kệ sách thư viện |
 | `cabinetBed.glb` | 7 KB | Tủ đầu giường buồng giam |
 | `table.glb` | 8 KB | Bàn nhà ăn |
-| `kitchenStoveElectric.glb` | 18 KB | Bếp nhà ăn |
-| `kitchenSink.glb` | 23 KB | Chậu rửa khu bếp |
-| `kitchenFridge.glb` | 20 KB | Tủ lạnh kho / nhà ăn |
+| `kitchenStoveElectric.glb` | 18 KB | Đã dùng trong nhà ăn |
+| `kitchenSink.glb` | 23 KB | Đã dùng trong nhà ăn |
+| `kitchenFridge.glb` | 20 KB | Đã dùng trong nhà ăn |
 | `lampRoundFloor.glb` | 6 KB | Đèn cây trong phòng |
 | `lampSquareFloor.glb` | 5 KB | Đèn cây trong phòng (kiểu vuông) |
-| `loungeSofa.glb` | 9 KB | Ghế sofa phòng thăm gặp |
-| `sideTable.glb` | 9 KB | Bàn nhỏ phòng thăm gặp |
-| `pottedPlant.glb` | 7 KB | Chậu cây phòng quản giáo / thăm gặp |
+| `loungeSofa.glb` | 9 KB | Đã dùng trong phòng thăm gặp |
+| `sideTable.glb` | 9 KB | Đã dùng trong phòng thăm gặp |
+| `pottedPlant.glb` | 7 KB | Đã dùng trong phòng thăm gặp |
 
 ## Đồ đường, sân (`models/roads/`) — Kenney City Kit Roads, CC0
 
@@ -132,10 +137,10 @@ URI trong GLB đã sửa theo tên mới và kiểm tra lại).
 
 | File | Kích thước | Gợi ý dùng trong game |
 |---|---|---|
-| `van.glb` | 172 KB | Xe chở phạm — tạm thay xe buýt (chưa có model bus) |
-| `police.glb` | 191 KB | Xe tuần tra |
-| `ambulance.glb` | 228 KB | Xe y tế trước phòng y tế |
-| `delivery.glb` | 235 KB | Xe chở hàng tiếp tế qua cổng |
+| `van.glb` | 172 KB | Đã dùng làm xe chở phạm đỗ tĩnh, chưa phải bus |
+| `police.glb` | 191 KB | Đã dùng làm xe tuần tra đỗ tĩnh |
+| `ambulance.glb` | 228 KB | Đã dùng làm xe cứu thương đỗ tĩnh |
+| `delivery.glb` | 235 KB | Đã dùng làm xe tiếp tế đỗ tĩnh |
 
 ## Textures (`textures/`)
 
@@ -168,15 +173,14 @@ kín các nhu cầu đó. Khi Poly Haven hồi phục có thể bổ sung thêm 
 
 - Xe buýt chở phạm: chưa có trong các pack CC0 đã kiểm tra — hiện
   chỉ có `van.glb` làm tạm. Cần tự làm bằng Blender hoặc tìm thêm.
-- Tháp canh chi tiết + cổng trại giam đúng kiểu: chưa có model sẵn
-  (`fence_gate.glb` chỉ là cổng vườn, `construction-fence.glb` là
-  rào công trường). Cần tự làm bằng Blender.
-- Hàng rào kẽm gai dạng 3D (cuộn dây thép gai): chưa có model sẵn;
-  tạm dùng `chainlink.png` làm lưới mắt cáo.
+- Tháp canh/cổng trại giam: đã có phiên bản Three.js chi tiết trên scene;
+  model tháp canh Blendstra GLB riêng đã được tạo nhưng **chưa nhập vào
+  `public/`**. Có thể thay sau khi kiểm chứng file export GLB.
+- Hàng rào kẽm gai: đã dựng bằng Three.js InstancedMesh, không cần
+  copy GLB riêng trừ khi muốn chi tiết hơn.
 - Sky dome mesh, mặt trời/mặt trăng 3D, mây: chưa có model — hiện
   chỉ có texture gradient bầu trời + mặt trăng 2D để map lên dome
   tự tạo.
-- Đồ y tế chi tiết (máy móc, chai thuốc, giường bệnh chuyên dụng),
-  dụng cụ xưởng chi tiết, vách kính phòng thăm gặp: chưa có trong
-  các pack này — có thể ghép từ đồ nội thất + box procedural, hoặc
-  làm riêng bằng Blender.
+- Đồ y tế chi tiết (máy móc, giường bệnh chuyên dụng), dụng cụ xưởng
+  phức tạp vẫn cần model phù hợp. Vách kính thăm gặp đã có phiên bản
+  Three.js gắn trên quầy hiện hữu; có thể thay bằng GLB chất lượng cao.
