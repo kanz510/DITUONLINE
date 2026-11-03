@@ -163,7 +163,11 @@ export function zoneName(x: number, z: number): string {
 // ───────── Đồ vật có va chạm ─────────
 export type PropKind =
   | 'bunk' | 'table' | 'counter' | 'canteen' | 'bench' | 'workbench' | 'shelf' | 'board' | 'desk'
-  | 'pullup' | 'stonetable' | 'tree' | 'tank' | 'crate' | 'basin' | 'press' | 'tower' | 'cabinet' | 'chair' | 'plant' | 'lamp';
+  | 'pullup' | 'stonetable' | 'tree' | 'tank' | 'crate' | 'basin' | 'press' | 'tower' | 'cabinet' | 'chair' | 'plant' | 'lamp'
+  | 'kitchen-fridge' | 'kitchen-sink' | 'kitchen-stove'
+  | 'visit-sofa' | 'visit-side-table' | 'garden-pot'
+  | 'yard-bush' | 'yard-flower' | 'yard-rock'
+  | 'park-ambulance' | 'park-police' | 'park-van' | 'park-delivery';
 
 export interface PropDef {
   kind: PropKind;
@@ -249,6 +253,31 @@ P.push(
   { kind: 'chair', x: -25.5, z: -11, w: 0.5, d: 0.5 },
   // Khu Kỷ luật
   { kind: 'bunk', x: 10, z: 18, w: 1.1, d: 2.0, collide: true },
+
+  // Đợt asset CC0: từng vị trí đã kiểm tra KHÔNG cắt bất kỳ cạnh NODES/EDGES nào,
+  // không đè những collider cũ hoặc SPOTS nhiệm vụ. Vật tĩnh có collider chuẩn.
+  // Nhà ăn: tủ lạnh + chậu rửa ở đầu trái quầy, bếp sát tường sau
+  { kind: 'kitchen-fridge', x: -0.95, z: -30.9, w: 0.85, d: 0.75, collide: true, label: 'Tủ lạnh nhà bếp' },
+  { kind: 'kitchen-sink', x: -0.95, z: -28.9, w: 0.9, d: 0.65, collide: true, label: 'Chậu rửa bếp' },
+  { kind: 'kitchen-stove', x: 11, z: -31.25, w: 0.85, d: 0.75, collide: true, label: 'Bếp nấu ăn' },
+
+  // Phòng thăm gặp: ghế ngồi đợi, bàn nhỏ và cây để trong góc, xa booth nhiệm vụ
+  { kind: 'visit-sofa', x: -25.6, z: -6.3, w: 1.55, d: 0.7, collide: true, label: 'Ghế phòng thăm gặp' },
+  { kind: 'visit-side-table', x: -26.25, z: -4.9, w: 0.45, d: 0.45, collide: true, label: 'Bàn phụ phòng thăm gặp' },
+  { kind: 'garden-pot', x: -27.1, z: -6.2, w: 0.5, d: 0.5, collide: true, label: 'Chậu cây trang trí' },
+
+  // Sân: tất cả nằm xa lối tuần tra và vùng tương tác
+  { kind: 'yard-bush', x: -27.3, z: 4.5, w: 0.8, d: 0.7, collide: true },
+  { kind: 'yard-bush', x: 26, z: 15.5, w: 0.8, d: 0.7, collide: true },
+  { kind: 'yard-flower', x: -26.4, z: 6.5, w: 0.48, d: 0.45, collide: true },
+  { kind: 'yard-flower', x: 24.9, z: 16.5, w: 0.48, d: 0.45, collide: true },
+  { kind: 'yard-rock', x: 27.3, z: 10.5, w: 0.75, d: 0.7, collide: true },
+
+  // Xe đỗ TĨNH, không có tương tác hay AI: không đưa xe vào tuyến NPC
+  { kind: 'park-ambulance', x: 26.8, z: -15.0, w: 3.4, d: 1.55, collide: true, label: 'Xe cứu thương' },
+  { kind: 'park-police', x: -23.1, z: -16.5, w: 3.4, d: 1.7, collide: true, label: 'Xe tuần tra cán bộ' },
+  { kind: 'park-van', x: 20, z: 18.75, w: 3.6, d: 1.85, collide: true, label: 'Xe chở phạm nhân' },
+  { kind: 'park-delivery', x: -27.05, z: 2.0, w: 3.4, d: 1.65, collide: true, label: 'Xe tiếp tế' },
 );
 export const PROPS = P;
 
