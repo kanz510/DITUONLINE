@@ -260,7 +260,7 @@ test('trải nghiệm điện thoại: xoay dọc/ngang, HUD gọn không đè, 
   await page.locator('#btn-menu').click();
   await expect(page.locator('.modal h2')).toContainText('MENU TRÒ CHƠI');
   await expect(page.locator('#menu-build-tag')).toContainText(/v0\.4\.\d+/);
-  await expect(page.locator('.menu-card-btn')).toHaveCount(8);
+  await expect(page.locator('.menu-card-btn')).toHaveCount(9);
   // Đóng menu
   await page.locator('.modal-shell > .modal-close-top').click();
   await expect(page.locator('.modal')).toHaveCount(0);

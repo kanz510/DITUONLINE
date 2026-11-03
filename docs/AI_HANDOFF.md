@@ -8,7 +8,24 @@
 
 ## Lịch sử thay đổi
 
-### 2026-11-03 — ChatGPT — Chỉnh lại ban đêm và trời mưa sau khi soi ảnh Playwright
+### 2026-11-03 — Antigravity — Thay ảnh nền màn hình bắt đầu 3D điện ảnh (v0.4.8)
+- **Tài nguyên hình ảnh:** Chuyển đổi và nén ảnh 3D cảnh tù nhân bị quản ngục truy đuổi vào ban đêm thành định dạng WebP chất lượng cao siêu nhẹ (~78.8 KB) tại `public/assets/landing-bg.webp` kèm fallback JPEG tối ưu (~100 KB) tại `public/assets/landing-bg.jpg`.
+- **Giao diện & Bố cục (`src/ui/landing.ts`, `src/ui/landing.css`):**
+  - Thay thế toàn bộ khối SVG minh họa tĩnh cũ bằng thẻ `<picture>` hỗ trợ `<source type="image/webp">` và `<img src="assets/landing-bg.jpg">`.
+  - Căn chỉnh vị trí `object-fit: cover; object-position: 80% center;` giúp giữ trọn vẹn cả tù nhân lẫn quản ngục đang chạy trên màn hình iPhone ngang (956×440, 844×390).
+  - Tích hợp hiệu ứng điện ảnh chuyển động nhẹ (cinematic zoom/scale 1.05 → 1.0 trong 14s, fade-slide mượt mà cho cụm menu trái). Tôn trọng đầy đủ `prefers-reduced-motion: reduce`.
+  - Bổ sung dải gradient tối nhẹ nhàng phía bên trái (`linear-gradient(90deg, ...)`) bảo đảm logo **ĐI TÙ ONLINE**, quote và các nút thao tác nổi bật, sắc nét tuyệt đối mà không hề che lấp nhân vật hay tháp canh bên phải.
+  - Thiết lập `pointer-events: none` nghiêm ngặt trên toàn bộ các lớp nền và gradient, bảo đảm 100% không chặn click/chạm vào các nút `#landing-primary`, `#landing-newgame`, `#landing-rules`, `#landing-rules-panel`, `#landing-confirm`.
+- **Hỗ trợ đầy đủ 2 trạng thái:**
+  - *Chưa có save:* Hiển thị thẻ "PHẠM NHÂN MỚI", nút chính "BẮT ĐẦU NHẬP TRẠI", nút "HƯỚNG DẪN CHƠI ↗".
+  - *Đã có save:* Hiển thị thẻ "HỒ SƠ ĐANG THỤ ÁN", tên phạm nhân, ngày thụ án, nút chính "TIẾP TỤC HỒ SƠ", nút "BẮT ĐẦU HỒ SƠ MỚI", mở dialog xác nhận reset không mất mát dữ liệu ngoài ý muốn.
+- **Bảo toàn:** Gameplay, NPC, nhiệm vụ, mini-game, save và hệ thống 3D Three.js giữ nguyên 100%.
+- **Kiểm thử tự động:**
+  - Thêm bộ test e2e `tests/e2e/landing-screen.spec.ts` kiểm thử chuyên sâu cả 2 trạng thái màn hình bắt đầu trên iPhone 16 Pro Max landscape (956×440), chụp 2 ảnh thực tế vào `docs/screenshots/landing-iphone-nosave.png` và `docs/screenshots/landing-iphone-withsave.png`.
+  - Cập nhật assertion `.menu-card-btn` trong `tests/e2e/game.spec.ts` khớp 9 nút menu sau khi bổ sung đặc quyền v0.4.7.
+  - Toàn bộ test suite: **62/62 unit test PASS** + **14/14 Playwright E2E test PASS** (100% passed).
+- **Đóng gói & Cache:** Tăng version lên `0.4.8`, `npm run build` thành công, tự động tính `buildHash` sạch và cập nhật `sw.js` xóa cache cũ.
+
 - Đợt 3 v0.4.4 đầy đủ đã được thử bằng GitHub Actions run `41590487223`: `npm test` **47/47 unit + 12/12 Playwright**, `npm run build` thành công, public Pages đã xác thực build `566cfaf87720`.
 - Quan sát ảnh thực từ `phase3-courtyard-night.png` ban đầu cho thấy mặt sân quá đen. Đã tăng moonlight xanh lạnh + hemispheric night fill trong `src/world/lighting.ts` nhưng vẫn giữ nighttime mood; trời mưa trong `src/world/builder.ts` chuyển sang overcast xanh-xám để tránh trời hồng trong cơn mưa. Đây là chỉnh màu/ánh sáng, không ảnh hưởng save, quest, giờ giấc hay thời tiết logic.
 - Kiểm thử lại trên nhánh QA `verify/phase3-all-20261103` run `41591843659` **SUCCESS**: `npm run test:unit`, `npm run build`, Playwright `tests/e2e/phase3-visual.spec.ts` đạt; đã tải và so trực tiếp ảnh mới ở 4 góc cảnh ngày/đêm/mưa/bụi. Run visual cũ `41591812835` cũng kiểm tra toàn bộ scenery/scene. Không khẳng định FPS trên Safari iPhone vật lý.
