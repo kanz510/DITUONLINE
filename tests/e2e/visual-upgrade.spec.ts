@@ -17,7 +17,8 @@ test('An Phu cinematic landing, saved progress and upgraded scenery', async ({ b
   await page.screenshot({ path: 'screenshots/landing-cinematic-iphone.png', animations: 'disabled' });
   await page.locator('#landing-rules').click();
   await expect(page.locator('#landing-rules-panel')).toBeVisible();
-  await page.locator('#landing-rules').click();
+  await page.locator('#landing-close-rules').click();
+  await expect(page.locator('#landing-rules-panel')).toBeHidden();
 
   await page.locator('#landing-primary').click();
   await expect(page.locator('#btn-cc-submit')).toBeVisible();
