@@ -5,6 +5,7 @@ import {
 } from './layout';
 import { Collision } from './collision';
 import { surfaceMaterial, upgradePropModel } from '../graphics/assets';
+import { makeDetailedProp } from './hero-props';
 
 // Keep the original PROPS footprints, collisions and NPC navigation unchanged.
 // GLBs replace visuals only. This guarantees no new path blockers without nav review.
@@ -256,6 +257,41 @@ export class PrisonWorld {
       const m = new THREE.Mesh(new THREE.BoxGeometry(sx, 2.5, sz), mat);
       m.position.set((d.box.x1 + d.box.x2) / 2, 1.25, (d.box.z1 + d.box.z2) / 2);
       m.castShadow = true;
+      // Door detail lives on the same visibility-controlled mesh: locked/open
+      // transitions and existing collision logic are completely unchanged.
+      const trim = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: .73, roughness: .34 });
+      const steelDark = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: .75, roughness: .41 });
+      const warningMat = new THREE.MeshStandardMaterial({ color: 0xe6ad54, roughness: .49 });
+      const alongX = sx >= sz;
+      const width = alongX ? sx : sz;
+      const depth = alongX ? sz : sx;
+      for (const v of [-width * .43, width * .43]) {
+        const rim = new THREE.Mesh(new THREE.BoxGeometry(
+          alongX ? .055 : depth + .07, 2.4, alongX ? depth + .07 : .055), trim);
+        rim.position.set(alongX ? v : 0, 0, alongX ? 0 : v);
+        m.add(rim);
+      }
+      const nearFace = depth / 2 + .015;
+      for (const h of [-.88, .79]) {
+        const line = new THREE.Mesh(new THREE.BoxGeometry(
+          alongX ? width * .78 : .033, .045, alongX ? .033 : width * .78), steelDark);
+        line.position.set(alongX ? 0 : nearFace, h, alongX ? nearFace : 0);
+        m.add(line);
+      }
+      const hatch = new THREE.Mesh(new THREE.BoxGeometry(
+        alongX ? .45 : .05, .34, alongX ? .05 : .45), steelDark);
+      hatch.position.set(alongX ? 0 : nearFace, .35, alongX ? nearFace : 0);
+      m.add(hatch);
+      for (let n = -2; n <= 2; n++) {
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(
+          alongX ? .025 : .05, .29, alongX ? .05 : .025), trim);
+        bar.position.set(alongX ? n * .068 : nearFace + .01, .35, alongX ? nearFace + .01 : n * .068);
+        m.add(bar);
+      }
+      const plate = new THREE.Mesh(new THREE.BoxGeometry(
+        alongX ? .19 : .032, .25, alongX ? .032 : .19), warningMat);
+      plate.position.set(alongX ? width * .33 : nearFace + .015, -.30, alongX ? nearFace + .015 : width * .33);
+      m.add(plate);
       this.scene.add(m);
       this.doorMeshes[d.id] = m;
     }
@@ -324,7 +360,7 @@ export class PrisonWorld {
         void upgradePropModel(obj, placeholder, 'models/furniture/bookcaseOpen.glb',
           { width: p.w, depth: p.d }, { rotateY: Math.PI / 2 });
       }
-      if (p.kind === 'tree' || p.kind === 'lamp' || p.kind === 'shelf') this.cameraObstacles.push(obj);
+      if (p.kind === 'tree' || p.kind === 'lamp' || p.kind === 'shelf' || p.kind === 'tower') this.cameraObstacles.push(obj);
       obj.position.set(p.x, 0, p.z);
       if (p.rot) obj.rotation.y = p.rot;
       this.scene.add(obj);
@@ -370,6 +406,8 @@ export class PrisonWorld {
   }
 
   private makePropMesh(p: PropDef): THREE.Object3D {
+    const detailed = makeDetailedProp(p);
+    if (detailed) return detailed;
     const g = new THREE.Group();
     const wood = new THREE.MeshStandardMaterial({ color: 0x7c4a1e, roughness: 0.8 });
     const steel = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.5, roughness: 0.5 });
