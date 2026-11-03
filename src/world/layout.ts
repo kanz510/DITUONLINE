@@ -202,6 +202,9 @@ P.push(
   { kind: 'table', x: 10.5, z: -26.2, w: 2.6, d: 0.90, collide: true, label: 'Bàn ăn nhà ăn' },
   { kind: 'table', x: 1.5, z: -22.2, w: 2.6, d: 0.90, collide: true, label: 'Bàn ăn nhà ăn' },
   { kind: 'table', x: 10.5, z: -22.2, w: 2.6, d: 0.90, collide: true, label: 'Bàn ăn nhà ăn' },
+  // Quầy nhà ăn: Quầy phát cơm miễn phí và Quầy bán hàng căn tin
+  { kind: 'counter', x: 5, z: -30, w: 10, d: 0.9, collide: true, label: 'Quầy phát cơm' },
+  { kind: 'canteen', x: 13.5, z: -31.2, w: 3, d: 0.8, collide: true, label: 'Quầy căn tin' },
   // Xưởng: 4 bàn lắp ráp (workshop_bench.glb có gắn ê-tô và bảng dụng cụ phía sau)
   { kind: 'workbench', x: 16, z: -1, w: 1.85, d: 0.8, rot: Math.PI, collide: true },
   { kind: 'workbench', x: 20, z: -1, w: 1.85, d: 0.8, rot: Math.PI, collide: true },
@@ -239,8 +242,8 @@ P.push(
   { kind: 'lamp', x: -26.6, z: -3.0, w: 0.55, d: 0.55, collide: true, label: 'Đèn sân phía Tây' },
   { kind: 'plant', x: -16.4, z: 18.45, w: 0.6, d: 0.6, collide: true, label: 'Chậu cây lớp học nghề' },
   { kind: 'tank', x: -27.3, z: -15.5, w: 2, d: 2, collide: true },
-  { kind: 'tower', x: -28.2, z: 20.2, w: 2.4, d: 2.4, collide: true },
-  { kind: 'tower', x: 28.2, z: -32.2, w: 2.4, d: 2.4, collide: true },
+  { kind: 'tower', x: -27.2, z: 6.8, w: 2.4, d: 2.4, collide: true },
+  { kind: 'tower', x: 28.2, z: 20.2, w: 2.4, d: 2.4, collide: true },
   { kind: 'bench', x: -16, z: 3.6, w: 2.4, d: 0.5, collide: true },
   { kind: 'bench', x: 2, z: 4.5, w: 2.4, d: 0.5, collide: true },
   // Phòng Y tế
@@ -284,7 +287,7 @@ P.push(
   // Sân: tất cả nằm xa lối tuần tra và vùng tương tác
   { kind: 'yard-bush', x: -27.3, z: 4.5, w: 0.8, d: 0.7, collide: true },
   { kind: 'yard-bush', x: 26, z: 15.5, w: 0.8, d: 0.7, collide: true },
-  { kind: 'yard-flower', x: -26.4, z: 6.5, w: 0.48, d: 0.45, collide: true },
+  { kind: 'yard-flower', x: -26.4, z: 8.5, w: 0.48, d: 0.45, collide: true },
   { kind: 'yard-flower', x: 24.9, z: 16.5, w: 0.48, d: 0.45, collide: true },
   { kind: 'yard-rock', x: 27.3, z: 10.5, w: 0.75, d: 0.7, collide: true },
 

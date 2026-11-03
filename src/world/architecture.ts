@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BUILDINGS } from './layout';
+import { BUILDINGS, DOORS } from './layout';
 
 /**
  * Phase 3 architectural shell. All details are fused into instanced render-only
@@ -61,8 +61,29 @@ export function makePrisonArchitecture(): ArchitectureVisuals {
     put('trim', b.x2, 3.53, z, .13, .095, d);
 
     // Painted foundation, narrow enough to remain inside old wall colliders.
-    put('concrete', x, .22, b.z1, w, .44, .19);
-    put('concrete', x, .22, b.z2, w, .44, .19);
+    // Skip door openings so no raised concrete threshold / curb protrudes in front of doors.
+    const addFoundationZ = (edgeZ: number) => {
+      const doorOnEdge = DOORS.find((d) =>
+        d.box.x1 >= b.x1 - 0.2 && d.box.x2 <= b.x2 + 0.2 &&
+        Math.abs((d.box.z1 + d.box.z2) / 2 - edgeZ) < 0.4,
+      );
+      if (doorOnEdge) {
+        const dx1 = Math.max(b.x1, doorOnEdge.box.x1);
+        const dx2 = Math.min(b.x2, doorOnEdge.box.x2);
+        const leftW = dx1 - b.x1;
+        if (leftW > 0.1) {
+          put('concrete', b.x1 + leftW / 2, 0.22, edgeZ, leftW, 0.44, 0.19);
+        }
+        const rightW = b.x2 - dx2;
+        if (rightW > 0.1) {
+          put('concrete', dx2 + rightW / 2, 0.22, edgeZ, rightW, 0.44, 0.19);
+        }
+      } else {
+        put('concrete', x, 0.22, edgeZ, w, 0.44, 0.19);
+      }
+    };
+    addFoundationZ(b.z1);
+    addFoundationZ(b.z2);
 
     // Back walls are unbroken in the existing room layout. Windows are false
     // panels fixed to exterior faces rather than holes through solid walls.

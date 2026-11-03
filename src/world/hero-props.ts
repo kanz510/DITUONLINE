@@ -66,8 +66,8 @@ function guardTower(p: PropDef): THREE.Group {
     box(g,'cabin.glass',xx,5.4,zz,.045,.76,.70,glass);
   for(const zz of [-.93,.93]) for(const xx of [-.48,.48])
     box(g,'cabin.glass',xx,5.4,zz,.70,.76,.045,glass);
-  box(g,'cabin.roof',0,6.04,0,p.w*1.14,.22,p.d*1.14,darkSteel);
-  box(g,'cabin.roof.amberEdge',0,5.91,-p.d*.55,p.w*.95,.055,.07,warning);
+  box(g,'cabin.roof',0,6.04,0,p.w,.22,p.d,darkSteel);
+  box(g,'cabin.roof.amberEdge',0,5.91,-p.d*.5,p.w*.95,.055,.07,warning);
   for (let i=0;i<5;i++) {
     const y=.55+i*.62;
     box(g,'ladder.step',0,y,z+.16,.76,.045,.08,brushed);

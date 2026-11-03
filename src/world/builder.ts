@@ -829,7 +829,7 @@ export class PrisonWorld {
       case 'tower': {
         const base = new THREE.Mesh(new THREE.BoxGeometry(p.w, 6.5, p.d), stone);
         base.position.y = 3.25;
-        const roof = new THREE.Mesh(new THREE.ConeGeometry(1.9, 1.2, 4), new THREE.MeshStandardMaterial({ color: 0x7f1d1d }));
+        const roof = new THREE.Mesh(new THREE.ConeGeometry(1.2, 1.2, 4), new THREE.MeshStandardMaterial({ color: 0x7f1d1d }));
         roof.position.y = 7.1;
         roof.rotation.y = Math.PI / 4;
         g.add(base, roof);

@@ -8,6 +8,29 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-04 — Antigravity — VIỆC 7: Sửa 3 lỗi hình ảnh (quầy cơm, đài quan sát, bục trắng trước cửa)
+- **Vấn đề đã xử lý:**
+  - 7a: Khôi phục 2 quầy nhà ăn (quầy phát cơm và quầy căn tin) bị mất trong lần refactor trước.
+  - 7b: Đài quan sát (watchtowers) bị kẹt / cắn vào góc phòng học và phòng y tế, nón đài bán kính 1.9m chìa ra ngoài chân đài đâm xuyên tường rào và phòng.
+  - 7c: Trước cửa các phòng (như phòng y tế, nhà ăn, khu buồng giam...) có bục/thềm bê tông trắng cao 0.44m chắn ngang lối đi do architectural foundation vẽ trải dài cả cạnh tường mà không chừa khoảng mở cửa.
+- **Giải pháp:**
+  - 7a: Khôi phục 2 prop trong `PROPS` (`src/world/layout.ts`):
+    - Quầy phát cơm miễn phí: `counter` tại `(5, -30)`, rộng 10m, sâu 0.9m, `collide: true`.
+    - Quầy bán hàng căn tin: `canteen` tại `(13.5, -31.2)`, rộng 3m, sâu 0.8m, `collide: true`.
+    - Giữ nguyên 4 bộ bàn ăn Blendstra và ghế nhà ăn; các điểm tương tác SPOTS `meal` (`x=5, z=-28.7`) và `canteen` (`x=13.5, z=-30.0`) bấm bình thường.
+  - 7b: Điều chỉnh vị trí và kích thước đài quan sát:
+    - Thu nhỏ bán kính nón chóp mái xuống `<= 1.2m` (`THREE.ConeGeometry(1.2, 1.2, 4)`) trong `src/world/builder.ts` và căn lại mái cabin trong `src/world/hero-props.ts` để vừa khít chân đài 2.4m, không còn nhô ra 0.7m mỗi bên.
+    - Dời vị trí 2 đài quan sát trong `PROPS`:
+      - Đài Tây: dời về `(-27.2, 6.8)` giữa phòng thăm gặp và phòng học, cách xa cửa và không đè lên bất kỳ tòa nhà nào trong `BUILDINGS`.
+      - Đài Đông: dời về góc Đông Nam `(28.2, 20.2)`, đứng trọn vẹn ở góc trại, bao quát toàn sân và hoàn toàn không chạm bất kỳ tòa nhà nào.
+    - Cả 2 đài quan sát nằm hoàn toàn bên trong ranh giới tường rào và không cản trở bất kỳ tuyến đường di chuyển/node NPC nào.
+  - 7c: Xóa bục trắng chắn trước cửa các phòng:
+    - Trong `src/world/architecture.ts`, sửa lại hàm tạo khối móng bê tông `addFoundationZ`: kiểm tra xem cạnh tường có cửa mở (`DOORS`) hay không.
+    - Nếu có cửa mở, chia khối móng thành 2 đoạn chạy dọc 2 bên vách tường và bỏ qua hoàn toàn khoảng mở của khung cửa. Lối ra vào các phòng (phòng y tế, nhà ăn, buồng giam, phòng cán bộ, lớp học, khu kỷ luật) phẳng mịn với mặt sân, không còn bục bê tông chắn ngang.
+- **Kiểm thử:**
+  - Thêm `tests/unit/visual-fixes.test.ts` (3 bài test): kiểm tra 2 quầy nhà ăn đúng tọa độ và khoảng cách tương tác SPOTS; kiểm tra 2 đài quan sát không giao với bất kỳ hộp `BUILDINGS` nào và không vượt rào; kiểm tra không còn khối bê tông nào chắn ngang bất kỳ cửa phòng nào.
+  - Chạy `npm test` đầy đủ: toàn bộ 129 unit tests PASS 100% và test Playwright `tests/e2e/phase3-visual.spec.ts` PASS 100%.
+
 ### 2026-11-04 — Antigravity — VIỆC 6: Mở lại căn tin, bỏ hẳn cơ chế cấm mua
 - **Vấn đề đã xử lý:** Trước đây người chơi bị cấm mua căn tin (`canteenBanUntil`) trong 3 trường hợp (tái phạm lần 3 trong 5 ngày, bị bắt quả tang trộm hộp mũi khoan, khám buồng thấy hộp mũi khoan). Người chơi muốn bỏ hẳn cơ chế cấm căn tin này.
 - **Giải pháp:**
