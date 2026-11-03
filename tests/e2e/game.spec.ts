@@ -259,7 +259,7 @@ test('trải nghiệm điện thoại: xoay dọc/ngang, HUD gọn không đè, 
   // 4. Mở menu trung tâm (mã phiên bản được đưa vào trong Menu)
   await page.locator('#btn-menu').click();
   await expect(page.locator('.modal h2')).toContainText('MENU TRÒ CHƠI');
-  await expect(page.locator('#menu-build-tag')).toContainText('v0.4.2');
+  await expect(page.locator('#menu-build-tag')).toContainText('v0.4.3');
   await expect(page.locator('.menu-card-btn')).toHaveCount(8);
   // Đóng menu
   await page.locator('.modal-shell > .modal-close-top').click();
