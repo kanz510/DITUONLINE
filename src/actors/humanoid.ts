@@ -3,7 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type { Appearance, Pose } from '../data/npcs';
 
 // Use the original Kenney guard GLBs for the two uniformed prison officers.
-// The GLB retains its relative characters/Textures/texture-j|k.png path.
+// The GLB retains its relative characters/Textures/texture-j.png path.
 // Other NPCs and the player keep the established chibi procedural appearance.
 const guardLoader = new GLTFLoader();
 const guardCache = new Map<string, Promise<{ scene: THREE.Group; clips: THREE.AnimationClip[] }>>();
@@ -270,7 +270,7 @@ export class HumanoidRig {
     this.labelSprite = makeLabel(labelText ?? 'BẠN', look.accent, !labelText);
     this.labelSprite.position.set(0, 2.05, 0);
     this.root.add(this.labelSprite);
-    if (isOfficer && (modelSkin === 'j' || modelSkin === 'k')) {
+    if (isOfficer && modelSkin === 'j') {
       void this.attachGuardGLB(modelSkin);
     }
   }
