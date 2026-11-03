@@ -6,6 +6,9 @@ import {
 import { Collision } from './collision';
 import { surfaceMaterial, upgradePropModel } from '../graphics/assets';
 import { makeDetailedProp } from './hero-props';
+import { makePrisonArchitecture, type ArchitectureVisuals } from './architecture';
+import { PrisonAtmosphere, weatherForDay } from './atmosphere';
+import { makeLightingProfile, samplePrisonLighting } from './lighting';
 import { makeBlanketParcel, makeDrillKit, makeSandals, makeAsthmaInhaler, makeSecurityCameraHousing } from './quest-props';
 
 // Keep the original PROPS footprints, collisions and NPC navigation unchanged.
@@ -95,6 +98,14 @@ export class PrisonWorld {
   camAngle = 0;
   private camSweep = 0;
   private gateLights: THREE.PointLight[] = [];
+  readonly architecture: ArchitectureVisuals;
+  readonly atmosphere: PrisonAtmosphere;
+  private readonly indoorLight = new THREE.PointLight(0xffd8a1, 0, 12, 2);
+  private readonly lightingTarget = makeLightingProfile();
+  private readonly yardDry = new THREE.Color(0xd1d5db);
+  private readonly yardWet = new THREE.Color(0x667580);
+  private yardMaterial!: THREE.MeshStandardMaterial;
+  private visualQuality: 'low' | 'medium' | 'high' = 'medium';
 
   constructor() {
     this.scene.background = new THREE.Color(0x9ec5fe);
@@ -109,6 +120,11 @@ export class PrisonWorld {
 
     this.buildGround();
     this.buildWalls();
+    this.architecture = makePrisonArchitecture();
+    this.scene.add(this.architecture.root);
+    this.indoorLight.castShadow = false;
+    this.scene.add(this.indoorLight);
+    this.atmosphere = new PrisonAtmosphere(this.scene);
     this.buildPerimeterDetails();
     this.buildDoors();
     this.buildProps();
@@ -118,6 +134,7 @@ export class PrisonWorld {
 
   private buildGround() {
     const yardMat = surfaceMaterial('asphalt.jpg', 0xd1d5db, 18, 17);
+    this.yardMaterial = yardMat;
     const yard = new THREE.Mesh(new THREE.PlaneGeometry(64, 60), yardMat);
     yard.rotation.x = -Math.PI / 2;
     yard.position.set(0, -0.02, -6);
@@ -751,7 +768,8 @@ export class PrisonWorld {
   }
 
   /** Cập nhật góc quét camera & ánh sáng bầu trời theo giờ trong ngày. */
-  update(dt: number, minute: number, hasSheet: boolean, hasDrill: boolean, hasSandals: boolean, hasAsthmaBottle = false) {
+  update(dt: number, minute: number, hasSheet: boolean, hasDrill: boolean,
+    hasSandals: boolean, hasAsthmaBottle = false, day = 1, playerX = 0, playerZ = 0) {
     this.camSweep += dt * 0.85;
     // Quét từ hướng Tây-Nam sang Đông-Bắc của kho
     this.camAngle = -1.1 + Math.sin(this.camSweep) * 0.75;
@@ -762,20 +780,43 @@ export class PrisonWorld {
     this.sandalsMesh.visible = !hasSandals;
     this.asthmaBottleMesh.visible = !hasAsthmaBottle;
 
-    // Đổi màu trời & nắng theo giờ (06:00 → 22:00)
+    // Phase 3: smooth cinematic light, single moving indoor fill and
+    // deterministic graphics-only weather (no gameplay or save changes).
     const h = minute / 60;
-    let sky = 0x9ec5fe;
-    let sunI = 1.7;
-    if (h < 7) { sky = 0xfdba74; sunI = 1.1; }
-    else if (h < 16.5) { sky = 0x93c5fd; sunI = 1.85; }
-    else if (h < 19) { sky = 0xfb923c; sunI = 1.15; }
-    else { sky = 0x1e293b; sunI = 0.35; }
-    (this.scene.background as THREE.Color).setHex(sky);
-    (this.scene.fog as THREE.FogExp2).color.setHex(sky);
-    this.sun.intensity = sunI;
-    for (const light of this.gateLights) light.intensity = h < 7 || h > 18.5 ? 1.25 : .16;
+    const profile = samplePrisonLighting(minute, this.lightingTarget);
+    const blend = THREE.MathUtils.clamp(dt * 2.4, 0, 1);
+    (this.scene.background as THREE.Color).lerp(profile.sky, blend);
+    const fog = this.scene.fog as THREE.FogExp2;
+    fog.color.lerp(profile.sky, blend);
+    this.sun.color.lerp(profile.sunlight, blend);
+    this.sun.intensity = THREE.MathUtils.lerp(this.sun.intensity, profile.sunIntensity, blend);
+    this.hemi.intensity = THREE.MathUtils.lerp(this.hemi.intensity, profile.hemisphere, blend);
     const ang = ((h - 6) / 16) * Math.PI;
-    this.sun.position.set(-Math.cos(ang) * 28, Math.max(8, Math.sin(ang) * 34), 16);
+    this.sun.position.set(-Math.cos(ang) * 28, Math.max(7.5, Math.sin(ang) * 34), 16);
+
+    const night = profile.nightFactor;
+    this.architecture.fixtureMaterial.emissiveIntensity = this.visualQuality === 'low'
+      ? 0.12 : 0.20 + night * (this.visualQuality === 'high' ? 1.9 : 1.25);
+    for (const light of this.gateLights) {
+      light.intensity = this.visualQuality === 'low' ? 0
+        : 0.09 + night * (this.visualQuality === 'high' ? 1.1 : .64);
+    }
+    const indoors = Object.values(BUILDINGS).some((b) =>
+      playerX > b.x1 && playerX < b.x2 && playerZ > b.z1 && playerZ < b.z2);
+    this.indoorLight.position.set(playerX, 3.0, playerZ);
+    this.indoorLight.intensity = this.visualQuality === 'low' || !indoors ? 0
+      : (this.visualQuality === 'high' ? 1.65 : 0.85) * (0.42 + night * .8);
+
+    this.atmosphere.update(dt, day, minute, playerX, playerZ);
+    const weather = weatherForDay(day, minute);
+    const morning = weather === 'haze' ? .006 : 0;
+    const rainFog = weather === 'rain' ? .0035 : 0;
+    const targetDensity = this.visualQuality === 'low' ? .008
+      : .010 + morning + rainFog;
+    fog.density = THREE.MathUtils.lerp(fog.density, targetDensity, blend);
+    const wetness = this.atmosphere.wetness;
+    this.yardMaterial.roughness = .91 - wetness * .52;
+    this.yardMaterial.color.lerpColors(this.yardDry, this.yardWet, wetness * .48);
   }
 
   /** Kiểm tra người chơi tại (x,z) có nằm trong vùng quét của camera kho không. */
@@ -792,17 +833,18 @@ export class PrisonWorld {
   }
 
   setQuality(q: 'low' | 'medium' | 'high', renderer: THREE.WebGLRenderer) {
-    const dpr = window.devicePixelRatio || 1;
-    if (q === 'low') {
-      renderer.setPixelRatio(1);
-      renderer.shadowMap.enabled = false;
-    } else if (q === 'medium') {
-      renderer.setPixelRatio(Math.min(dpr, 1.5));
-      renderer.shadowMap.enabled = true;
-    } else {
-      renderer.setPixelRatio(Math.min(dpr, 2));
-      renderer.shadowMap.enabled = true;
-    }
+    this.visualQuality = q;
+    this.atmosphere.setQuality(q);
+    const dpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
+    const targetDpr = q === 'low' ? 1 : q === 'medium' ? 1.35 : 2;
+    renderer.setPixelRatio(Math.min(dpr, targetDpr));
+    renderer.shadowMap.enabled = q !== 'low';
     this.sun.castShadow = q !== 'low';
+    const shadowSize = q === 'high' ? 1024 : q === 'medium' ? 768 : 512;
+    if (this.sun.shadow.mapSize.x !== shadowSize) {
+      this.sun.shadow.mapSize.set(shadowSize, shadowSize);
+      this.sun.shadow.dispose();
+      renderer.shadowMap.needsUpdate = true;
+    }
   }
 }
