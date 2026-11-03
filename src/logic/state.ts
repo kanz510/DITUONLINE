@@ -87,6 +87,21 @@ export interface Relation {
 
 export type Obligation = 'pending' | 'ok' | 'late' | 'missed' | 'excused';
 
+export type DailyTaskCategory = 'duty' | 'relation' | 'personal';
+
+export interface DailyTask {
+  id: string;
+  category: DailyTaskCategory;
+  title: string;
+  desc: string;
+  timeHint?: string;
+  targetNpc?: NpcId;
+  targetWhere?: string;
+  startMinute?: number;
+  endMinute?: number;
+  done: boolean;
+}
+
 export interface DailyRecord {
   rollcall: Obligation;
   work: Obligation; // ok = đủ chỉ tiêu
@@ -100,6 +115,9 @@ export interface DailyRecord {
   reformGained: number; // từ hoạt động lặp lại
   exercise: number;
   searchedToday: boolean;
+  tasks: DailyTask[];
+  allTasksBonusAwarded?: boolean;
+  morningPopupShown?: boolean;
   startStats: Stats;
   startRelations: Record<string, number>;
   events: string[];
@@ -195,6 +213,9 @@ export function makeDaily(stats: Stats, relations: Record<string, Relation>): Da
     reformGained: 0,
     exercise: 0,
     searchedToday: false,
+    tasks: [],
+    allTasksBonusAwarded: false,
+    morningPopupShown: false,
     startStats: { ...stats },
     startRelations,
     events: [],

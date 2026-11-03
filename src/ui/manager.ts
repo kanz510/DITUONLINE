@@ -14,6 +14,7 @@ import { BUILDINGS, DOORS, zoneName } from '../world/layout';
 import type { NpcActor } from '../actors/npc';
 import type { SoundEngine } from '../core/audio';
 import { getReleaseInfo, type AppReleaseInfo } from '../version';
+import { getDailySchedule } from '../logic/daily-plan';
 
 export interface PromptTarget {
   id: string;
@@ -75,6 +76,8 @@ export class UIManager {
   private autowalkBannerEl!: HTMLElement;
   private autowalkTextEl!: HTMLElement;
   private btnCancelAutoWalk!: HTMLElement;
+  private morningBannerEl!: HTMLElement;
+  private morningPlanSubEl!: HTMLElement;
   private questCollapsed = false;
   private lastMinimapDraw = 0;
   private lastClockHTML = '';
@@ -126,10 +129,10 @@ export class UIManager {
   }
 
   checkOrientation() {
-    const isPortrait = window.matchMedia?.('(orientation: portrait)')?.matches ?? (window.innerHeight > window.innerWidth);
-    const isTouch = this.isTouchDevice();
+    const isPortrait = (window.innerHeight > window.innerWidth) || (window.matchMedia?.('(orientation: portrait)')?.matches === true);
+    const isTouch = this.isTouchDevice() || ('ontouchstart' in window) || ((navigator.maxTouchPoints ?? 0) > 0);
 
-    if (isPortrait && isTouch) {
+    if (isPortrait && (isTouch || window.innerWidth < 650)) {
       this.orientOverlay.style.display = 'flex';
       if (!this.paused) {
         this.paused = true;
@@ -195,6 +198,16 @@ export class UIManager {
         <span class="autowalk-text" id="autowalk-text">Đang tự đi...</span>
         <button class="btn btn-sm" id="btn-cancel-autowalk">Hủy [X]</button>
       </div>
+      <div class="morning-plan-banner interactive" id="morning-plan-banner" style="display:none">
+        <div class="morning-plan-content">
+          <div class="morning-plan-title">📋 06:00 — Việc hôm nay & Lịch sinh hoạt</div>
+          <div class="morning-plan-sub" id="morning-plan-sub">3 việc cần làm đã sẵn sàng</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+          <button class="btn btn-sm btn-accent" id="btn-morning-open" style="min-height:36px;min-width:68px">Xem [📋]</button>
+          <button class="btn btn-sm" id="btn-morning-dismiss" aria-label="Đóng" style="min-height:36px;min-width:36px;padding:0 8px">✕</button>
+        </div>
+      </div>
       <div class="prompt-box interactive" id="hud-prompt" style="display:none"></div>
       <div class="joy-zone interactive" id="joy-zone"><div class="joy-knob" id="joy-knob"></div></div>
       <div class="touch-right interactive">
@@ -241,6 +254,20 @@ export class UIManager {
     this.autowalkBannerEl = this.root.querySelector('#autowalk-banner')!;
     this.autowalkTextEl = this.root.querySelector('#autowalk-text')!;
     this.btnCancelAutoWalk = this.root.querySelector('#btn-cancel-autowalk')!;
+    this.morningBannerEl = this.root.querySelector('#morning-plan-banner')!;
+    this.morningPlanSubEl = this.root.querySelector('#morning-plan-sub')!;
+
+    this.root.querySelector('#btn-morning-open')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.sfx.click();
+      this.morningBannerEl.style.display = 'none';
+      this.showDailyPlanModal();
+    });
+    this.root.querySelector('#btn-morning-dismiss')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.sfx.click();
+      this.morningBannerEl.style.display = 'none';
+    });
 
     // Keep notifications in normal flow below the quest, with room for the joystick.
     const layoutToasts = () => {
@@ -259,6 +286,13 @@ export class UIManager {
       e.stopPropagation();
       this.hooks.onCancelAutoWalk?.();
     });
+
+    this.clockEl.addEventListener('click', () => {
+      this.sfx.click();
+      this.showDailyPlanModal();
+    });
+    this.clockEl.style.cursor = 'pointer';
+    this.clockEl.title = 'Nhấp để xem Việc hôm nay & Lịch sinh hoạt';
 
     this.btnMenu.addEventListener('click', () => {
       this.sfx.click();
@@ -402,11 +436,13 @@ export class UIManager {
     const distText = guideTarget ? `${Math.round(guideTarget.dist)}m` : '';
     const openCond = guideTarget?.openCondition ? `<span class="quest-open-cond ${guideTarget.isLocked ? 'locked' : ''}">⏰ ${guideTarget.openCondition}</span>` : '';
 
+    const shortLabel = destName || qTitle;
     const questHTML = this.questCollapsed
       ? `
         <div class="quest-row-header">
           <span class="quest-tag ${isDutyCls}">${qTag}</span>
-          <span class="quest-title-text">${qTitle}: ${destName || qStep}</span>
+          <span class="quest-title-text">${shortLabel}</span>
+          <button type="button" class="btn-daily-plan" id="btn-open-daily-plan" title="Xem Việc hôm nay & Lịch sinh hoạt">📋 Lịch</button>
           ${distText ? `<span style="color:#38bdf8;font-weight:700">${distText}</span>` : ''}
           <span class="quest-toggle-icon" id="btn-quest-toggle" title="Mở rộng bảng nhiệm vụ">▸</span>
         </div>
@@ -417,7 +453,10 @@ export class UIManager {
             <span class="quest-tag ${isDutyCls}">${qTag}</span>
             <span class="quest-title-text">${qTitle}</span>
           </div>
-          <span class="quest-toggle-icon" id="btn-quest-toggle" title="Thu gọn bảng nhiệm vụ">▾</span>
+          <div style="display:flex;align-items:center;gap:4px">
+            <button type="button" class="btn-daily-plan" id="btn-open-daily-plan" title="Xem Việc hôm nay & Lịch sinh hoạt">📋 Lịch</button>
+            <span class="quest-toggle-icon" id="btn-quest-toggle" title="Thu gọn bảng nhiệm vụ">▾</span>
+          </div>
         </div>
         <div class="quest-row-desc">${qStep}${qProg}</div>
         <div class="quest-row-footer">
@@ -453,14 +492,30 @@ export class UIManager {
       };
       this.questBarEl.querySelector('#btn-quest-autowalk')?.addEventListener('click', triggerAutoWalk);
       this.questBarEl.querySelector('#quest-dest-info')?.addEventListener('click', triggerAutoWalk);
+      this.questBarEl.querySelector('#btn-open-daily-plan')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.sfx.click();
+        this.showDailyPlanModal();
+      });
 
       this.questBarEl.onclick = (e) => {
-        if ((e.target as HTMLElement).closest('#btn-quest-toggle') || (e.target as HTMLElement).closest('#btn-quest-autowalk') || (e.target as HTMLElement).closest('#quest-dest-info')) {
+        if (
+          (e.target as HTMLElement).closest('#btn-quest-toggle') ||
+          (e.target as HTMLElement).closest('#btn-quest-autowalk') ||
+          (e.target as HTMLElement).closest('#quest-dest-info') ||
+          (e.target as HTMLElement).closest('#btn-open-daily-plan')
+        ) {
           return;
         }
         this.sfx.click();
         this.showQuestDetail();
       };
+    }
+
+    // Popup sáng 06:00 thông báo Việc hôm nay & Lịch sinh hoạt (tự đóng được, không khóa game)
+    if (s.minute === 360 && !s.daily.morningPopupShown && !document.getElementById('game-landing')) {
+      s.daily.morningPopupShown = true;
+      this.showMorningBanner();
     }
 
     // 4. Thanh chỉ số mini (thống nhất 0% xấu, 100% tốt)
@@ -1107,6 +1162,83 @@ export class UIManager {
         <button class="btn btn-accent" data-close>Đóng</button>
       </div>
     `);
+  }
+
+  // ───────────── Xem Việc Hôm Nay & Lịch Sinh Hoạt ─────────────
+  showDailyPlanModal() {
+    const s = this.g.s;
+    const tasks = s.daily.tasks || [];
+    const schedule = getDailySchedule(s.minute);
+
+    const taskItemsHTML = tasks
+      .map((t) => {
+        const isDone = t.done;
+        const statusBadge = isDone
+          ? `<span class="daily-badge done">✔ Đã xong (+10 XP)</span>`
+          : `<span class="daily-badge pending">⏳ Chưa xong</span>`;
+        const catLabel = t.category === 'duty' ? 'Nghĩa vụ' : t.category === 'relation' ? 'Quan hệ' : 'Cá nhân';
+        return `
+          <div class="daily-task-card ${isDone ? 'done' : ''}">
+            <div class="daily-task-top">
+              <span class="daily-cat ${t.category}">${catLabel}</span>
+              <b class="daily-task-title">${t.title}</b>
+              ${statusBadge}
+            </div>
+            <div class="daily-task-desc">${t.desc}</div>
+            ${t.timeHint ? `<div class="daily-task-time">⏰ Khung giờ: <b>${t.timeHint}</b></div>` : ''}
+          </div>
+        `;
+      })
+      .join('');
+
+    const scheduleItemsHTML = schedule
+      .map((item) => {
+        const statusText =
+          item.status === 'active'
+            ? ' <b style="color:#22c55e">(đang mở)</b>'
+            : item.status === 'past'
+              ? ' <span style="opacity:0.55">(đã qua)</span>'
+              : '';
+        return `
+          <div class="schedule-row ${item.status}">
+            <span class="schedule-time">${item.timeRange}</span>
+            <span class="schedule-label"><b>${item.label}</b>${item.where ? ` (${item.where})` : ''}${statusText}</span>
+          </div>
+        `;
+      })
+      .join('');
+
+    const allDone = tasks.length > 0 && tasks.every((t) => t.done);
+    const bonusHTML = allDone
+      ? `<div class="daily-bonus achieved">🎉 Đã hoàn thành 3/3 việc hôm nay! Nhận thưởng +1 điểm cải tạo.</div>`
+      : `<div class="daily-bonus info">💡 Thưởng: +10 XP/việc · Hoàn thành cả 3 việc trong ngày: <b>+1 điểm cải tạo</b>.</div>`;
+
+    this.showModal(`
+      <h2>VIỆC HÔM NAY & LỊCH SINH HOẠT</h2>
+      <div class="hud-sub" style="margin-bottom:8px">Ngày ${s.day} · Trại giam An Phú</div>
+      ${bonusHTML}
+      <h3 style="margin-top:12px;margin-bottom:6px;font-size:13.5px">📋 3 Việc Hôm Nay</h3>
+      <div class="daily-tasks-list">
+        ${taskItemsHTML || '<div class="hud-sub">Chưa có mục tiêu ngày.</div>'}
+      </div>
+      <h3 style="margin-top:14px;margin-bottom:6px;font-size:13.5px">⏰ Lịch Sinh Hoạt Cố Định</h3>
+      <div class="daily-schedule-list">
+        ${scheduleItemsHTML}
+      </div>
+      <div style="margin-top:14px;display:flex;justify-content:flex-end">
+        <button class="btn btn-accent" style="min-height:44px;min-width:120px" data-close>Đã hiểu</button>
+      </div>
+    `);
+  }
+
+  showMorningBanner() {
+    if (!this.morningBannerEl) return;
+    const tasks = this.g.s.daily.tasks || [];
+    if (this.morningPlanSubEl) {
+      this.morningPlanSubEl.textContent =
+        tasks.length > 0 ? tasks.map((t) => t.title).join(' • ') : '3 việc cần làm đã sẵn sàng';
+    }
+    this.morningBannerEl.style.display = 'flex';
   }
 
   // ───────────── Xem Chi Tiết Chỉ Số ─────────────
@@ -1974,9 +2106,11 @@ export class UIManager {
         this.showLibraryReader();
       });
       el.querySelector('#lib-read-law')?.addEventListener('click', () => {
+        this.g.s.flags.read_book_today = true;
         this.g.addStat('stress', -10);
         this.g.addReform(1, 'Đọc sách pháp luật');
         this.g.completeObjective('sach_thu_vien', 'doc_xong');
+        this.g.checkDailyTasks({ category: 'personal', taskId: 'personal_reading' });
         this.sfx.good();
         this.showModal(`
           <h2>Đã đọc xong Cẩm nang pháp luật</h2>
@@ -1987,7 +2121,9 @@ export class UIManager {
         `);
       });
       el.querySelector('#lib-read-tech')?.addEventListener('click', () => {
+        this.g.s.flags.read_book_today = true;
         this.g.addStat('stress', -5);
+        this.g.checkDailyTasks({ category: 'personal', taskId: 'personal_reading' });
         this.sfx.good();
         this.showModal(`
           <h2>Đã đọc Sách kỹ thuật điện dân dụng</h2>

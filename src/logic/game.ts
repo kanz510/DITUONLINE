@@ -3,8 +3,9 @@ import {
   SCHEDULE, WORK_CLOCKIN_DEADLINE, blockAt, fmtMoney, fmtTime, isOpen, nextBlock, type AttributeId, type ScheduleBlock,
 } from './constants';
 import {
-  clampStat, createInitialState, makeDaily, xpForNextLevel, type CharacterProfile, type DaySummary, type GameState, type Hearing, type Stats, type Violation,
+  clampStat, createInitialState, makeDaily, xpForNextLevel, type CharacterProfile, type DailyTaskCategory, type DaySummary, type GameState, type Hearing, type NpcId, type Stats, type Violation,
 } from './state';
+import { generateDailyTasks } from './daily-plan';
 import { addSentence, applyReview, serveDay } from './sentence';
 import { VIOLATIONS } from '../data/violations';
 import { ITEMS, itemName } from '../data/items';
@@ -39,6 +40,50 @@ export class GameLogic {
 
   constructor(state?: GameState) {
     this.s = state ?? createInitialState();
+    if (!this.s.daily.tasks || this.s.daily.tasks.length === 0) {
+      this.s.daily.tasks = generateDailyTasks(this.s);
+    }
+  }
+
+  checkDailyTasks(opts: { category?: DailyTaskCategory; taskId?: string; npcId?: NpcId }) {
+    if (!this.s.daily.tasks || this.s.daily.tasks.length === 0) return;
+    let anyCompleted = false;
+
+    for (const t of this.s.daily.tasks) {
+      if (t.done) continue;
+      let matched = false;
+      if (opts.taskId && t.id === opts.taskId) {
+        matched = true;
+      } else if (opts.category === 'duty' && t.category === 'duty') {
+        if (t.id === 'duty_rollcall' && (this.s.daily.rollcall === 'ok' || this.s.daily.rollcall === 'late')) matched = true;
+        if (t.id === 'duty_clockin' && this.s.daily.workClockedIn) matched = true;
+        if (t.id === 'duty_work_units' && this.s.daily.workUnits >= 3) matched = true;
+        if (t.id === 'duty_curfew' && this.s.daily.curfew === 'ok') matched = true;
+      } else if (opts.category === 'relation' && t.category === 'relation') {
+        if (opts.npcId && t.targetNpc === opts.npcId) matched = true;
+      } else if (opts.category === 'personal' && t.category === 'personal') {
+        if (t.id === 'personal_exercise' && this.s.daily.exercise > 0) matched = true;
+        if (t.id === 'personal_reading' && this.s.flags?.read_book_today) matched = true;
+        if (t.id === 'personal_quest') matched = true;
+      }
+
+      if (matched) {
+        t.done = true;
+        anyCompleted = true;
+        this.gainXp(10, `Hoàn thành việc ngày: ${t.title}`);
+        this.notify(`✔ Hoàn thành việc ngày: ${t.title} (+10 XP)`, 'good');
+      }
+    }
+
+    if (anyCompleted) {
+      const allDone = this.s.daily.tasks.every((t) => t.done);
+      if (allDone && !this.s.daily.allTasksBonusAwarded) {
+        this.s.daily.allTasksBonusAwarded = true;
+        this.addReform(1, 'Hoàn thành tất cả 3 việc hôm nay');
+        this.notify('🎉 Xuất sắc! Hoàn thành cả 3 việc hôm nay (+1 điểm cải tạo)', 'good');
+      }
+      this.commit();
+    }
   }
 
   on(ev: string, fn: Listener) {
@@ -233,6 +278,7 @@ export class GameLogic {
       r.value = Math.min(100, r.value + 1);
       this.addStat('morale', 3);
     }
+    this.checkDailyTasks({ category: 'relation', npcId: id as NpcId });
     return true;
   }
 
@@ -481,6 +527,7 @@ export class GameLogic {
     const def = QUESTS[q];
     const o = def.objectives.find((x) => x.id === obj);
     if (o) this.notify(`✔ ${o.text}`, 'quest');
+    this.checkDailyTasks({ category: 'personal' });
     this.checkQuest(q);
     this.commit();
     return true;
@@ -770,6 +817,7 @@ export class GameLogic {
       this.recordViolation('late_rollcall', `d${this.s.day}`, `Quản giáo Lan ghi nhận có mặt lúc ${fmtTime(this.s.minute)} (hạn 06:45).`, { grace: this.s.day === 1 });
     }
     this.completeObjective('nhap_trai', 'diem_danh');
+    this.checkDailyTasks({ category: 'duty', taskId: 'duty_rollcall' });
     this.event('Điểm danh sáng');
     this.commit();
     return true;
@@ -788,6 +836,7 @@ export class GameLogic {
         this.recordViolation('late_work', `d${this.s.day}`, `Bảng chấm công ghi ${fmtTime(m)} (hạn 08:30).`, { grace: this.s.day === 1 });
       } else this.notify('Đã chấm công ca sáng. Chỉ tiêu: 3 ổ cắm.', 'good');
       this.completeObjective('ca_dau', 'cham_cong');
+      this.checkDailyTasks({ category: 'duty', taskId: 'duty_clockin' });
       this.event('Chấm công ca sáng');
     } else {
       if (this.qStatus('ca_dau') === 'active') {
@@ -871,6 +920,7 @@ export class GameLogic {
     this.addReform(auto ? 2 : 3, auto ? 'Lao động (tự động)' : 'Lao động đủ chỉ tiêu', true);
     if (manual && !auto) this.s.skills.workShifts++;
     this.completeObjective('ca_dau', 'lap_rap');
+    this.checkDailyTasks({ category: 'duty', taskId: 'duty_work_units' });
     this.checkMoneyObjective();
   }
 
@@ -941,6 +991,7 @@ export class GameLogic {
     this.addStat('morale', moraleUp);
     this.s.skills.fitness = Math.min(20, this.s.skills.fitness + r * (first ? 1 : 0.4));
     this.notify(`Tập xong: +${moraleUp} tinh thần, thể chất ${this.s.skills.fitness.toFixed(1)}/20.`, 'good');
+    this.checkDailyTasks({ category: 'personal', taskId: 'personal_exercise' });
     this.event('Tập thể dục ngoài sân');
     this.commit();
   }
@@ -1169,6 +1220,7 @@ export class GameLogic {
     s.day += 1;
     s.minute = DAY_START;
     s.daily = makeDaily(s.stats, s.relations);
+    s.daily.tasks = generateDailyTasks(s);
     s.player = { x: -14.25, z: -27.6, rot: 0 };
     this.morningStory();
     this.commit();

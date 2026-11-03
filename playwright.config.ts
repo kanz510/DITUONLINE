@@ -2,10 +2,10 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: 'tests/e2e',
-  // SwiftShader WebGL is significantly slower on shared GitHub runners.
-  // Keep local tests fast, but give CI one worker and enough time to render 3D.
+  // SwiftShader WebGL is significantly slower on shared GitHub runners and CPU.
+  // Keep local tests fast and stable with 1 worker.
   timeout: process.env.CI ? 180_000 : 90_000,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   retries: 0,
   reporter: [['list']],
   outputDir: 'test-results',

@@ -203,10 +203,16 @@ class App {
     // No separate mobile sprint button is needed.
 
     const onResize = () => {
-      const w = Math.max(window.innerWidth, document.documentElement.clientWidth || 0);
-      const h = Math.max(window.innerHeight, document.documentElement.clientHeight || 0);
-      // Preserve the selected low/medium/high DPR even after Safari rotates
-      // or its browser chrome changes viewport height.
+      let w = Math.max(window.innerWidth, window.visualViewport?.width || 0, document.documentElement.clientWidth || 0);
+      let h = Math.max(window.innerHeight, window.visualViewport?.height || 0, document.documentElement.clientHeight || 0);
+      // Xử lý race condition khi xoay màn hình trên iOS Safari:
+      // Nếu thiết bị đang ở landscape nhưng innerWidth vẫn giữ kích thước portrait cũ thì hoán đổi.
+      const isLandscape = (typeof window.orientation === 'number' ? Math.abs(window.orientation) === 90 : false) ||
+        window.matchMedia?.('(orientation: landscape)')?.matches ||
+        (window.innerWidth > window.innerHeight);
+      if (isLandscape && w < h) {
+        const tmp = w; w = h; h = tmp;
+      }
       this.world.setQuality(this.g.s.settings.quality, this.renderer);
       this.renderer.setSize(w, h, false);
       canvas.style.removeProperty('width');
@@ -278,9 +284,16 @@ class App {
     };
 
     let last = performance.now();
+    let lastW = window.innerWidth;
+    let lastH = window.innerHeight;
     const loop = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
+      if (Math.abs(window.innerWidth - lastW) > 1 || Math.abs(window.innerHeight - lastH) > 1) {
+        lastW = window.innerWidth;
+        lastH = window.innerHeight;
+        onResize();
+      }
       this.step(dt);
       requestAnimationFrame(loop);
     };

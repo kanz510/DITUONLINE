@@ -1269,3 +1269,214 @@ html, body {
   .modal-shell > .modal.has-top-close > h2:first-child { padding-right: 48px; }
   .modal-shell > .modal-close-top { top: 7px; right: 7px; }
 }
+
+/* Bắt buộc màn ngang trên màn hình cảm ứng / di động khi xoay dọc */
+@media (orientation: portrait) and (max-width: 900px) {
+  #orientation-overlay {
+    display: flex !important;
+  }
+}
+
+/* Morning 06:00 notification banner (không khóa game, không đè controls) */
+.morning-plan-banner {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(15, 23, 42, 0.94);
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 12px;
+  padding: 8px 14px;
+  max-width: min(440px, 90vw);
+  pointer-events: auto;
+  animation: banner-slide-down 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes banner-slide-down {
+  from { opacity: 0; transform: translate(-50%, -10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+.morning-plan-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #fde68a;
+  line-height: 1.25;
+}
+.morning-plan-sub {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 250px;
+}
+
+/* Nút Lịch trên thanh quest bar */
+.btn-daily-plan {
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fde68a;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 24px;
+}
+.btn-daily-plan:hover {
+  background: rgba(245, 158, 11, 0.35);
+  border-color: #f59e0b;
+}
+
+/* Modal Việc hôm nay & Lịch sinh hoạt */
+.daily-tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+.daily-task-card {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-left: 4px solid #f59e0b;
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.daily-task-card.done {
+  border-left-color: #22c55e;
+  background: rgba(34, 197, 94, 0.08);
+}
+.daily-task-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.daily-cat {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+.daily-cat.duty {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+.daily-cat.relation {
+  background: rgba(56, 189, 248, 0.2);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+.daily-cat.personal {
+  background: rgba(168, 85, 247, 0.2);
+  color: #d8b4fe;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+}
+.daily-task-title {
+  font-size: 13px;
+  color: #f8fafc;
+  flex: 1;
+}
+.daily-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+.daily-badge.done {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+}
+.daily-badge.pending {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fde68a;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.daily-task-desc {
+  font-size: 12px;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+.daily-task-time {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+/* Lịch sinh hoạt */
+.daily-schedule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.schedule-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+.schedule-row.active {
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.12);
+  color: #f0fdf4;
+}
+.schedule-row.upcoming {
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #fef3c7;
+}
+.schedule-row.past {
+  opacity: 0.55;
+  color: #94a3b8;
+}
+.schedule-time {
+  font-family: monospace;
+  font-weight: 700;
+  color: #38bdf8;
+  font-size: 11px;
+}
+.schedule-row.active .schedule-time {
+  color: #4ade80;
+}
+.daily-bonus {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.daily-bonus.info {
+  background: rgba(245, 158, 11, 0.12);
+  border-left: 3px solid #f59e0b;
+  color: #fde68a;
+}
+.daily-bonus.achieved {
+  background: rgba(34, 197, 94, 0.15);
+  border-left: 3px solid #22c55e;
+  color: #86efac;
+}
