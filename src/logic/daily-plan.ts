@@ -84,6 +84,7 @@ export function getQuestWaitingDetails(s: GameState): QuestWaitingDetails {
 
 export interface QuestOverdueDetails {
   overdue: boolean;
+  qId?: string;
   message?: string;
   timeRange?: string;
   failure?: string;
@@ -132,6 +133,7 @@ export function getQuestOverdueStatus(qId: string, s: GameState): QuestOverdueDe
     const reason = failureMsg && failureMsg.length > 0 ? failureMsg : `Thử lại vào ${timeRange} sáng mai`;
     return {
       overdue: true,
+      qId,
       timeRange,
       failure: failureMsg,
       message: `Đã qua giờ — ${reason}`,

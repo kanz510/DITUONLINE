@@ -5,7 +5,7 @@ import {
 import {
   clampStat, createInitialState, makeDaily, xpForNextLevel, type CharacterProfile, type DailyTaskCategory, type DaySummary, type GameState, type Hearing, type NpcId, type Stats, type Violation,
 } from './state';
-import { generateDailyTasks } from './daily-plan';
+import { generateDailyTasks, getQuestOverdueStatus } from './daily-plan';
 import { addSentence, applyReview, serveDay } from './sentence';
 import { healStuckQuests } from './save';
 import { VIOLATIONS } from '../data/violations';
@@ -65,7 +65,7 @@ export class GameLogic {
     let anyCompleted = false;
 
     for (const t of this.s.daily.tasks) {
-      if (t.done) continue;
+      if (t.done || t.skipped) continue;
       let matched = false;
       if (opts.taskId && t.id === opts.taskId) {
         matched = true;
@@ -99,6 +99,28 @@ export class GameLogic {
       }
       this.commit();
     }
+  }
+
+  skipDailyTask(taskId: string) {
+    if (!this.s.daily.tasks) return;
+    const t = this.s.daily.tasks.find((task) => task.id === taskId);
+    if (!t || t.done || t.skipped) return;
+    t.skipped = true;
+    this.notify(`Đã bỏ qua việc ngày: ${t.title}`, 'info');
+    this.commit();
+  }
+
+  skipOverdueQuest(qId: string): boolean {
+    const st = this.s.quests[qId];
+    if (!st || st.status !== 'active') return false;
+    const def = QUESTS[qId];
+    if (!def || def.failure.startsWith('Không thể thất bại')) return false;
+    const overdueStatus = getQuestOverdueStatus(qId, this.s);
+    if (!overdueStatus.overdue) return false;
+
+    this.addReform(-5, `Bỏ qua nhiệm vụ "${def.title}"`, false);
+    this.finishQuest(qId, 'failed', 'Bỏ qua nhiệm vụ');
+    return true;
   }
 
   on(ev: string, fn: Listener) {
@@ -822,8 +844,10 @@ export class GameLogic {
         break;
 
       case 'ca_dau':
-        this.addReform(4, 'Ca lao động đầu tiên');
-        this.changeRel('bay', 8, 'Minh làm tròn ca đầu tiên như chú dặn');
+        if (status === 'done') {
+          this.addReform(4, 'Ca lao động đầu tiên');
+          this.changeRel('bay', 8, 'Minh làm tròn ca đầu tiên như chú dặn');
+        }
         this.startQuest('mon_no');
         break;
 
@@ -885,19 +909,23 @@ export class GameLogic {
       }
 
       case 'lop_nghe_dau':
-        this.addReform(4, 'Bài học nghề đầu tiên');
-        this.giveItem('chung_chi_nghe');
-        this.changeRel('phuc', 10, 'Minh hoàn thành bài học nghề an toàn');
-        this.s.skills.vocationalExam++;
+        if (status === 'done') {
+          this.addReform(4, 'Bài học nghề đầu tiên');
+          this.giveItem('chung_chi_nghe');
+          this.changeRel('phuc', 10, 'Minh hoàn thành bài học nghề an toàn');
+          this.s.skills.vocationalExam++;
+          this.notify('⭐ ĐẶC QUYỀN MỚI: Đã nhận chứng chỉ nghề — Mở quyền mượn sách thư viện!', 'good');
+        }
         this.startQuest('sach_thu_vien');
-        this.notify('⭐ ĐẶC QUYỀN MỚI: Đã nhận chứng chỉ nghề — Mở quyền mượn sách thư viện!', 'good');
         break;
 
       case 'nghi_an_thuoc':
-        this.addReform(6, 'Tìm lại thuốc hen cứu Chú Bảy');
-        this.changeRel('bay', 15, 'Minh tìm lại lọ thuốc hen cứu mạng chú');
-        this.changeRel('an', 12, 'Minh hỗ trợ tìm ra vật chứng y tế');
-        this.addClue('thuoc_hen_sau_xuong', 'Lọ thuốc hen của Chú Bảy rơi gần góc sau xưởng nơi đàn em Lâm tụ tập.');
+        if (status === 'done') {
+          this.addReform(6, 'Tìm lại thuốc hen cứu Chú Bảy');
+          this.changeRel('bay', 15, 'Minh tìm lại lọ thuốc hen cứu mạng chú');
+          this.changeRel('an', 12, 'Minh hỗ trợ tìm ra vật chứng y tế');
+          this.addClue('thuoc_hen_sau_xuong', 'Lọ thuốc hen của Chú Bảy rơi gần góc sau xưởng nơi đàn em Lâm tụ tập.');
+        }
         this.startQuest('manh_moi_kho_7');
         this.startQuest('phu_y_te');
         break;
@@ -914,27 +942,35 @@ export class GameLogic {
         break;
 
       case 'phong_tham_gap':
-        this.changeRel('mai', 15, 'Minh hứa với chị sẽ cải tạo tốt để về sớm');
-        this.addStat('stress', -20);
-        this.addStat('money', 25);
-        this.addReform(3, 'Được gia đình động viên cải tạo');
+        if (status === 'done') {
+          this.changeRel('mai', 15, 'Minh hứa với chị sẽ cải tạo tốt để về sớm');
+          this.addStat('stress', -20);
+          this.addStat('money', 25);
+          this.addReform(3, 'Được gia đình động viên cải tạo');
+        }
         break;
 
       case 'sach_thu_vien':
-        this.addReform(2, 'Chăm chỉ đọc sách pháp luật');
-        this.addStat('stress', -10);
-        this.changeRel('phuc', 5, 'Minh tự giác mượn sách cẩm nang');
+        if (status === 'done') {
+          this.addReform(2, 'Chăm chỉ đọc sách pháp luật');
+          this.addStat('stress', -10);
+          this.changeRel('phuc', 5, 'Minh tự giác mượn sách cẩm nang');
+        }
         break;
 
       case 'phu_y_te':
-        this.addReform(3, 'Hỗ trợ việc phòng y tế');
-        this.giveItem('thuoc_cam', 1);
-        this.changeRel('an', 8, 'Minh nhiệt tình giúp phân loại thuốc');
+        if (status === 'done') {
+          this.addReform(3, 'Hỗ trợ việc phòng y tế');
+          this.giveItem('thuoc_cam', 1);
+          this.changeRel('an', 8, 'Minh nhiệt tình giúp phân loại thuốc');
+        }
         break;
 
       case 'dep_bay':
-        this.changeRel('bay', 10, 'Minh tìm lại đôi dép con gái gửi cho chú');
-        this.addStat('stress', -5);
+        if (status === 'done') {
+          this.changeRel('bay', 10, 'Minh tìm lại đôi dép con gái gửi cho chú');
+          this.addStat('stress', -5);
+        }
         break;
 
       case 'mi_cho_huy':
@@ -943,14 +979,18 @@ export class GameLogic {
         break;
 
       case 'lao_dong_phu':
-        this.addReform(2, 'Tăng cường lao động ca chiều');
-        this.addStat('money', 10);
+        if (status === 'done') {
+          this.addReform(2, 'Tăng cường lao động ca chiều');
+          this.addStat('money', 10);
+        }
         break;
 
       case 'doi_chieu_chung_tu':
-        this.addReform(5, 'Đối chiếu làm rõ chữ ký chứng từ');
-        this.changeRel('phuc', 10, 'Thầy Phúc khen Minh tinh mắt và cẩn trọng');
-        this.addClue('chu_ky_nguoi_nhan', 'Chữ ký trên vận đơn kho 7 trùng khớp chữ ký người liên hệ với Lâm.');
+        if (status === 'done') {
+          this.addReform(5, 'Đối chiếu làm rõ chữ ký chứng từ');
+          this.changeRel('phuc', 10, 'Thầy Phúc khen Minh tinh mắt và cẩn trọng');
+          this.addClue('chu_ky_nguoi_nhan', 'Chữ ký trên vận đơn kho 7 trùng khớp chữ ký người liên hệ với Lâm.');
+        }
         this.startQuest('cam_do_im_lang');
         this.startQuest('sua_quat_phong_hoc');
         break;
@@ -960,9 +1000,11 @@ export class GameLogic {
         break;
 
       case 'bay_vat_cam':
-        this.addReform(8, 'Minh oan bẫy vật cấm buồng giam');
-        this.changeRel('lan', 10, 'Quản giáo Lan ghi nhận Minh bình tĩnh giải trình hợp lệ');
-        this.changeRel('tung', 15, 'Cán bộ Tùng đánh giá cao sự trung thực');
+        if (status === 'done') {
+          this.addReform(8, 'Minh oan bẫy vật cấm buồng giam');
+          this.changeRel('lan', 10, 'Quản giáo Lan ghi nhận Minh bình tĩnh giải trình hợp lệ');
+          this.changeRel('tung', 15, 'Cán bộ Tùng đánh giá cao sự trung thực');
+        }
         this.s.chapter = Math.max(this.s.chapter, 4);
         this.startQuest('ho_so_giai_trinh');
         this.startQuest('loi_hua_chu_bay');
@@ -973,21 +1015,27 @@ export class GameLogic {
         break;
 
       case 'la_thu_que_nha':
-        this.changeRel('mai', 15, 'Minh gửi thư hồi âm ấm áp cho mẹ và chị');
-        this.addStat('stress', -20);
+        if (status === 'done') {
+          this.changeRel('mai', 15, 'Minh gửi thư hồi âm ấm áp cho mẹ và chị');
+          this.addStat('stress', -20);
+        }
         break;
 
       case 'ren_luyen_the_chat':
-        this.changeRel('bay', 5, 'Chú Bảy khen Minh chịu khó rèn luyện');
-        this.addStat('stress', -15);
-        this.addStat('health', 5);
-        this.addStat('stamina', 10);
+        if (status === 'done') {
+          this.changeRel('bay', 5, 'Chú Bảy khen Minh chịu khó rèn luyện');
+          this.addStat('stress', -15);
+          this.addStat('health', 5);
+          this.addStat('stamina', 10);
+        }
         break;
 
       case 'sua_quat_phong_hoc':
-        this.addReform(4, 'Sửa chữa quạt phòng học công ích');
-        this.addStat('money', 15);
-        this.changeRel('phuc', 15, 'Thầy Phúc cảm kích tay nghề sửa máy của Minh');
+        if (status === 'done') {
+          this.addReform(4, 'Sửa chữa quạt phòng học công ích');
+          this.addStat('money', 15);
+          this.changeRel('phuc', 15, 'Thầy Phúc cảm kích tay nghề sửa máy của Minh');
+        }
         break;
 
       case 'ho_so_giai_trinh':
@@ -1011,18 +1059,24 @@ export class GameLogic {
         break;
 
       case 'truyen_nghe_cho_huy':
-        this.addReform(5, 'Giúp đỡ bạn cùng phòng học nghề');
-        this.changeRel('huy', 25, 'Huy biết ơn Minh chỉ dạy nghề');
+        if (status === 'done') {
+          this.addReform(5, 'Giúp đỡ bạn cùng phòng học nghề');
+          this.changeRel('huy', 25, 'Huy biết ơn Minh chỉ dạy nghề');
+        }
         break;
 
       case 'chia_tay_thay_phuc':
-        this.changeRel('phuc', 20, 'Thầy Phúc gửi gắm niềm tin vào Minh');
+        if (status === 'done') {
+          this.changeRel('phuc', 20, 'Thầy Phúc gửi gắm niềm tin vào Minh');
+        }
         break;
 
       case 'kiem_tra_suc_khoe':
-        this.addStat('health', 15);
-        this.addStat('stamina', 10);
-        this.changeRel('an', 10, 'Y sĩ An xác nhận thể lực hoàn hảo');
+        if (status === 'done') {
+          this.addStat('health', 15);
+          this.addStat('stamina', 10);
+          this.changeRel('an', 10, 'Y sĩ An xác nhận thể lực hoàn hảo');
+        }
         break;
     }
   }

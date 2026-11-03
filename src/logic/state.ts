@@ -100,6 +100,7 @@ export interface DailyTask {
   startMinute?: number;
   endMinute?: number;
   done: boolean;
+  skipped?: boolean;
 }
 
 export interface DailyRecord {

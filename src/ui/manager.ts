@@ -479,6 +479,12 @@ export class UIManager {
       }
     }
 
+    const hudQDef = overdue.qId ? QUESTS[overdue.qId] : null;
+    const canSkipHud = hudQDef && !hudQDef.failure.startsWith('Không thể thất bại');
+    const hudSkipBtnHtml = canSkipHud
+      ? `<button class="btn-skip-quest-hud" id="btn-hud-skip-quest" style="background:#dc2626;color:#fff;border:none;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700;cursor:pointer;margin-left:4px" title="Bỏ qua nhiệm vụ này (chịu phạt -5 cải tạo)">Bỏ qua (phạt)</button>`
+      : '';
+
     const shortLabel = isWaiting && waitingDetails.timeRange ? `Chờ mở cửa: ${waitingDetails.timeRange}` : (destName || qTitle);
     const questHTML = this.questCollapsed
       ? `
@@ -508,7 +514,10 @@ export class UIManager {
             ${distText ? `<span style="color:#38bdf8;font-weight:700">· ${distText}</span>` : ''}
             ${openCond ? `· ${openCond}` : ''}
           </div>
-          ${guideTarget?.tx !== undefined ? `<button class="btn-auto-walk" id="btn-quest-autowalk">🚶 Tự đi</button>` : ''}
+          <div style="display:flex;align-items:center;gap:4px">
+            ${guideTarget?.tx !== undefined ? `<button class="btn-auto-walk" id="btn-quest-autowalk">🚶 Tự đi</button>` : ''}
+            ${hudSkipBtnHtml}
+          </div>
         </div>
       `;
 
@@ -542,12 +551,20 @@ export class UIManager {
         this.sfx.click();
         this.showDailyPlanModal();
       });
+      this.questBarEl.querySelector('#btn-hud-skip-quest')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.sfx.click();
+        if (overdue.qId) {
+          this.promptSkipQuestConfirm(overdue.qId);
+        }
+      });
 
       this.questBarEl.onclick = (e) => {
         this.questBarEl.classList.remove('highlight');
         if (
           (e.target as HTMLElement).closest('#btn-quest-toggle') ||
           (e.target as HTMLElement).closest('#btn-quest-autowalk') ||
+          (e.target as HTMLElement).closest('#btn-hud-skip-quest') ||
           (e.target as HTMLElement).closest('#quest-dest-info') ||
           (e.target as HTMLElement).closest('#btn-open-daily-plan')
         ) {
@@ -1284,19 +1301,26 @@ export class UIManager {
     const taskItemsHTML = tasks
       .map((t) => {
         const isDone = t.done;
-        const isMissed = !isDone && t.endMinute !== undefined && s.minute > t.endMinute;
+        const isSkipped = !!t.skipped;
+        const isMissed = !isDone && !isSkipped && t.endMinute !== undefined && s.minute > t.endMinute;
         const statusBadge = isDone
           ? `<span class="daily-badge done">✔ Đã xong (+10 XP)</span>`
-          : isMissed
-            ? `<span class="daily-badge missed" style="background:rgba(239,68,68,0.18);color:#fca5a5;border:1px solid rgba(239,68,68,0.4)">⚠️ Đã lỡ hôm nay</span>`
-            : `<span class="daily-badge pending">⏳ Chưa xong</span>`;
+          : isSkipped
+            ? `<span class="daily-badge skipped" style="background:rgba(107,114,128,0.2);color:#9ca3af;border:1px solid rgba(107,114,128,0.4)">⏭ Đã bỏ qua</span>`
+            : isMissed
+              ? `<span class="daily-badge missed" style="background:rgba(239,68,68,0.18);color:#fca5a5;border:1px solid rgba(239,68,68,0.4)">⚠️ Đã lỡ hôm nay</span>`
+              : `<span class="daily-badge pending">⏳ Chưa xong</span>`;
         const catLabel = t.category === 'duty' ? 'Nghĩa vụ' : t.category === 'relation' ? 'Quan hệ' : 'Cá nhân';
+        const skipBtn = (!isDone && !isSkipped)
+          ? `<button class="btn-skip-daily-task" data-task-id="${t.id}" style="margin-left:auto;padding:2px 8px;font-size:11px;background:#374151;color:#f3f4f6;border:1px solid #4b5563;border-radius:4px;cursor:pointer">Bỏ qua</button>`
+          : '';
         return `
           <div class="daily-task-card ${isDone ? 'done' : ''}">
             <div class="daily-task-top">
               <span class="daily-cat ${t.category}">${catLabel}</span>
               <b class="daily-task-title">${t.title}</b>
               ${statusBadge}
+              ${skipBtn}
             </div>
             <div class="daily-task-desc">${t.desc}</div>
             ${t.timeHint ? `<div class="daily-task-time">⏰ Khung giờ: <b>${t.timeHint}</b></div>` : ''}
@@ -1342,7 +1366,18 @@ export class UIManager {
       <div style="margin-top:14px;display:flex;justify-content:flex-end">
         <button class="btn btn-accent" style="min-height:44px;min-width:120px" data-close>Đã hiểu</button>
       </div>
-    `);
+    `, (el) => {
+      el.querySelectorAll<HTMLButtonElement>('.btn-skip-daily-task').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const tid = btn.dataset.taskId;
+          if (tid) {
+            this.g.skipDailyTask(tid);
+            this.showDailyPlanModal();
+          }
+        });
+      });
+    });
   }
 
   showMorningBanner() {
@@ -1624,6 +1659,40 @@ export class UIManager {
           }
         };
       });
+      el.querySelectorAll<HTMLButtonElement>('.btn-skip-quest').forEach((btn) => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          this.sfx.click();
+          const qid = btn.dataset.questId;
+          if (qid) {
+            this.promptSkipQuestConfirm(qid);
+          }
+        };
+      });
+    });
+  }
+
+  promptSkipQuestConfirm(qid: string) {
+    const q = QUESTS[qid];
+    if (!q) return;
+    this.showModal(`
+      <h2>Xác nhận bỏ qua nhiệm vụ?</h2>
+      <div class="card-row">
+        <div>Bạn sắp bỏ qua nhiệm vụ <b>"${q.title}"</b>.</div>
+        <div style="color:#f87171;margin-top:8px;line-height:1.45">
+          ⚠️ <b>Hình phạt:</b> Bị trừ <b>5 điểm cải tạo</b> và mất toàn bộ phần thưởng của nhiệm vụ này. Trạng thái nhiệm vụ chuyển thành Thất bại.
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <button class="btn btn-danger" id="btn-confirm-skip-quest" style="background:#dc2626;color:#fff;font-weight:700">Xác nhận bỏ qua (-5 cải tạo)</button>
+        <button class="btn" data-close>Hủy</button>
+      </div>
+    `, (confirmEl) => {
+      confirmEl.querySelector('#btn-confirm-skip-quest')?.addEventListener('click', () => {
+        this.closeModal();
+        this.g.skipOverdueQuest(qid);
+        this.lastQuestHTML = '';
+      });
     });
   }
 
@@ -1642,12 +1711,19 @@ export class UIManager {
         return `<div style="margin-left:8px">○ ${o.text}</div>`;
       })
       .join('');
+    const canSkip = this.g.qStatus(qid) === 'active' && overdue.overdue && !q.failure.startsWith('Không thể thất bại');
+    const skipBtnHtml = canSkip
+      ? `<div style="margin-top:6px;display:flex;justify-content:flex-end">
+          <button class="btn btn-sm btn-danger btn-skip-quest" data-quest-id="${qid}" style="background:#dc2626;color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer">Bỏ qua (chịu phạt)</button>
+        </div>`
+      : '';
     return `
       <div class="card-row">
         <div><span class="tag ${q.type === 'main' ? 'good' : ''}">${q.type === 'main' ? 'Chính' : 'Phụ'}</span><b>${q.title}</b> — Người giao: ${q.giver}</div>
         <div class="hud-sub">${q.reason}</div>
         <div style="margin-top:4px">${objs}</div>
         <div class="hud-sub" style="margin-top:4px">Phần thưởng: ${q.reward}</div>
+        ${skipBtnHtml}
       </div>
     `;
   }

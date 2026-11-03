@@ -8,6 +8,18 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-04 — Antigravity — VIỆC 3: Nút "Bỏ qua nhiệm vụ" (chịu phạt) & Bỏ qua việc ngày chống treo nhiệm vụ
+- **Vấn đề đã xử lý:** Người chơi bị treo nhiệm vụ khi quá giờ hoặc không muốn tiếp tục làm một nhiệm vụ phụ/cốt truyện bị lỡ; việc ngày nếu chưa xong cũng cần cơ chế bỏ qua rõ ràng để không ảnh hưởng đến trải nghiệm.
+- **Giải pháp:**
+  - Bảng việc ngày (`showDailyPlanModal`): mỗi việc chưa hoàn thành có nút "Bỏ qua" → đánh dấu `t.skipped = true`, không nhận +10 XP, mất quyền nhận thưởng hoàn thành cả 3 việc trong ngày, không trừ chỉ số, ngày mới tạo việc mới như thường.
+  - Nhiệm vụ cốt truyện / phụ:
+    - Nút "Bỏ qua (chịu phạt)" chỉ hiển thị khi bước hiện tại của nhiệm vụ đã quá khung giờ và câu `failure` KHÔNG bắt đầu bằng "Không thể thất bại" (các nhiệm vụ như `nhap_trai`, `ho_so_giai_trinh`... không cho bỏ qua).
+    - Hiển thị trên thanh HUD quest bar và trong thẻ nhiệm vụ ở Nhật ký.
+    - Khi bấm mở hộp thoại xác nhận cảnh báo rõ: trừ 5 điểm cải tạo, mất toàn bộ phần thưởng, trạng thái chuyển thành 'failed'.
+    - Khi xác nhận: gọi `skipOverdueQuest(qid)` trừ 5 điểm cải tạo (qua `addReform(-5)`), chuyển trạng thái `failed`, và tự động kích hoạt nhiệm vụ tiếp theo trong chuỗi (ví dụ `ca_dau` thất bại vẫn mở `mon_no`, `lop_nghe_dau` thất bại vẫn mở `sach_thu_vien`, `bay_vat_cam` thất bại vẫn mở Chương 4) để không bao giờ đứt gãy cốt truyện chính. Bỏ qua nhiệm vụ phụ không ảnh hưởng nhiệm vụ chính.
+- **Kiểm thử:** Thêm `tests/unit/quest-skip.test.ts` (4 bài test kiểm tra bỏ qua việc ngày, chặn bỏ qua nhiệm vụ không thể thất bại, phạt 5 cải tạo và mở nhiệm vụ tiếp theo).
+
+
 ### 2026-11-04 — Antigravity — VIỆC 2: Hiển thị nhiệm vụ quá giờ rõ ràng ("Đã qua giờ — lý do / thử lại")
 - **Vấn đề đã xử lý:** Nhiệm vụ theo khung giờ (điểm danh 06:30–06:45, chấm công 08:00–08:30...) khi quá giờ mà chưa xong vẫn giữ nguyên dòng cũ khiến người chơi tưởng nhiệm vụ bị treo.
 - **Giải pháp:**
