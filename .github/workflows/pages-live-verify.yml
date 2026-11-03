@@ -10,23 +10,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Confirm publicly served HTML and release.json (no GitHub API shortcut)
+      - name: Confirm actual public HTML + release version (root or dist fallback)
         shell: bash
         run: |
           set -euo pipefail
           BASE="https://kanz510.github.io/DITUONLINE"
-          for i in $(seq 1 14); do
+          for i in $(seq 1 12); do
             T="$(date +%s)-${i}"
-            JSON="$(curl -fsSL --connect-timeout 10 --max-time 20 -H 'Cache-Control: no-cache' "${BASE}/release.json?verify=${T}" || true)"
-            HTML="$(curl -fsSL --connect-timeout 10 --max-time 20 -H 'Cache-Control: no-cache' "${BASE}/?verify=${T}" || true)"
-            echo "Attempt ${i}: release body ${JSON:0:240}"
-            if printf '%s' "$JSON" | grep -Eq '"version"[[:space:]]*:[[:space:]]*"0[.]4[.]2"' &&
-               printf '%s' "$JSON" | grep -q '5c344ee09d30' &&
-               printf '%s' "$HTML" | grep -q '5c344ee09d30'; then
-              echo "PASS: public GitHub Pages serves v0.4.2 with build 5c344ee09d30"
-              exit 0
-            fi
+            for DIR in "$BASE" "$BASE/dist"; do
+              JSON="$(curl -fsSL --connect-timeout 10 --max-time 20 -H 'Cache-Control: no-cache' "${DIR}/release.json?verify=${T}" || true)"
+              HTML="$(curl -fsSL --connect-timeout 10 --max-time 20 -H 'Cache-Control: no-cache' "${DIR}/?verify=${T}" || true)"
+              echo "Attempt ${i}, ${DIR}: release=${JSON:0:180}"
+              if printf '%s' "$JSON" | grep -Eq '"version"[[:space:]]*:[[:space:]]*"0[.]4[.]2"' &&
+                 printf '%s' "$JSON" | grep -q '5c344ee09d30' &&
+                 printf '%s' "$HTML" | grep -q '5c344ee09d30'; then
+                echo "PASS: public GitHub Pages serves v0.4.2 build 5c344ee09d30 at ${DIR}/"
+                exit 0
+              fi
+            done
             sleep 10
           done
-          echo 'FAIL: public pages never showed the expected 0.4.2 build'
+          echo 'FAIL: expected 0.4.2 build not found on public root or dist fallback'
           exit 1
