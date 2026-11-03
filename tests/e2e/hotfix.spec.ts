@@ -4,6 +4,8 @@ test.use({ viewport: { width: 956, height: 440 }, isMobile: true, hasTouch: true
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
+  await expect(page.locator('#landing-primary')).toBeVisible();
+  await page.locator('#landing-primary').click();
   await page.locator('#btn-cc-submit').click();
   await page.locator('#btn-cutscene-skip').click();
 });
