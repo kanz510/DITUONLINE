@@ -167,7 +167,8 @@ export type PropKind =
   | 'kitchen-fridge' | 'kitchen-sink' | 'kitchen-stove'
   | 'visit-sofa' | 'visit-side-table' | 'garden-pot'
   | 'yard-bush' | 'yard-flower' | 'yard-rock'
-  | 'park-ambulance' | 'park-police' | 'park-van' | 'park-delivery';
+  | 'park-ambulance' | 'park-police' | 'park-van' | 'park-delivery'
+  | 'cell-toilet' | 'cell-locker' | 'medical-trolley';
 
 export interface PropDef {
   kind: PropKind;
@@ -179,10 +180,12 @@ export interface PropDef {
 }
 
 const P: PropDef[] = [];
-// Giường tầng trong 4 buồng
+// Giường tầng, toilet và tủ sắt trong 4 buồng giam
 for (const cx of CELL_CENTERS) {
   P.push({ kind: 'bunk', x: cx - 1.65, z: -29.6, w: 0.95, d: 2.0, collide: true });
   P.push({ kind: 'bunk', x: cx + 1.65, z: -29.6, w: 0.95, d: 2.0, collide: true });
+  P.push({ kind: 'cell-toilet', x: cx - 0.75, z: -31.45, w: 0.65, d: 0.75, collide: true, label: 'Toilet buồng giam' });
+  P.push({ kind: 'cell-locker', x: cx + 0.75, z: -31.5, w: 0.60, d: 0.65, rot: Math.PI, collide: true, label: 'Tủ sắt cá nhân' });
 }
 P.push(
   { kind: 'board', x: -27.81, z: -21.5, w: 1.4, d: 0.05, rot: Math.PI / 2, label: 'NỘI QUY' },
@@ -241,6 +244,7 @@ P.push(
   { kind: 'cabinet', x: 19.2, z: -28, w: 1.8, d: 0.7, collide: true },
   { kind: 'desk', x: 23, z: -22, w: 2.4, d: 1.0, collide: true },
   { kind: 'chair', x: 23, z: -23.5, w: 0.5, d: 0.5 },
+  { kind: 'medical-trolley', x: 26.85, z: -27.5, w: 0.62, d: 0.52, collide: true, label: 'Xe đẩy thuốc y tế' },
   // Lớp học nghề & Thư viện
   { kind: 'desk', x: -24, z: 13, w: 2.4, d: 1.0, collide: true },
   { kind: 'desk', x: -18, z: 13, w: 2.4, d: 1.0, collide: true },

@@ -36,6 +36,10 @@ const propAssets: Record<string, string> = {
   'park-van': 'special/prison-transfer-bus.glb',
   press: 'special/workshop-drill-press.glb',
   'park-delivery': 'vehicles/delivery.glb',
+  // Model nguyên bản
+  'cell-toilet': 'original/cell_sanitation_unit_blendstra.glb',
+  'cell-locker': 'original/single_prison_locker.glb',
+  'medical-trolley': 'original/infirmary_medical_trolley.glb',
 };
 const propCache = new Map<string, Promise<THREE.Group>>();
 function loadProp(path: string) {
@@ -472,11 +476,14 @@ export class PrisonWorld {
           // the ONLY collision source (vehicle footprint included).
           const maxHeight = p.kind === 'tree' ? 4.5
             : p.kind === 'bunk' ? 2.0
-              : p.kind === 'kitchen-fridge' ? 2.25
-                : isVehicle ? 2.4
-                  : p.kind === 'press' ? 2.45
-                    : p.kind === 'garden-pot' ? 1.3
-                    : p.kind.startsWith('yard-') ? 0.85 : 1.9;
+              : p.kind === 'cell-locker' ? 1.65
+                : p.kind === 'cell-toilet' ? 1.4
+                  : p.kind === 'medical-trolley' ? 1.1
+                    : p.kind === 'kitchen-fridge' ? 2.25
+                      : isVehicle ? 2.4
+                        : p.kind === 'press' ? 2.45
+                          : p.kind === 'garden-pot' ? 1.3
+                          : p.kind.startsWith('yard-') ? 0.85 : 1.9;
           const factor = p.kind === 'tree'
             ? 4.5 / height
             : Math.min(p.w / width, p.d / depth, maxHeight / height) * 0.96;
@@ -508,6 +515,45 @@ export class PrisonWorld {
               obj.add(kit);
               obj.userData.phase2MedkitLoaded = true;
             }).catch((error) => console.warn('[Phase 2] Medical kit fallback:', error));
+          }
+          // Khay cơm nhà ăn: gắn dưới Group của 4 bàn ăn, nâng lên mặt bàn
+          if (p.kind === 'table' && p.x > -2 && p.x < 16 && p.z < -18) {
+            void loadProp('original/canteen_meal_tray.glb').then((traySrc) => {
+              const trayBounds = new THREE.Box3().setFromObject(traySrc);
+              const tableTopY = bounds.max.y * factor;
+              for (const offsetX of [-0.7, 0.7]) {
+                const tray = traySrc.clone(true);
+                tray.name = 'original.canteen_meal_tray';
+                tray.position.set(offsetX, tableTopY - trayBounds.min.y, 0);
+                tray.traverse((child) => {
+                  if (child instanceof THREE.Mesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                  }
+                });
+                obj.add(tray);
+              }
+              obj.userData.traysLoaded = true;
+            }).catch((error) => console.warn('[Canteen Tray] Fallback:', error));
+          }
+          // Radio phòng cán bộ: gắn dưới Group của bàn làm việc cán bộ, nâng lên mặt bàn
+          if (p.kind === 'desk' && p.x === -4 && p.z === 16) {
+            void loadProp('original/guard_desk_radio.glb').then((radioSrc) => {
+              const radio = radioSrc.clone(true);
+              radio.name = 'original.guard_desk_radio';
+              const radioBounds = new THREE.Box3().setFromObject(radioSrc);
+              const deskTopY = bounds.max.y * factor;
+              radio.position.set(0.65, deskTopY - radioBounds.min.y, -0.05);
+              radio.rotation.y = -Math.PI / 6;
+              radio.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                  child.castShadow = true;
+                  child.receiveShadow = true;
+                }
+              });
+              obj.add(radio);
+              obj.userData.radioLoaded = true;
+            }).catch((error) => console.warn('[Guard Desk Radio] Fallback:', error));
           }
         }).catch((err) => console.warn('[Prop GLB] Procedural fallback:', asset, err));
       } else if (p.kind === 'counter' && p.x < -20) {
@@ -553,7 +599,7 @@ export class PrisonWorld {
           }
         }).catch((error) => console.warn('[Books GLB] Shelf remains usable:', error));
       }
-      if (p.kind === 'tree' || p.kind === 'lamp' || p.kind === 'shelf' || p.kind === 'tower') this.cameraObstacles.push(obj);
+      if (p.kind === 'tree' || p.kind === 'lamp' || p.kind === 'shelf' || p.kind === 'tower' || p.kind === 'cell-locker') this.cameraObstacles.push(obj);
       obj.position.set(p.x, 0, p.z);
       if (p.rot) obj.rotation.y = p.rot;
       this.scene.add(obj);
@@ -697,6 +743,25 @@ export class PrisonWorld {
         roof.position.y = 7.1;
         roof.rotation.y = Math.PI / 4;
         g.add(base, roof);
+        break;
+      }
+      case 'cell-toilet': {
+        const toilet = new THREE.Mesh(new THREE.BoxGeometry(p.w, 1.05, p.d), steel);
+        toilet.position.y = 0.525;
+        g.add(toilet);
+        break;
+      }
+      case 'cell-locker': {
+        const locker = new THREE.Mesh(new THREE.BoxGeometry(p.w, 1.6, p.d), steel);
+        locker.position.y = 0.8;
+        locker.castShadow = true;
+        g.add(locker);
+        break;
+      }
+      case 'medical-trolley': {
+        const cart = new THREE.Mesh(new THREE.BoxGeometry(p.w, 1.0, p.d), steel);
+        cart.position.y = 0.5;
+        g.add(cart);
         break;
       }
       default: {

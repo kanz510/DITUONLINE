@@ -114,6 +114,23 @@ test('An Phu cinematic landing, saved progress and upgraded scenery', async ({ b
   }), { timeout: 25000 }).toEqual({
     bus: true, bed: true, drill: true, phones: true, kit: true, phoneCount: 3,
   });
+
+  // Five original GLBs (cell, clinic, mess, office) must load into real Three.js objects.
+  await expect.poll(() => page.evaluate(() => {
+    const scene = (window as any).__DITU__.app.world.scene;
+    const res = { toilet: false, locker: false, trolley: false, trays: false, radio: false, trayCount: 0 };
+    scene.traverse((o: any) => {
+      if (o.userData?.assetLoaded && o.userData?.assetPath === 'original/cell_sanitation_unit_blendstra.glb') res.toilet = true;
+      if (o.userData?.assetLoaded && o.userData?.assetPath === 'original/single_prison_locker.glb') res.locker = true;
+      if (o.userData?.assetLoaded && o.userData?.assetPath === 'original/infirmary_medical_trolley.glb') res.trolley = true;
+      if (o.userData?.traysLoaded) res.trays = true;
+      if (o.userData?.radioLoaded) res.radio = true;
+      if (o.name === 'original.canteen_meal_tray') res.trayCount++;
+    });
+    return res;
+  }), { timeout: 25000 }).toEqual({
+    toilet: true, locker: true, trolley: true, trays: true, radio: true, trayCount: 8,
+  });
   // Same view size as iPhone 16 Pro Max landscape; screenshots only after assets loaded.
   const newLocations = [
     { x: 21.2, z: 16.3, name: 'phase2-prison-transfer-bus.png' },

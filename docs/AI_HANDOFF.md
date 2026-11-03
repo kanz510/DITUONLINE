@@ -8,6 +8,20 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-03 — Antigravity — Tích hợp 5 model GLB nguyên bản vào game (v0.4.9)
+- **Tích hợp 5 asset GLB nguyên bản (`public/models/original/`):**
+  1. `cell_sanitation_unit_blendstra.glb`: buồng vệ sinh inox tích hợp (toilet + bồn rửa) đặt sát tường Bắc tại `(cx - 0.75, -31.45)` cho cả 4 buồng giam. Đăng ký `cell-toilet` vào `PROPS` có collider. Tự động căn chỉnh đáy chạm sàn y=0 nhờ công thức bù `min.y` trong Three.js builder.
+  2. `single_prison_locker.glb`: tủ sắt cá nhân đặt sát tường Bắc tại `(cx + 0.75, -31.5)` cho cả 4 buồng giam, quay `rot = Math.PI` để cửa tủ hướng vào trong buồng. Đăng ký `cell-locker` vào `PROPS` có collider, đăng ký vào `cameraObstacles` để camera tự động fade khi che khuất. Hành lang giữa toilet và tủ rộng >= 0.875m thông thoáng.
+  3. `canteen_meal_tray.glb`: khay cơm nhà ăn, gắn trực tiếp dưới Group của 4 bàn ăn nhà ăn (`p.kind === 'table' && p.x > -2 && p.x < 16 && p.z < -18`), nâng Y lên mặt bàn ăn, không tạo collider riêng.
+  4. `infirmary_medical_trolley.glb`: xe đẩy thuốc y tế 2 ngăn tại `(26.85, -27.5)` đặt sát tường Đông phòng y tế cạnh giường bệnh. Đăng ký `medical-trolley` vào `PROPS` có collider; nằm hoàn toàn ngoài tuyến di chuyển của NPC (`medDesk -> medBed`).
+  5. `guard_desk_radio.glb`: radio để bàn tại phòng quản giáo, gắn trực tiếp dưới Group bàn làm việc cán bộ `(x = -4, z = 16)` tại tọa độ cục bộ `(0.65, deskTopY, -0.05)`, không tạo collider riêng.
+- **Bảo toàn:** Giữ nguyên 100% gameplay, logic, save, quest interaction, mini-game, tháp canh (không đụng `watchtower.glb`), lịch sinh hoạt và các nhân vật chibi cán bộ.
+- **Kiểm thử tự động:**
+  - Bổ sung bộ test `Đợt 3: Tích hợp 5 model GLB nguyên bản` trong `tests/unit/assets.test.ts` kiểm tra glTF 2.0 hợp lệ, collider, liên thông đồ thị NPC và khoảng cách buồng giam.
+  - Bổ sung xác minh tải thực tế trong Playwright E2E `tests/e2e/visual-upgrade.spec.ts`.
+  - Kết quả: **65/65 unit test PASS** và **14/14 Playwright E2E test PASS** (100% passed).
+- **Đóng gói & Cache:** Tăng version lên `0.4.9`, chạy `npm run build` tạo gói phân phối sạch trong `dist/`, cập nhật `release.json` và `sw.js`.
+
 ### 2026-11-03 — Antigravity — Thay ảnh nền màn hình bắt đầu 3D điện ảnh (v0.4.8)
 - **Tài nguyên hình ảnh:** Chuyển đổi và nén ảnh 3D cảnh tù nhân bị quản ngục truy đuổi vào ban đêm thành định dạng WebP chất lượng cao siêu nhẹ (~78.8 KB) tại `public/assets/landing-bg.webp` kèm fallback JPEG tối ưu (~100 KB) tại `public/assets/landing-bg.jpg`.
 - **Giao diện & Bố cục (`src/ui/landing.ts`, `src/ui/landing.css`):**

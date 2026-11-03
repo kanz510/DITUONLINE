@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
-import { PROPS, EDGES, NODES, propBox } from '../../src/world/layout';
+import { PROPS, EDGES, NODES, CELL_CENTERS, propBox } from '../../src/world/layout';
 import { isConnected, findPath } from '../../src/world/nav';
 import { segBox } from '../../src/world/collision';
 
@@ -155,5 +155,79 @@ describe('Đợt 2: GLB chuyên biệt được đóng gói độc lập', () =>
     expect(PROPS.some(p => p.kind === 'press' && p.x === 25.5 && p.z === 4.5)).toBe(true);
     expect(PROPS.some(p => p.kind === 'counter' && p.x === -24 && p.z === -9.5)).toBe(true);
     expect(isConnected()).toBe(true);
+  });
+});
+
+describe('Đợt 3: Tích hợp 5 model GLB nguyên bản (buồng giam, y tế, nhà ăn, phòng cán bộ)', () => {
+  const originalModels = [
+    'cell_sanitation_unit_blendstra.glb',
+    'single_prison_locker.glb',
+    'canteen_meal_tray.glb',
+    'infirmary_medical_trolley.glb',
+    'guard_desk_radio.glb',
+  ];
+
+  it('5 file GLB tồn tại trong public/models/original/ và là glTF 2.0 hợp lệ', () => {
+    for (const file of originalModels) {
+      const p = `public/models/original/${file}`;
+      expect(validGlb(p), file).toBe(true);
+      const b = readFileSync(p);
+      expect(b.readUInt32LE(8), file).toBe(b.length);
+      expect(b.toString('ascii', 16, 20), file).toBe('JSON');
+      const jsonBytes = b.readUInt32LE(12);
+      const gltf = JSON.parse(b.subarray(20, 20 + jsonBytes).toString('utf8').trim());
+      expect(gltf.asset.version).toBe('2.0');
+      expect(gltf.meshes.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('toilet, locker và trolley có collider, không chặn đường đi của NPC, không chồng lấn vật thể khác', () => {
+    const toilets = PROPS.filter(p => p.kind === 'cell-toilet');
+    const lockers = PROPS.filter(p => p.kind === 'cell-locker');
+    const trolleys = PROPS.filter(p => p.kind === 'medical-trolley');
+
+    expect(toilets).toHaveLength(4);
+    expect(lockers).toHaveLength(4);
+    expect(trolleys).toHaveLength(1);
+
+    const newColliders = [...toilets, ...lockers, ...trolleys];
+    expect(newColliders.every(p => p.collide)).toBe(true);
+
+    expect(isConnected()).toBe(true);
+
+    for (const p of newColliders) {
+      const box = propBox(p);
+      const expanded = {
+        x1: box.x1 - 0.36, x2: box.x2 + 0.36,
+        z1: box.z1 - 0.36, z2: box.z2 + 0.36,
+      };
+      for (const [from, to] of EDGES) {
+        const a = NODES[from], b = NODES[to];
+        expect(segBox(a[0], a[1], b[0], b[1], expanded),
+          `${p.kind} (${p.x}, ${p.z}) blocks ${from}->${to}`).toBe(false);
+      }
+      for (const other of PROPS) {
+        if (other === p || !other.collide) continue;
+        const o = propBox(other);
+        const overlap = box.x1 < o.x2 && box.x2 > o.x1 &&
+          box.z1 < o.z2 && box.z2 > o.z1;
+        expect(overlap, `${p.kind} overlaps ${other.kind}`).toBe(false);
+      }
+    }
+  });
+
+  it('lối đi buồng giam và phòng y tế thông thoáng', () => {
+    for (const cx of CELL_CENTERS) {
+      const toilet = PROPS.find(p => p.kind === 'cell-toilet' && Math.abs(p.x - (cx - 0.75)) < 0.01)!;
+      const locker = PROPS.find(p => p.kind === 'cell-locker' && Math.abs(p.x - (cx + 0.75)) < 0.01)!;
+      expect(toilet).toBeDefined();
+      expect(locker).toBeDefined();
+      const tBox = propBox(toilet);
+      const lBox = propBox(locker);
+      const gap = lBox.x1 - tBox.x2;
+      expect(gap).toBeGreaterThanOrEqual(0.8);
+    }
+    const trolley = PROPS.find(p => p.kind === 'medical-trolley')!;
+    expect(trolley.x).toBeGreaterThan(26.0);
   });
 });
