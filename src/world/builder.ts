@@ -79,6 +79,7 @@ export class PrisonWorld {
   camCone!: THREE.Mesh;
   camAngle = 0;
   private camSweep = 0;
+  private gateLights: THREE.PointLight[] = [];
 
   constructor() {
     this.scene.background = new THREE.Color(0x9ec5fe);
@@ -93,6 +94,7 @@ export class PrisonWorld {
 
     this.buildGround();
     this.buildWalls();
+    this.buildPerimeterDetails();
     this.buildDoors();
     this.buildProps();
     this.buildSignsAndMarkers();
@@ -228,6 +230,98 @@ export class PrisonWorld {
       this.scene.add(ceil);
       this.cameraObstacles.push(ceil);
     }
+  }
+
+  /** Prison facade decoration is mounted ON registered perimeter walls.
+   * No new ground obstacles or walkable routes are introduced.
+   * The coils and posts share two instanced meshes to stay cheap on iPhone.
+   */
+  private buildPerimeterDetails() {
+    const perimeter = WALLS.filter((wall) => wall.kind === 'perimeter');
+    const segments: { x: number; z: number; y: number; vertical: boolean }[] = [];
+    for (const wall of perimeter) {
+      const width = wall.x2 - wall.x1;
+      const depth = wall.z2 - wall.z1;
+      const horizontal = width > depth;
+      const distance = horizontal ? width : depth;
+      const count = Math.max(1, Math.floor(distance / .67));
+      for (let i = 0; i < count; i++) {
+        const t = (i + .5) / count;
+        segments.push({
+          x: horizontal ? wall.x1 + t * width : (wall.x1 + wall.x2) / 2,
+          z: horizontal ? (wall.z1 + wall.z2) / 2 : wall.z1 + t * depth,
+          y: wall.h + .29,
+          vertical: !horizontal,
+        });
+      }
+    }
+    const wire = new THREE.InstancedMesh(
+      new THREE.TorusGeometry(.305, .018, 4, 10),
+      new THREE.MeshStandardMaterial({ color: 0x85939a, metalness: .78, roughness: .38 }),
+      segments.length,
+    );
+    wire.name = 'perimeter.concertina-wire';
+    const transform = new THREE.Object3D();
+    for (let i = 0; i < segments.length; i++) {
+      const p = segments[i];
+      transform.position.set(p.x, p.y, p.z);
+      transform.rotation.set(0, p.vertical ? Math.PI / 2 : 0, 0);
+      transform.updateMatrix();
+      wire.setMatrixAt(i, transform.matrix);
+    }
+    wire.instanceMatrix.needsUpdate = true;
+    wire.frustumCulled = false;
+    this.scene.add(wire);
+
+    const gate = new THREE.Group();
+    gate.name = 'prison.main-gate.facade';
+    gate.position.set(0, 0, 21.60);
+    const dark = new THREE.MeshStandardMaterial({ color: 0x172530, metalness: .73, roughness: .44 });
+    const frame = new THREE.MeshStandardMaterial({ color: 0x72828a, metalness: .7, roughness: .37 });
+    const orange = new THREE.MeshStandardMaterial({ color: 0xdd9844, metalness: .27, roughness: .47 });
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(5.2, 3.5, .12), dark);
+    panel.name = 'gate.locked.surface';panel.position.y = 1.77;panel.castShadow = true;
+    gate.add(panel);
+    for (const x of [-2.53, 0, 2.53]) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(.13, 3.85, .21), frame);
+      post.position.set(x, 1.92, -.12);
+      gate.add(post);
+    }
+    for (let i = -8; i <= 8; i++) {
+      const bar = new THREE.Mesh(new THREE.CylinderGeometry(.037, .037, 3.15, 7), frame);
+      bar.position.set(i * .28, 1.75, -.195);
+      gate.add(bar);
+    }
+    for (const y of [.55, 2.94]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(5.06, .11, .16), frame);
+      rail.position.set(0, y, -.23);
+      gate.add(rail);
+    }
+    const topBeam = new THREE.Mesh(new THREE.BoxGeometry(6.0, .21, .22), orange);
+    topBeam.position.set(0, 3.94, -.22);
+    gate.add(topBeam);
+    const sign = new THREE.Mesh(
+      new THREE.PlaneGeometry(4.1, .58),
+      new THREE.MeshBasicMaterial({ map: signTex('TRẠI GIAM AN PHÚ', 'KỶ LUẬT · TRÁCH NHIỆM · TÁI HÒA NHẬP'), side: THREE.DoubleSide }),
+    );
+    sign.name = 'gate.official.sign';
+    sign.position.set(0, 4.48, -.28);
+    sign.rotation.y = Math.PI;
+    gate.add(sign);
+    for (const x of [-3.3, 3.3]) {
+      const lamp = new THREE.Mesh(
+        new THREE.CylinderGeometry(.17, .17, .16, 14),
+        new THREE.MeshStandardMaterial({ color: 0xe6c079, emissive: 0xc47b24, emissiveIntensity: .75 }),
+      );
+      lamp.position.set(x, 4.17, -.36);
+      lamp.rotation.x = Math.PI / 2;
+      gate.add(lamp);
+      const glow = new THREE.PointLight(0xffb96d, .25, 7.5, 2);
+      glow.position.set(x, 4.05, -.75);
+      gate.add(glow);
+      this.gateLights.push(glow);
+    }
+    this.scene.add(gate);
   }
 
   private buildBars(w: WallDef, mat: THREE.Material) {
@@ -620,6 +714,7 @@ export class PrisonWorld {
     (this.scene.background as THREE.Color).setHex(sky);
     (this.scene.fog as THREE.FogExp2).color.setHex(sky);
     this.sun.intensity = sunI;
+    for (const light of this.gateLights) light.intensity = h < 7 || h > 18.5 ? 1.25 : .16;
     const ang = ((h - 6) / 16) * Math.PI;
     this.sun.position.set(-Math.cos(ang) * 28, Math.max(8, Math.sin(ang) * 34), 16);
   }
