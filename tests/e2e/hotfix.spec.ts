@@ -22,7 +22,11 @@ test('closing time escorts the player once and the game continues afterwards', a
   expect(await page.evaluate(() => (window as any).__DITU__.app.isEscorting)).toBe(false);
   await page.evaluate(() => { (window as any).__DITU__.logic.s.minute = 690; });
   await expect.poll(() => page.evaluate(() => (window as any).__DITU__.app.isEscorting)).toBe(true);
-  await expect.poll(() => page.evaluate(() => (window as any).__DITU__.logic.s.violations.filter((v: any) => v.type === 'disobedience').length), { timeout: 15000 }).toBe(1);
+  // Headless SwiftShader can run at a few frames/second; the game caps dt at
+  // 0.05, making 5.2 *simulated* seconds much longer than 15 wall seconds.
+  // Complete the existing escort timer deterministically without changing game logic.
+  await page.evaluate(() => (window as any).__DITU__.app.updateEscort(5.3));
+  await expect.poll(() => page.evaluate(() => (window as any).__DITU__.logic.s.violations.filter((v: any) => v.type === 'disobedience').length)).toBe(1);
   const before = await page.evaluate(() => (window as any).__DITU__.logic.s.minute);
   await expect.poll(() => page.evaluate(() => (window as any).__DITU__.logic.s.minute)).toBeGreaterThan(before);
   expect(errors).toEqual([]);
