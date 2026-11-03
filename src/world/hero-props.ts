@@ -191,6 +191,25 @@ function washingBasin(p:PropDef):THREE.Group {
   }
   return g;
 }
+function yardTank(p:PropDef):THREE.Group {
+  const g=new THREE.Group();g.name='yard.water-tank';
+  const radius=Math.min(p.w,p.d)*.40;
+  cylinder(g,'tank.concrete.pad',0,.14,0,radius*1.15,.28,concrete,16);
+  cylinder(g,'tank.steel.body',0,1.25,0,radius,2.1,steel,20);
+  for(const y of [.37,.72,1.23,1.75,2.13])
+    cylinder(g,'tank.rib',0,y,0,radius*1.045,.065,brushed,20);
+  cylinder(g,'tank.top',0,2.34,0,radius*1.05,.16,darkSteel,20);
+  cylinder(g,'tank.hatch',0,2.46,0,radius*.36,.12,warning,12);
+  for(let i=0;i<5;i++) {
+    const y=.50+i*.38;
+    box(g,'tank.ladder.rung',0,y,-radius-.1,.61,.042,.065,brushed);
+  }
+  for(const x of [-.31,.31])
+    box(g,'tank.ladder.rail',x,1.17,-radius-.11,.05,1.68,.065,steel);
+  box(g,'tank.warning.plate',0,1.16,-radius-.03,radius*.92,.28,.045,warning);
+  return g;
+}
+
 export function makeDetailedProp(p:PropDef): THREE.Group | null {
   switch(p.kind){
     case 'tower':return guardTower(p);
@@ -202,6 +221,7 @@ export function makeDetailedProp(p:PropDef): THREE.Group | null {
     case 'crate':return woodenCrate(p);
     case 'press':return workshopPress(p);
     case 'basin':return washingBasin(p);
+    case 'tank':return yardTank(p);
     default:return null;
   }
 }
