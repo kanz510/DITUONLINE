@@ -42,7 +42,7 @@ test('An Phu cinematic landing, saved progress and upgraded scenery', async ({ b
     d.app.world.scene.traverse((o: any) => {
       if (o.name === 'watchtower.steel.cabin') watches++;
       if (o.name === 'workshop.assembly-bench') benches++;
-      if (o.name === 'hydraulic.press') machines++;
+      if (o.name === 'hydraulic.press' || (o.userData?.assetLoaded && o.userData?.assetPath === 'special/workshop-drill-press.glb')) machines++;
       if (o.name === 'perimeter.concertina-wire') coils++;
       if (o.name === 'prison.main-gate.facade') gate++;
     });
