@@ -194,4 +194,5 @@ Thêm GLB 2.0 tự dựng, không dùng asset trả phí, không Draco/KTX2, kh�
 - `visitation-phone.glb`: 3 điện thoại liên lạc lắp trên quầy thăm gặp và vách kính cũ.
 - `medical-first-aid-kit.glb`: hộp dụng cụ y tế gắn trên tủ phòng y tế.
 
+- `watchtower.glb`: tháp canh thép phong cách hoá cho các tháp canh sân nhà tù; giai đoạn tạo tài nguyên, chưa đấu nối vào game - sẽ tích hợp sau.
 Mọi đồ mới đều sử dụng collider `PROPS` hiện có, không thêm đường đi, interaction hay thay save/quest. GLB tích hợp qua `GLTFLoader` cache có fallback nếu trình duyệt không tải được; kiểm thử E2E xác nhận mô hình xuất hiện trong scene chứ không chỉ có file trên ổ đĩa.
