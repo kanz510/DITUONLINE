@@ -187,7 +187,6 @@ kín các nhu cầu đó. Khi Poly Haven hồi phục có thể bổ sung thêm 
 
 ## Đợt 2 — 5 model nguyên bản, glTF 2.0 (03/11/2026)
 Thêm GLB 2.0 tự dựng, không dùng asset trả phí, không Draco/KTX2, không phụ thuộc texture bên ngoài. Bản nguồn tại `assets/models/special/` và bản dùng trong game tại `public/models/special/` giữ **bytes y hệt nhau**.
-
 - `prison-transfer-bus.glb`: xe chở phạm nhân có cabin, chấn song cửa sổ, bánh, đèn và đường chỉ vàng; thay van ở bãi xe hiện hữu.
 - `hospital-bed.glb`: giường y tế, nệm, thanh chắn, bánh xe và cọc truyền dịch; thay đúng giường y tế hiện hữu.
 - `workshop-drill-press.glb`: máy khoan bàn chi tiết; thay phần nhìn của PROPS `press`, giữ nguyên vị trí/va chạm/logic.
@@ -206,5 +205,6 @@ Bản nguồn tại `assets/models/original/`, bản copy dùng lúc chạy tạ
 - `canteen_meal_tray.glb` — nhà ăn: khay cơm
 - `infirmary_medical_trolley.glb` — phòng y tế: xe đẩy thuốc
 - `guard_desk_radio.glb` — phòng cán bộ: radio bàn
+- `cell_sanitation_unit_blendstra.glb` — buồng giam: toilet + bồn rửa bản Blendstra (gốc Y giữa, cần +0,53 m khi gắn); ĐÃ CHỌN bản này để tích hợp thay cho cell_sanitation_unit.glb (bản Pack 01 giữ lại nhưng không dùng)
 
 Ghi chú: chưa đấu nối vào game — sẽ tích hợp sau.
