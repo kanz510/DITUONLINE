@@ -60,6 +60,8 @@ export class GameLogic {
       this.s.ending = null as any;
     }
     delete this.s.flags.release_pending_chapter4;
+    // VIỆC 6: Xóa sạch cấm căn tin trên mọi save cũ
+    delete this.s.flags.canteenBanUntil;
     if (!this.s.daily.tasks || this.s.daily.tasks.length === 0) {
       this.s.daily.tasks = generateDailyTasks(this.s);
     }
@@ -171,7 +173,8 @@ export class GameLogic {
     return (this.s.flags[`${q}:branch`] as string) || '';
   }
   canteenBanned() {
-    return ((this.s.flags.canteenBanUntil as number) ?? 0) >= this.s.day;
+    // VIỆC 6: Bỏ hẳn cơ chế cấm căn tin
+    return false;
   }
   addClue(id: string, text: string) {
     if (!this.s.clues.includes(id)) {
@@ -499,7 +502,6 @@ export class GameLogic {
     const def = ITEMS[id];
     if (!def?.price) return 'Mặt hàng không bán.';
     if (!this.canteenOpen()) return 'Căn tin chỉ mở 16:30–21:00.';
-    if (this.canteenBanned()) return `Bạn đang bị cấm mua căn tin đến hết ngày ${this.s.flags.canteenBanUntil}.`;
     const price = this.itemPrice(id);
     if (this.s.stats.money < price) return `Không đủ tiền (cần ${fmtMoney(price)}).`;
     return null;
@@ -585,8 +587,8 @@ export class GameLogic {
       // Kỷ luật khi tái phạm: 3 vi phạm còn hiệu lực trong 5 ngày
       const recent = this.s.violations.filter((x) => x.status !== 'overturned' && x.severity > 0 && x.day > this.s.day - 5);
       if (recent.length >= 2) {
-        this.s.flags.canteenBanUntil = Math.max((this.s.flags.canteenBanUntil as number) ?? 0, this.s.day + 1);
-        v.penalty += ' Tái phạm lần 3 trong 5 ngày → kỷ luật: cấm căn tin đến hết ngày mai.';
+        // VIỆC 6: Bỏ cấm căn tin khi tái phạm, giữ trừ điểm cải tạo
+        v.penalty += ' Tái phạm lần 3 trong 5 ngày → hạ hạnh kiểm và cảnh cáo nghiêm khắc.';
       }
     }
     this.s.violations.push(v);
@@ -1432,7 +1434,7 @@ export class GameLogic {
       delete this.s.inventory[it];
       if (it === 'hop_mui_khoan') {
         this.recordViolation('theft', `search-d${this.s.day}`, `Khám buồng ${reason}, tìm thấy hộp mũi khoan của kho xưởng trong đồ của bạn.`, { extra: '' });
-        this.s.flags.canteenBanUntil = this.s.day + 1;
+        // VIỆC 6: Bỏ đặt canteenBanUntil khi phát hiện tang vật
         if (this.qStatus('mon_no') === 'active') this.finishQuest('mon_no', 'failed', 'Tang vật bị khám thấy');
       } else {
         this.recordViolation('contraband', `search-d${this.s.day}-${it}`, `Khám buồng ${reason}, tìm thấy ${itemName(it)} trong chiếu của bạn.`, { appealTag: planted ? 'planted' : undefined });

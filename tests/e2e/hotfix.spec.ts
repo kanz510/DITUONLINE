@@ -79,8 +79,9 @@ test('canteen explains blocked purchases and confirms a successful purchase insi
     d.logic.s.flags.canteenBanUntil = d.logic.s.day + 1;
     d.app.ui.showCanteen();
   });
-  await expect(page.locator('[data-buy="banh_mi"]')).toBeDisabled();
-  await expect(page.locator('#canteen-status')).toContainText('cấm');
+  // VIỆC 6: Bỏ hẳn cơ chế cấm mua căn tin, nút Mua vẫn hoạt động bình thường khi mở cửa
+  await expect(page.locator('[data-buy="banh_mi"]')).toBeEnabled();
+  await expect(page.locator('#canteen-status')).not.toContainText('cấm');
 });
 
 test('dismissible information panels use a single X and balanced content', async ({ page }) => {

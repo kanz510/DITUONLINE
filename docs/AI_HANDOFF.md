@@ -8,6 +8,20 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-04 — Antigravity — VIỆC 6: Mở lại căn tin, bỏ hẳn cơ chế cấm mua
+- **Vấn đề đã xử lý:** Trước đây người chơi bị cấm mua căn tin (`canteenBanUntil`) trong 3 trường hợp (tái phạm lần 3 trong 5 ngày, bị bắt quả tang trộm hộp mũi khoan, khám buồng thấy hộp mũi khoan). Người chơi muốn bỏ hẳn cơ chế cấm căn tin này.
+- **Giải pháp:**
+  - Xóa cả 3 vị trí gán cờ `canteenBanUntil`:
+    1. Khi tái phạm lần 3 trong `recordViolation()` (`src/logic/game.ts`): hạ điểm cải tạo và cảnh cáo nghiêm khắc, không cấm căn tin.
+    2. Khám buồng thấy hộp mũi khoan trong `morningSearch()` (`src/logic/game.ts`): ghi nhận vi phạm trộm cắp, không cấm căn tin.
+    3. Bị bắt quả tang lấy hộp mũi khoan trong tương tác kệ kho xưởng (`src/main.ts`): ghi nhận vi phạm, thất bại nhiệm vụ Món nợ như cũ, không cấm căn tin.
+  - Xóa điều kiện chặn `canteenBanned()` trong `purchaseError()` (`src/logic/game.ts`) và trong giao diện `showCanteen()` (`src/ui/manager.ts`). Căn tin mở tự do trong khung giờ quy định (16:30–21:00) cho mọi người chơi có tiền.
+  - Tương thích save cũ: Trong constructor `GameLogic`, tự động xóa `this.s.flags.canteenBanUntil` khi nạp save để save nào đang bị cấm cũng được mở mua ngay lập tức.
+  - Giữ nguyên các hình phạt khác (vi phạm trừ cải tạo, thất bại quest Món nợ buồng 3 khi bị bắt, giá cả và mặt hàng căn tin).
+- **Kiểm thử:**
+  - Thêm `tests/unit/canteen-unban.test.ts` (5 bài test): kiểm tra `canteenBanned() === false`, xóa cờ trên save cũ, tái phạm/khám buồng không cấm căn tin, `purchaseError` cho phép mua trong giờ mở.
+  - Cập nhật `tests/e2e/hotfix.spec.ts` kiểm tra căn tin không bao giờ bị cấm. Toàn bộ 126 unit tests PASS 100%.
+
 ### 2026-11-04 — Antigravity — VIỆC 5: Xóa cơ chế mãn hạn tù theo ngày (Chỉ kết thúc qua nhiệm vụ "Kỳ xét đặc xá & Ngày tự do")
 - **Vấn đề đã xử lý:** Trước đây game tự kết thúc khi số ngày án còn lại về 0 trong `endDay()`. Các kỳ xét giảm án tự động trừ ngày làm quá trình khó lường và có thể ép game kết thúc khi người chơi chưa hoàn thành hết các nhiệm vụ Chương 4 (`loi_hua_chu_bay`, `truyen_nghe_cho_huy`, `chia_tay_thay_phuc`, `kiem_tra_suc_khoe`).
 - **Giải pháp:**

@@ -970,7 +970,7 @@ class App {
             const seen = this.world.seenByStorageCam(p.x, p.z) || this.npcs.tung.canSee(p.x, p.z, this.world.collision);
             if (seen) {
               g.recordViolation('theft', `caught-d${g.s.day}`, 'Camera kho / Cán bộ Tùng bắt quả tang bạn lấy hộp mũi khoan trên kệ.');
-              g.s.flags.canteenBanUntil = g.s.day + 2;
+              // VIỆC 6: Bỏ đặt canteenBanUntil khi bắt quả tang
               if (g.qStatus('mon_no') === 'active' && g.qBranch('mon_no') === 'steal') {
                 g.finishQuest('mon_no', 'failed', 'Bị bắt quả tang khi lấy hộp mũi khoan');
               }

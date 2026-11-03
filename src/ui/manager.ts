@@ -2386,9 +2386,7 @@ export class UIManager {
     const hasDiscount = this.g.hasPerk('canteen_discount');
     const status = !this.g.canteenOpen()
       ? 'Căn tin đang đóng cửa. Mở cửa 16:30–21:00.'
-      : this.g.canteenBanned()
-        ? `Bạn đang bị cấm mua căn tin đến hết ngày ${this.g.s.flags.canteenBanUntil}.`
-        : feedback ?? 'Căn tin đang mở. Chọn món để mua, sau đó dùng trong Túi đồ.';
+      : (feedback ?? 'Căn tin đang mở. Chọn món để mua, sau đó dùng trong Túi đồ.');
     const shopIds = Object.keys(ITEMS).filter((k) => ITEMS[k].price);
     const rows = shopIds
       .map((id) => {
