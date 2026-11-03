@@ -8,7 +8,7 @@ import { HumanoidRig } from './humanoid';
 // Stable Kenney skin per identity. This is visual only; NPC schedule/state remains untouched.
 const NPC_MODEL_SKINS: Record<NpcId, string> = {
   bay: 'g', huy: 'a', lam: 'c',
-  lan: 'j', tung: 'k', tu: 'b',
+  lan: 'j', tung: 'j', tu: 'b', // j = authentic blue police uniform; k is a red casual suit
   son: 'd', khai: 'e', phuc: 'q',
   an: 'i', mai: 'l',
 };
