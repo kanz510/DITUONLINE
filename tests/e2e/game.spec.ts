@@ -2,6 +2,8 @@ import { expect, test } from '@playwright/test';
 
 test('khởi chạy 3D, chuỗi nhiệm vụ → lựa chọn → hậu quả, lưu/tải và kết thúc ra tù', async ({ page }) => {
   await page.goto('/');
+  await expect(page.locator('#landing-primary')).toBeVisible();
+  await page.locator('#landing-primary').click();
 
   // Nếu hiển thị màn tạo nhân vật (lượt chơi mới), xác nhận & bỏ qua đoạn phim mở đầu
   const ccBtn = page.locator('#btn-cc-submit');
@@ -189,6 +191,8 @@ test('trải nghiệm điện thoại: xoay dọc/ngang, HUD gọn không đè, 
   });
   const page = await ctx.newPage();
   await page.goto('/');
+  await expect(page.locator('#landing-primary')).toBeVisible();
+  await page.locator('#landing-primary').click();
 
   // Máy đang dọc -> BẮT BUỘC hiện overlay nhắc xoay ngang, KHÔNG CÓ nút bỏ qua
   const overlay = page.locator('#orientation-overlay');
@@ -308,6 +312,8 @@ test('màn tạo nhân vật: thanh nút cố định đáy, chiều cao >= 48px
   });
   const page = await ctx.newPage();
   await page.goto('/');
+  await expect(page.locator('#landing-primary')).toBeVisible();
+  await page.locator('#landing-primary').click();
 
   const modalCc = page.locator('.modal.modal-cc');
   const btnSubmit = page.locator('#btn-cc-submit');
