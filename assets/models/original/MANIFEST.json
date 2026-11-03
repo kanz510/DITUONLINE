@@ -1,0 +1,127 @@
+{
+  "pack": "DITUONLINE Antigravity Asset Pack 01",
+  "date": "2026-11-03",
+  "target_repo": "kanz510/DITUONLINE",
+  "format": "glTF 2.0 binary GLB",
+  "engine": "Three.js 0.170",
+  "coordinate_system": "glTF Y-up; origin near footprint center at ground",
+  "unit": "1 unit = 1 meter",
+  "authoring": "Original procedural geometry generated in current conversation using local trimesh; no third-party meshes, models or textures.",
+  "extensionsRequired": [],
+  "draco": false,
+  "ktx2": false,
+  "textures": false,
+  "notes": "Assets not yet committed or integrated; Antigravity owns placement/collider and nav changes.",
+  "files": [
+    {
+      "name": "cell_sanitation_unit.glb",
+      "sha256": "b06472fa63e64c92d3c50ec57540d8c23361fffff651ad6e09ea713afee4632a",
+      "size_bytes": 61156,
+      "triangles": 3288,
+      "bounds_min_m": [
+        -0.32,
+        0.0,
+        -0.489
+      ],
+      "bounds_max_m": [
+        0.32,
+        1.339,
+        0.435
+      ],
+      "width_m": 0.64,
+      "height_m": 1.339,
+      "depth_m": 0.924,
+      "materials": 8,
+      "texture_dependencies": 0,
+      "license": "Original asset - created for the user; no third-party asset"
+    },
+    {
+      "name": "single_prison_locker.glb",
+      "sha256": "01388aba74b4e3f98df13c1cabbf63411b3de7a32d293dac962469d34b69afc7",
+      "size_bytes": 11004,
+      "triangles": 312,
+      "bounds_min_m": [
+        -0.29,
+        -0.005,
+        -0.354
+      ],
+      "bounds_max_m": [
+        0.29,
+        1.605,
+        0.265
+      ],
+      "width_m": 0.58,
+      "height_m": 1.61,
+      "depth_m": 0.618,
+      "materials": 7,
+      "texture_dependencies": 0,
+      "license": "Original asset - created for the user; no third-party asset"
+    },
+    {
+      "name": "canteen_meal_tray.glb",
+      "sha256": "c6fc46ed158aea4ae6193340975f9c085eb589e03ea75218f701d6baf517be11",
+      "size_bytes": 32948,
+      "triangles": 1528,
+      "bounds_min_m": [
+        -0.257,
+        -0.001,
+        -0.215
+      ],
+      "bounds_max_m": [
+        0.329,
+        0.18,
+        0.18
+      ],
+      "width_m": 0.586,
+      "height_m": 0.181,
+      "depth_m": 0.395,
+      "materials": 6,
+      "texture_dependencies": 0,
+      "license": "Original asset - created for the user; no third-party asset"
+    },
+    {
+      "name": "infirmary_medical_trolley.glb",
+      "sha256": "f761b1254abe0d9bb3245e3b04fb2931637107ac676518bd137a3d913fe63fa0",
+      "size_bytes": 25136,
+      "triangles": 988,
+      "bounds_min_m": [
+        -0.31,
+        0.023,
+        -0.257
+      ],
+      "bounds_max_m": [
+        0.31,
+        1.035,
+        0.252
+      ],
+      "width_m": 0.62,
+      "height_m": 1.012,
+      "depth_m": 0.509,
+      "materials": 9,
+      "texture_dependencies": 0,
+      "license": "Original asset - created for the user; no third-party asset"
+    },
+    {
+      "name": "guard_desk_radio.glb",
+      "sha256": "5a86b699e7e470fe34c261dcfe2c691888bd91d9644b2bc33b3febd894f5dd60",
+      "size_bytes": 9812,
+      "triangles": 256,
+      "bounds_min_m": [
+        -0.209,
+        0.0,
+        -0.152
+      ],
+      "bounds_max_m": [
+        0.155,
+        0.622,
+        0.157
+      ],
+      "width_m": 0.364,
+      "height_m": 0.622,
+      "depth_m": 0.309,
+      "materials": 7,
+      "texture_dependencies": 0,
+      "license": "Original asset - created for the user; no third-party asset"
+    }
+  ]
+}
