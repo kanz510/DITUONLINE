@@ -8,6 +8,25 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-03 — Antigravity — Thêm chế độ góc nhìn thứ nhất (FPS) tùy chọn (v0.4.11)
+- **Tính năng Góc nhìn thứ nhất (FPS) tùy chọn (`s.settings.cameraMode`):**
+  - Mặc định giữ nguyên góc nhìn thứ ba (`'third'`). Save cũ chưa có field này tự động fallback về `'third'` mà không làm thay đổi save format.
+  - Thêm công tắc chọn góc nhìn (`#sel-camera-mode`) trong modal Cài đặt & Âm thanh (`showPause`), nằm ngay cạnh mục chọn chất lượng đồ họa. Chuyển đổi tức thì, không làm hiệu ứng chuyển cảnh rườm rà.
+  - Ở chế độ `first`:
+    - Camera đặt chính xác tại vị trí mắt nhân vật (`y = 1.5m` so với mặt đất, theo rig chibi cao tổng 1.7m).
+    - Hướng nhìn tuân thủ yaw/pitch từ `InputController` (dùng chung hàm rotate và clamp pitch hiện có, không cho lộn ngược, FOV 58, near 0.15).
+    - Yaw camera đồng bộ với hướng di chuyển và tương tác của nhân vật (`p.rot` đồng bộ theo camera yaw).
+    - Bỏ qua distance và zoom chuột ở chế độ này.
+    - Ẩn toàn bộ rig nhân vật người chơi (`playerRig.root.visible = false` và `labelSprite.visible = false`) để tránh bị che khuất tầm nhìn. Các NPC, đồ vật và môi trường giữ nguyên 100%.
+  - Ở chế độ `third`:
+    - Khôi phục 100% hành vi cũ: khoảng cách distance, raycast chống xuyên tường, lookAt cao 1.32, zoom chuột và hiển thị đầy đủ rig nhân vật + nhãn tên "BẠN".
+  - Giữ nguyên toàn bộ HUD, nút Interact, joystick, minimap và chức năng "Tự đi" (camera bám đầu nhân vật khi tự đi, không swoop).
+- **Kiểm thử tự động:**
+  - Bổ sung 7 unit test trong `tests/unit/camera-mode.test.ts` kiểm tra mặc định `'third'`, lưu/tải backward-compatible, vị trí mắt 1.5m, hướng nhìn yaw/pitch, khôi phục third mode và bỏ qua wheel zoom.
+  - Bổ sung E2E test `tests/e2e/camera-fps.spec.ts` trên iPhone landscape (956×440): bật first → camera ở cao ~1.5m và rig ẩn; tương tác và di chuyển hoạt động; bật lại third → distance và rig khôi phục đầy đủ.
+  - Toàn bộ test suite: **77/77 unit test PASS** và **15/15 Playwright E2E test PASS** (100% passed).
+- **Đóng gói & Cache:** Tăng version lên `0.4.11`, chạy `npm run build` tạo gói phân phối sạch trong `dist/`, cập nhật `release.json` và `sw.js`.
+
 ### 2026-11-03 — Antigravity — Sửa 3 vấn đề gameplay: Việc ngày, Nhiệm vụ phụ & Chỉ dẫn chờ giờ (v0.4.10)
 - **FIX 1 — Việc ngày không bao giờ xong & rà soát hoàn thành:**
   - Khắc phục triệt để lỗi chết ở `endDay()` và `CURFEW_CHECK`: gọi `checkDailyTasks({ category: 'duty', taskId: 'duty_curfew' })` ngay khi `d.curfew` chốt `'ok'`, trước khi sinh lại `s.daily.tasks` cho ngày mới. Nhờ đó nhiệm vụ điểm danh tối buồng giam hoàn thành và thưởng nổ đủ 3 việc (+1 điểm cải tạo, thông báo chúc mừng) hoạt động chuẩn xác 100%.

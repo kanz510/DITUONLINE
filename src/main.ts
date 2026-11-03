@@ -126,6 +126,7 @@ class App {
       build: 1.0,
     }, undefined, playerModelSkin(prof.preset));
     this.world.scene.add(this.playerRig.root);
+    this.updateCameraMode();
 
     // Các NPC
     for (const id of Object.keys(NPCS) as NpcId[]) {
@@ -155,6 +156,7 @@ class App {
       onSettingChange: () => {
         this.world.setQuality(this.g.s.settings.quality, this.renderer);
         this.sfx.volume = this.g.s.settings.volume;
+        this.updateCameraMode();
       },
       onUpdateAppearance: (p) => {
         this.g.s.profile.skin = p.skin;
@@ -375,6 +377,18 @@ class App {
     const p = this.g.s.player;
     this.playerRig.root.position.set(p.x, 0, p.z);
     this.playerRig.root.rotation.y = p.rot;
+    this.updateCameraMode();
+  }
+
+  private updateCameraMode() {
+    const isFirstPerson = (this.g.s.settings.cameraMode ?? 'third') === 'first';
+    if (this.playerRig) {
+      this.playerRig.root.visible = !isFirstPerson;
+      if (this.playerRig.labelSprite) {
+        this.playerRig.labelSprite.visible = !isFirstPerson;
+      }
+    }
+    this.input.cameraMode = isFirstPerson ? 'first' : 'third';
   }
 
   isDoorPassable(area: string): boolean {
@@ -601,6 +615,9 @@ class App {
         const canSprint = mv.sprint && this.g.s.stats.stamina > 5;
         const speed = moving ? (canSprint ? 5.8 : 3.7) : 0;
 
+        const camMode = this.g.s.settings.cameraMode ?? 'third';
+        const isFirstPerson = camMode === 'first';
+
         if (moving) {
           const sin = Math.sin(this.input.yaw);
           const cos = Math.cos(this.input.yaw);
@@ -609,8 +626,12 @@ class App {
           const [nx, nz] = this.world.collision.move(p.x, p.z, wx * speed * dt, wz * speed * dt, 0.36);
           p.x = nx;
           p.z = nz;
-          p.rot = Math.atan2(wx, wz);
+          p.rot = isFirstPerson
+            ? Math.atan2(-Math.sin(this.input.yaw), -Math.cos(this.input.yaw))
+            : Math.atan2(wx, wz);
           this.sfx.step(dt, canSprint);
+        } else if (isFirstPerson) {
+          p.rot = Math.atan2(-Math.sin(this.input.yaw), -Math.cos(this.input.yaw));
         }
 
         this.playerRig.pose = this.resting ? 'sit' : moving ? 'walk' : 'stand';
@@ -653,7 +674,10 @@ class App {
       p.z,
     );
 
-    this.tpCam.update(p.x, p.z, this.input.yaw, this.input.pitch, this.input.distance, this.world.cameraObstacles);
+    const camMode = this.g.s.settings.cameraMode ?? 'third';
+    this.updateCameraMode();
+
+    this.tpCam.update(p.x, p.z, this.input.yaw, this.input.pitch, this.input.distance, this.world.cameraObstacles, camMode);
     this.currentPrompt = this.findPrompt();
     this.ui.updateHUD(this.currentPrompt, this.computeGuide());
     this.renderer.render(this.world.scene, this.tpCam.cam);

@@ -9,6 +9,7 @@ export class InputController {
   pitch = 0.42;
   distance = 5.4;
   sensitivity = 1;
+  cameraMode: 'third' | 'first' = 'third';
   private dragging = false;
   private lastX = 0;
   private lastY = 0;
@@ -68,6 +69,7 @@ export class InputController {
     canvas.addEventListener(
       'wheel',
       (e) => {
+        if (this.cameraMode === 'first') return;
         this.distance = Math.max(2.6, Math.min(9, this.distance + e.deltaY * 0.003));
       },
       { passive: true },
@@ -192,7 +194,28 @@ export class ThirdPersonCamera {
   private ray = new THREE.Raycaster();
   private smoothDist = 5.4;
 
-  update(px: number, pz: number, yaw: number, pitch: number, desiredDist: number, obstacles: THREE.Object3D[]) {
+  update(
+    px: number,
+    pz: number,
+    yaw: number,
+    pitch: number,
+    desiredDist: number,
+    obstacles: THREE.Object3D[],
+    mode: 'third' | 'first' = 'third',
+  ) {
+    if (mode === 'first') {
+      const eyeHeight = 1.5;
+      const lookPitch = -(pitch - 0.42);
+      const cosP = Math.cos(lookPitch);
+      const sinP = Math.sin(lookPitch);
+      const dirX = -Math.sin(yaw) * cosP;
+      const dirY = sinP;
+      const dirZ = -Math.cos(yaw) * cosP;
+      this.cam.position.set(px, eyeHeight, pz);
+      this.cam.lookAt(px + dirX, eyeHeight + dirY, pz + dirZ);
+      return;
+    }
+
     const target = new THREE.Vector3(px, 1.4, pz);
     const offset = new THREE.Vector3(
       Math.sin(yaw) * Math.cos(pitch),

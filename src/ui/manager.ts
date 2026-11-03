@@ -1883,6 +1883,14 @@ export class UIManager {
          </label>
        </div>
        <div class="card-row">
+         <label>Góc nhìn camera:
+           <select id="sel-camera-mode">
+             <option value="third" ${(st.cameraMode ?? 'third') === 'third' ? 'selected' : ''}>Góc nhìn thứ ba (Mặc định)</option>
+             <option value="first" ${(st.cameraMode ?? 'third') === 'first' ? 'selected' : ''}>Góc nhìn thứ nhất (FPS)</option>
+           </select>
+         </label>
+       </div>
+       <div class="card-row">
          <label>Âm lượng: <input type="range" id="rng-vol" min="0" max="1" step="0.05" value="${st.volume}"/></label>
        </div>
        ${this.hooks.onRestoreBackup ? `
@@ -1899,6 +1907,11 @@ export class UIManager {
       (el) => {
         el.querySelector('#sel-q')?.addEventListener('change', (e) => {
           this.g.s.settings.quality = (e.target as HTMLSelectElement).value as 'low' | 'medium' | 'high';
+          this.hooks.onSettingChange();
+          this.g.commit();
+        });
+        el.querySelector('#sel-camera-mode')?.addEventListener('change', (e) => {
+          this.g.s.settings.cameraMode = (e.target as HTMLSelectElement).value as 'third' | 'first';
           this.hooks.onSettingChange();
           this.g.commit();
         });
