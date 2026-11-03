@@ -1,0 +1,34 @@
+name: Verify final Phase 3 public Pages build
+on:
+  push:
+    branches: [verify/phase3-all-20261103]
+    paths: [.github/workflows/phase3-final-live.yml]
+permissions:
+  contents: read
+jobs:
+  http-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read public site release without repository API
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://kanz510.github.io/DITUONLINE'
+          for i in $(seq 1 14); do
+            TOKEN="$(date +%s)-${i}"
+            for URL in "$BASE" "$BASE/dist"; do
+              J="$(curl -fsSL --connect-timeout 10 --max-time 20 -H 'Cache-Control: no-cache' "$URL/release.json?test=$TOKEN" || true)"
+              H="$(curl -fsSL --connect-timeout 10 --max-time 20 -H 'Cache-Control: no-cache' "$URL/?test=$TOKEN" || true)"
+              echo "Try $i URL=$URL release=${J:0:180}"
+              if printf '%s' "$J" | grep -q '"version": "0.4.4"' &&
+                 printf '%s' "$J" | grep -q '367ed1bbb8a0' &&
+                 printf '%s' "$H" | grep -q '367ed1bbb8a0'; then
+                echo "PASS v0.4.4 367ed1bbb8a0 $URL/"
+                exit 0
+              fi
+            done
+            sleep 7
+          done
+          echo 'FAIL expected public release not found'
+          exit 1
