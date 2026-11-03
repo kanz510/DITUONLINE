@@ -1,4 +1,4 @@
-import { SAVE_VERSION, createInitialState, createStats, type CharacterProfile, type GameState, type Progression } from './state';
+import { SAVE_VERSION, createInitialState, createStats, xpForNextLevel, type CharacterProfile, type GameState, type Progression } from './state';
 import { START_SENTENCE } from './constants';
 
 export const SAVE_KEY = 'ditu-online.save';
@@ -109,7 +109,95 @@ export function migrate(raw: any, storage?: StorageLike | null): GameState | nul
     relations: { ...def.relations, ...st.relations },
     version: SAVE_VERSION,
   };
+  healStuckQuests(merged);
   return merged;
+}
+
+/**
+ * Tự động chữa lành các nhiệm vụ bị kẹt trong dữ liệu lưu cũ (ví dụ: cam_do_im_lang bị kẹt ở v0.4.9).
+ */
+export function healStuckQuests(s: GameState): boolean {
+  if (!s || !s.quests) return false;
+  let healed = false;
+
+  const camDo = s.quests.cam_do_im_lang;
+  if (camDo && camDo.status === 'active') {
+    const flags = s.flags || (s.flags = {});
+    const doneGap = !!flags['cam_do_im_lang:gap_lam_ch3'];
+    const doneQuyetDinh = !!flags['cam_do_im_lang:quyet_dinh_im_lang'] || !!flags['cam_do_im_lang:quyet_dinh'];
+
+    if (doneGap && doneQuyetDinh) {
+      const branch: 'accept' | 'refuse' = flags.accepted_lam_bribe ? 'accept' : ((flags['cam_do_im_lang:branch'] as any) || 'refuse');
+      flags['cam_do_im_lang:branch'] = branch;
+      flags['cam_do_im_lang:gap_lam_ch3'] = true;
+      flags['cam_do_im_lang:quyet_dinh_im_lang'] = true;
+
+      camDo.status = 'done';
+      camDo.outcome = branch === 'accept' ? 'Nhận tiền im lặng' : 'Từ chối mua chuộc';
+
+      const branchDesc = branch === 'accept'
+        ? 'Thỏa hiệp nhận 50.000đ và dừng đào sâu sự thật'
+        : 'Kiên quyết từ chối, quyết tâm tìm lại sự trong sạch';
+      camDo.choices = camDo.choices || [];
+      if (!camDo.choices.includes(branchDesc)) {
+        camDo.choices.push(branchDesc);
+      }
+
+      if (!camDo.rewarded) {
+        camDo.rewarded = true;
+        if (!s.progression) {
+          s.progression = { level: 1, xp: 0, skillPoints: 0, attrs: { endurance: 2, agility: 2, perception: 1, charisma: 1 } };
+        }
+        s.progression.xp = (s.progression.xp || 0) + 70;
+        while (s.progression.level < 10) {
+          const needed = xpForNextLevel(s.progression.level);
+          if (s.progression.xp >= needed) {
+            s.progression.xp -= needed;
+            s.progression.level += 1;
+            s.progression.skillPoints = (s.progression.skillPoints || 0) + 1;
+          } else {
+            break;
+          }
+        }
+      }
+
+      if (!s.quests.bay_vat_cam || s.quests.bay_vat_cam.status === 'locked') {
+        s.quests.bay_vat_cam = {
+          status: 'active',
+          step: 0,
+          choices: [],
+          rewarded: false,
+          startedDay: s.day || 1,
+        };
+      }
+
+      if (s.daily?.tasks) {
+        for (const t of s.daily.tasks) {
+          if (t.id === 'personal_quest' && (t.title.includes('im lặng') || t.title.includes('Lời đề nghị'))) {
+            t.done = true;
+          }
+        }
+      }
+
+      healed = true;
+    }
+  }
+
+  // Tự mở bay_vat_cam nếu cam_do_im_lang đã done mà bay_vat_cam chưa mở (nhánh accept ở v0.4.9)
+  if (s.quests.cam_do_im_lang?.status === 'done') {
+    if (!s.quests.bay_vat_cam || s.quests.bay_vat_cam.status === 'locked') {
+      s.quests.bay_vat_cam = {
+        status: 'active',
+        step: 0,
+        choices: [],
+        rewarded: false,
+        startedDay: s.day || 1,
+      };
+      healed = true;
+    }
+  }
+
+  return healed;
 }
 
 export function serialize(state: GameState): string {

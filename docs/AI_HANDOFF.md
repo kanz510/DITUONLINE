@@ -8,6 +8,33 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-03 — Antigravity — Sửa nhiệm vụ "Lời đề nghị im lặng" (cam_do_im_lang) & Tự sửa save cũ kẹt (v0.4.12)
+- **Sửa dứt điểm lỗi kẹt nhiệm vụ `cam_do_im_lang` ("Lời đề nghị im lặng"):**
+  - **Nguyên nhân cốt lõi:** `finishQuest('cam_do_im_lang', 'done')` có guard kiểm tra branch flag nếu quest có `branches`. Trước đây, đoạn hội thoại Lâm (`src/data/dialogues.ts`) gọi thẳng `completeObjective` và `finishQuest` mà không gọi `chooseBranch` và không ghi `cam_do_im_lang:branch`. Ngoài ra, `chooseBranch` trước đây hardcode bước `'quyet_dinh'` trong khi `cam_do_im_lang` đặt tên bước là `'quyet_dinh_im_lang'`. Dẫn đến nhiệm vụ kẹt `active` mãi, không đóng, không trả 70 XP thưởng, và nhánh nhận tiền còn không mở `bay_vat_cam`.
+  - **Sửa trong `src/logic/game.ts`:**
+    - Cải tiến `chooseBranch(q, branch, outcome?)`: tự động tìm kiếm bước quyết định linh hoạt (`o.id === 'quyet_dinh' || o.id === 'quyet_dinh_im_lang' || o.id.startsWith('quyet_dinh')`), ghi nhận `outcome` nếu có, hoàn thành đúng bước quyết định của nhiệm vụ, kích hoạt `checkQuest`.
+    - Trong `finishQuest`: bảo vệ bổ sung nếu branch flag chưa ghi cho `cam_do_im_lang` thì tự động suy từ cờ `accepted_lam_bribe` (`true` → `'accept'`, ngược lại → `'refuse'`) để không bao giờ bị chặn oan; đồng thời cho phép cập nhật `outcome` nếu nhiệm vụ vừa được đóng từ `checkQuest`.
+    - Bổ sung `checkMoneyObjective()` vào `addStat('money')` để đồng bộ tiền kiếm được.
+  - **Sửa trong `src/data/dialogues.ts`:**
+    - Cả 2 phương án hội thoại với Lâm (từ chối mua chuộc & nhận tiền im lặng) đều gọi `g.chooseBranch('cam_do_im_lang', 'refuse'/'accept', ...)` để ghi branch flag chuẩn xác TRƯỚC khi chốt nhiệm vụ.
+    - Bảo đảm `bay_vat_cam` ("Cái bẫy vật cấm") được mở ở CẢ 2 phương án (gọi cả trong `grantQuestResult('cam_do_im_lang')` lẫn trực tiếp trong hội thoại), giải phóng người chơi tiếp tục Chương 3.
+  - **Rà soát các nhiệm vụ có branches:**
+    - Toàn bộ repo chỉ có 2 nhiệm vụ có branches: `mon_no` và `cam_do_im_lang`. `mon_no` đã gọi `chooseBranch` chuẩn xác và hoạt động hoàn hảo.
+  - **Tự sửa save cũ khi load game (`healStuckQuests`):**
+    - Tích hợp trực tiếp vào `migrate()` trong `src/logic/save.ts` và hàm khởi tạo `GameLogic`:
+    - Nếu `cam_do_im_lang` đang `'active'` mà cả 2 bước đã ✔: tự động suy branch từ `accepted_lam_bribe`, ghi cờ branch (`'refuse'` hoặc `'accept'`), chuyển status thành `'done'`, ghi `outcome`, đẩy lựa chọn vào `choices`, trao 70 XP bù (tự động tính thăng cấp nếu chạm ngưỡng), mở nhiệm vụ kế tiếp `bay_vat_cam` nếu đang locked, và tự đánh dấu hoàn thành dòng Việc hôm nay nếu có.
+    - Nếu `cam_do_im_lang` đã `'done'` nhưng `bay_vat_cam` chưa mở (do chơi nhánh nhận tiền ở bản cũ), tự động mở `bay_vat_cam`.
+- **Kiểm thử tự động:**
+  - Bổ sung file test chuyên biệt `tests/unit/cam-do-im-lang.test.ts` gồm 6 bài test:
+    1. Đóng nhiệm vụ qua hội thoại từ chối: ghi branch refuse, trao 70 XP, mở `bay_vat_cam`.
+    2. Đóng nhiệm vụ qua hội thoại nhận tiền: ghi branch accept, trao 70 XP, tiền +50, mở `bay_vat_cam`.
+    3. Tự sửa save cũ bị kẹt (trường hợp từ chối như của Him): tự đóng done, trao bù XP, thăng cấp, mở `bay_vat_cam`, xóa dòng việc ngày kẹt.
+    4. Tự sửa save cũ bị kẹt (trường hợp nhận tiền).
+    5. Tự mở `bay_vat_cam` nếu đã done nhưng bị kẹt locked.
+    6. Kiểm tra `mon_no` qua `chooseBranch` vẫn hoạt động trơn tru.
+  - Toàn bộ **83/83 unit test PASS 100%**.
+- **Đóng gói & Cache:** Tăng version lên `0.4.12`, chạy `npm run build` tạo gói phân phối sạch trong `dist/`, cập nhật `release.json` và `sw.js`.
+
 ### 2026-11-03 — Antigravity — Thêm chế độ góc nhìn thứ nhất (FPS) tùy chọn (v0.4.11)
 - **Tính năng Góc nhìn thứ nhất (FPS) tùy chọn (`s.settings.cameraMode`):**
   - Mặc định giữ nguyên góc nhìn thứ ba (`'third'`). Save cũ chưa có field này tự động fallback về `'third'` mà không làm thay đổi save format.

@@ -515,8 +515,10 @@ function lamDialogue(g: GameLogic): DNode {
             label: 'Tôi từ chối. Sự thật phải được làm rõ.',
             run: () => {
               if (!g.qObj('cam_do_im_lang', 'gap_lam_ch3')) g.completeObjective('cam_do_im_lang', 'gap_lam_ch3');
-               g.completeObjective('cam_do_im_lang', 'quyet_dinh_im_lang');
-              g.finishQuest('cam_do_im_lang', 'done', 'Từ chối mua chuộc');
+              g.chooseBranch('cam_do_im_lang', 'refuse', 'Từ chối mua chuộc');
+              if (g.qStatus('cam_do_im_lang') === 'active') {
+                g.finishQuest('cam_do_im_lang', 'done', 'Từ chối mua chuộc');
+              }
               g.changeRel('lam', -30, 'Minh từ chối lời đề nghị im lặng');
               g.addReform(6, 'Kiên quyết giữ vững sự thật');
               g.startQuest('bay_vat_cam');
@@ -531,11 +533,14 @@ function lamDialogue(g: GameLogic): DNode {
             label: 'Được rồi, tôi cầm tiền và không nhắc tới nữa.',
             run: () => {
               if (!g.qObj('cam_do_im_lang', 'gap_lam_ch3')) g.completeObjective('cam_do_im_lang', 'gap_lam_ch3');
-               g.completeObjective('cam_do_im_lang', 'quyet_dinh_im_lang');
-              g.finishQuest('cam_do_im_lang', 'done', 'Nhận tiền im lặng');
-              g.addStat('money', 50);
               g.s.flags.accepted_lam_bribe = true;
+              g.chooseBranch('cam_do_im_lang', 'accept', 'Nhận tiền im lặng');
+              if (g.qStatus('cam_do_im_lang') === 'active') {
+                g.finishQuest('cam_do_im_lang', 'done', 'Nhận tiền im lặng');
+              }
+              g.addStat('money', 50);
               g.changeRel('lam', 25, 'Minh đồng ý nhận tiền im lặng');
+              g.startQuest('bay_vat_cam');
               return {
                 speaker: 'Lâm',
                 text: 'Biết điều đấy. Cứ yên phận cải tạo thì tao không để mày thiệt đâu.',

@@ -7,6 +7,7 @@ import {
 } from './state';
 import { generateDailyTasks } from './daily-plan';
 import { addSentence, applyReview, serveDay } from './sentence';
+import { healStuckQuests } from './save';
 import { VIOLATIONS } from '../data/violations';
 import { ITEMS, itemName } from '../data/items';
 import { QUESTS, QUEST_ORDER } from '../data/quests';
@@ -52,6 +53,7 @@ export class GameLogic {
 
   constructor(state?: GameState) {
     this.s = state ?? createInitialState();
+    healStuckQuests(this.s);
     if (!this.s.daily.tasks || this.s.daily.tasks.length === 0) {
       this.s.daily.tasks = generateDailyTasks(this.s);
     }
@@ -359,6 +361,7 @@ export class GameLogic {
   addStat(k: keyof Stats, delta: number) {
     if (k === 'money') {
       this.s.stats.money = Math.max(0, Math.round((this.s.stats.money + delta) * 10) / 10);
+      this.checkMoneyObjective();
     } else if (k === 'hunger') {
       // Tương thích ngược: tăng hunger = giảm độ no (satiety)
       this.s.stats.satiety = clampStat(this.s.stats.satiety - delta);
@@ -712,14 +715,23 @@ export class GameLogic {
     return true;
   }
 
-  chooseBranch(q: string, branch: string) {
+  chooseBranch(q: string, branch: string, outcome?: string) {
     if (this.qStatus(q) !== 'active' || this.qBranch(q) || !QUESTS[q]?.branches?.[branch]) return false;
-    const reason = this.objectiveBlockReason(q, 'quyet_dinh');
+    const def = QUESTS[q];
+    const decisionObj = def.objectives.find((o) =>
+      o.id === 'quyet_dinh' || o.id === 'quyet_dinh_im_lang' || o.id.startsWith('quyet_dinh')
+    );
+    const decisionId = decisionObj ? decisionObj.id : 'quyet_dinh';
+    const reason = this.objectiveBlockReason(q, decisionId);
     if (reason) { this.notify(reason, 'warn'); return false; }
     this.s.flags[`${q}:branch`] = branch;
-    this.s.quests[q]?.choices.push(QUESTS[q].branches?.[branch] ?? branch);
-    this.event(`Quyết định: ${QUESTS[q].branches?.[branch] ?? branch}`);
-    this.completeObjective(q, 'quyet_dinh');
+    const choiceText = QUESTS[q].branches?.[branch] ?? branch;
+    this.s.quests[q]?.choices.push(choiceText);
+    this.event(`Quyết định: ${choiceText}`);
+    if (outcome && this.s.quests[q]) {
+      this.s.quests[q].outcome = outcome;
+    }
+    this.completeObjective(q, decisionId);
     // The pay branch may be chosen when the player already has enough clean money.
     if (q === 'mon_no' && branch === 'pay') this.checkMoneyObjective();
     this.commit();
@@ -736,10 +748,22 @@ export class GameLogic {
 
   finishQuest(q: string, status: 'done' | 'failed', outcome?: string) {
     const st = this.s.quests[q];
-    if (!st || st.status !== 'active') return;
+    if (!st) return;
+    if (st.status === status) {
+      if (outcome && (!st.outcome || st.outcome === QUESTS[q]?.branches?.[this.qBranch(q)])) {
+        st.outcome = outcome;
+        this.commit();
+      }
+      return;
+    }
+    if (st.status !== 'active') return;
+    const def = QUESTS[q];
+    let branch = this.qBranch(q);
     if (status === 'done') {
-      const def = QUESTS[q];
-      const branch = this.qBranch(q);
+      if (def?.branches && !branch && q === 'cam_do_im_lang') {
+        branch = this.s.flags.accepted_lam_bribe ? 'accept' : 'refuse';
+        this.s.flags[`${q}:branch`] = branch;
+      }
       const incomplete = def.objectives.find((o) =>
         !o.optional && (!o.branch || o.branch === branch) && !this.s.flags[`${q}:${o.id}`]);
       if (incomplete || (def.branches && !branch)) {
@@ -750,7 +774,7 @@ export class GameLogic {
       }
     }
     st.status = status;
-    st.outcome = outcome ?? st.outcome;
+    st.outcome = outcome ?? st.outcome ?? (def?.branches && branch ? def.branches[branch] : undefined);
     if (!st.rewarded) {
       st.rewarded = true; // đặt cờ trước khi trao thưởng để không bao giờ trao trùng
       this.grantQuestResult(q, status);
