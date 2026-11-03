@@ -8,6 +8,15 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-04 — Antigravity — VIỆC 2: Hiển thị nhiệm vụ quá giờ rõ ràng ("Đã qua giờ — lý do / thử lại")
+- **Vấn đề đã xử lý:** Nhiệm vụ theo khung giờ (điểm danh 06:30–06:45, chấm công 08:00–08:30...) khi quá giờ mà chưa xong vẫn giữ nguyên dòng cũ khiến người chơi tưởng nhiệm vụ bị treo.
+- **Giải pháp:**
+  - Bổ sung hàm `getQuestOverdueStatus(qId, s)` trong `src/logic/daily-plan.ts`.
+  - Khi bước hiện tại của nhiệm vụ quá khung giờ mà chưa xong: thanh HUD quest bar và dòng nhiệm vụ trong Nhật ký đổi thành `"Đã qua giờ — <câu failure của nhiệm vụ hoặc 'Thử lại vào <khung giờ> sáng mai'>"`. Giữ nguyên logic, không đổi trạng thái nhiệm vụ, không cho hoàn thành ngoài giờ.
+  - Việc ngày trong bảng việc ngày (`showDailyPlanModal`): đổi badge chưa xong thành `"⚠️ Đã lỡ hôm nay"` khi `s.minute > t.endMinute`, sáng mai tạo việc mới như thường.
+- **Kiểm thử:** Thêm `tests/unit/quest-overdue.test.ts` (3 test cases PASS 100%).
+
+
 ### 2026-11-04 — Antigravity — VIỆC 1: Sửa NPC kẹt cản nhau (Nhường đường, Né vuông góc & Đổi tuyến Nav)
 - **Vấn đề đã xử lý:** Trước đây hai NPC hoặc người chơi và NPC khi va chạm trong bán kính tách 0.52m chỉ bị đẩy cơ học, thiếu cơ chế nhường đường dẫn tới kẹt cứng tại các hành lang/cửa hẹp.
 - **Giải pháp:**

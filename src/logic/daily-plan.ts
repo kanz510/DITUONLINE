@@ -82,6 +82,74 @@ export function getQuestWaitingDetails(s: GameState): QuestWaitingDetails {
   return { waiting: false };
 }
 
+export interface QuestOverdueDetails {
+  overdue: boolean;
+  message?: string;
+  timeRange?: string;
+  failure?: string;
+}
+
+export function getQuestOverdueStatus(qId: string, s: GameState): QuestOverdueDetails {
+  const q = s.quests[qId];
+  if (!q || q.status !== 'active') return { overdue: false };
+  const qDef = QUESTS[qId];
+  if (!qDef) return { overdue: false };
+
+  const br = (s.flags[`${qId}:branch`] as string) || '';
+  const curObj = qDef.objectives.find((o) => (!o.branch || o.branch === br) && !s.flags[`${qId}:${o.id}`]);
+  if (!curObj) return { overdue: false };
+
+  let isOverdue = false;
+  let timeRange = '';
+
+  if (qId === 'nhap_trai' && curObj.id === 'diem_danh') {
+    if (s.minute > 405) {
+      isOverdue = true;
+      timeRange = '06:30–06:45';
+    }
+  } else if (qId === 'ca_dau') {
+    if (curObj.id === 'cham_cong' && s.minute > 510) {
+      isOverdue = true;
+      timeRange = '08:00–08:30';
+    } else if (curObj.id === 'lao_dong' && s.minute > 690) {
+      isOverdue = true;
+      timeRange = '08:00–11:30';
+    }
+  } else if (qId === 'lop_nghe_dau' && curObj.id === 'den_lop') {
+    if (s.minute > 990) {
+      isOverdue = true;
+      timeRange = '14:00–16:30';
+    }
+  } else if (qId === 'phong_tham_gap' && curObj.id === 'gap_mai') {
+    if (s.minute > 990 || (s.minute > 660 && s.minute < 840)) {
+      isOverdue = true;
+      timeRange = '08:30–11:00 & 14:00–16:30';
+    }
+  }
+
+  if (isOverdue) {
+    const failureMsg = qDef.failure?.trim();
+    const reason = failureMsg && failureMsg.length > 0 ? failureMsg : `Thử lại vào ${timeRange} sáng mai`;
+    return {
+      overdue: true,
+      timeRange,
+      failure: failureMsg,
+      message: `Đã qua giờ — ${reason}`,
+    };
+  }
+  return { overdue: false };
+}
+
+export function getActiveQuestOverdue(s: GameState): QuestOverdueDetails {
+  for (const qid of Object.keys(s.quests)) {
+    if (s.quests[qid]?.status === 'active') {
+      const res = getQuestOverdueStatus(qid, s);
+      if (res.overdue) return res;
+    }
+  }
+  return { overdue: false };
+}
+
 /** Quy tắc và mốc cốt truyện mở nhiệm vụ phụ. */
 export const SIDE_QUEST_UNLOCK_RULES: Record<
   string,

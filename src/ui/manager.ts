@@ -14,7 +14,7 @@ import { BUILDINGS, DOORS, zoneName } from '../world/layout';
 import type { NpcActor } from '../actors/npc';
 import type { SoundEngine } from '../core/audio';
 import { getReleaseInfo, type AppReleaseInfo } from '../version';
-import { getDailySchedule, getQuestWaitingDetails, SIDE_QUEST_UNLOCK_RULES } from '../logic/daily-plan';
+import { getDailySchedule, getQuestWaitingDetails, getQuestOverdueStatus, getActiveQuestOverdue, SIDE_QUEST_UNLOCK_RULES } from '../logic/daily-plan';
 import { FLASHBACK_CHOICES } from '../core/cutscene';
 
 export interface PromptTarget {
@@ -28,6 +28,7 @@ export interface GuideTarget {
   label: string;
   dist: number;
   angle: number;
+  questId?: string;
   isDuty?: boolean;
   questTitle?: string;
   stepDesc?: string;
@@ -440,18 +441,22 @@ export class UIManager {
 
     // 3. Bảng mục tiêu chi tiết, hỗ trợ tự đi và thu gọn
     const waitingDetails = getQuestWaitingDetails(s);
-    const isWaiting = !guideTarget?.isDuty && waitingDetails.waiting;
+    const overdue = guideTarget?.questId ? getQuestOverdueStatus(guideTarget.questId, s) : getActiveQuestOverdue(s);
+    const isWaiting = !guideTarget?.isDuty && waitingDetails.waiting && !overdue.overdue;
 
     let qTitle = guideTarget?.questTitle || 'Sinh hoạt trại giam';
-    let qStep = guideTarget?.stepDesc || guideTarget?.label || 'Tham gia các hoạt động theo lịch trình';
+    let qStep = overdue.overdue ? (overdue.message || 'Đã qua giờ') : (guideTarget?.stepDesc || guideTarget?.label || 'Tham gia các hoạt động theo lịch trình');
     const qProg = guideTarget?.progress ? ` <span style="color:#86efac;font-weight:700">(${guideTarget.progress})</span>` : '';
-    let qTag = guideTarget?.isDuty ? '🔔 Nghĩa vụ' : isWaiting ? '⏳ Chờ giờ' : '🎯 Mục tiêu';
-    const isDutyCls = guideTarget?.isDuty ? 'duty' : isWaiting ? 'waiting' : '';
+    let qTag = guideTarget?.isDuty ? '🔔 Nghĩa vụ' : overdue.overdue ? '⚠️ Quá giờ' : isWaiting ? '⏳ Chờ giờ' : '🎯 Mục tiêu';
+    const isDutyCls = guideTarget?.isDuty ? 'duty' : overdue.overdue ? 'missed' : isWaiting ? 'waiting' : '';
     const destName = guideTarget?.targetName || guideTarget?.label || '';
     const distText = guideTarget ? `${Math.round(guideTarget.dist)}m` : '';
     let openCond = guideTarget?.openCondition ? `<span class="quest-open-cond ${guideTarget.isLocked ? 'locked' : ''}">⏰ ${guideTarget.openCondition}</span>` : '';
 
-    if (isWaiting && waitingDetails.timeRange) {
+    if (overdue.overdue) {
+      qStep = overdue.message || 'Đã qua giờ';
+      openCond = `<span class="quest-open-cond locked">⚠️ ${overdue.timeRange ? `Lỡ khung giờ ${overdue.timeRange}` : 'Đã qua giờ'}</span>`;
+    } else if (isWaiting && waitingDetails.timeRange) {
       qStep = `Chờ mở cửa: ${waitingDetails.timeRange} · Gợi ý: Làm việc ngày / rèn luyện trong lúc chờ`;
       openCond = `<span class="quest-open-cond locked">⏰ Chờ mở cửa: ${waitingDetails.timeRange}</span>`;
     } else if (!guideTarget) {
@@ -1279,9 +1284,12 @@ export class UIManager {
     const taskItemsHTML = tasks
       .map((t) => {
         const isDone = t.done;
+        const isMissed = !isDone && t.endMinute !== undefined && s.minute > t.endMinute;
         const statusBadge = isDone
           ? `<span class="daily-badge done">✔ Đã xong (+10 XP)</span>`
-          : `<span class="daily-badge pending">⏳ Chưa xong</span>`;
+          : isMissed
+            ? `<span class="daily-badge missed" style="background:rgba(239,68,68,0.18);color:#fca5a5;border:1px solid rgba(239,68,68,0.4)">⚠️ Đã lỡ hôm nay</span>`
+            : `<span class="daily-badge pending">⏳ Chưa xong</span>`;
         const catLabel = t.category === 'duty' ? 'Nghĩa vụ' : t.category === 'relation' ? 'Quan hệ' : 'Cá nhân';
         return `
           <div class="daily-task-card ${isDone ? 'done' : ''}">
@@ -1622,9 +1630,17 @@ export class UIManager {
   private renderQuestCard(qid: string): string {
     const q = QUESTS[qid];
     const br = this.g.qBranch(qid);
+    const overdue = getQuestOverdueStatus(qid, this.g.s);
     const objs = q.objectives
       .filter((o) => !o.branch || o.branch === br)
-      .map((o) => `<div style="margin-left:8px">${this.g.qObj(qid, o.id) ? '✔' : '○'} ${o.text}</div>`)
+      .map((o) => {
+        const isDone = this.g.qObj(qid, o.id);
+        if (isDone) return `<div style="margin-left:8px">✔ ${o.text}</div>`;
+        if (overdue.overdue && !isDone) {
+          return `<div style="margin-left:8px;color:#fca5a5">⚠️ ${o.text} — <b style="color:#f87171">${overdue.message}</b></div>`;
+        }
+        return `<div style="margin-left:8px">○ ${o.text}</div>`;
+      })
       .join('');
     return `
       <div class="card-row">
