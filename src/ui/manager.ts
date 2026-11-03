@@ -15,6 +15,7 @@ import type { NpcActor } from '../actors/npc';
 import type { SoundEngine } from '../core/audio';
 import { getReleaseInfo, type AppReleaseInfo } from '../version';
 import { getDailySchedule } from '../logic/daily-plan';
+import { FLASHBACK_CHOICES } from '../core/cutscene';
 
 export interface PromptTarget {
   id: string;
@@ -99,7 +100,6 @@ export class UIManager {
       onSleep: () => void;
       onReset: () => void;
       onSettingChange: () => void;
-      onRewatchIntro?: () => void;
       onUpdateAppearance?: (look: { skin: number; hair: number; hairStyle: 'short' | 'buzz' | 'bald'; preset: number }) => void;
       onRestoreBackup?: () => void;
       onAutoWalk?: (tx: number, tz: number, isLocked?: boolean, safeX?: number, safeZ?: number, targetName?: string) => void;
@@ -749,6 +749,7 @@ export class UIManager {
     let hair = 0x18181b;
     let hairStyle: 'short' | 'buzz' | 'bald' = (this.g.s.profile?.hairStyle as any) || 'short';
     let background: BackgroundId = this.g.s.profile?.background ?? 'mechanic';
+    let flashbackChoice: 'keep_doc' | 'help_victim' | 'chase_contact' = this.g.s.profile?.flashbackChoice ?? 'keep_doc';
     let difficulty: Difficulty = this.g.s.profile?.difficulty ?? 'normal';
 
     const presets = [
@@ -826,7 +827,28 @@ export class UIManager {
         </div>
 
         <div class="card-row">
-          <label style="font-weight:700;display:block;margin-bottom:6px">4. Mức độ thử thách:</label>
+          <label style="font-weight:700;display:block;margin-bottom:6px">4. Quyết định trong biến cố Kho số 7:</label>
+          <div class="hud-sub" style="margin-bottom:8px">Hành động của bạn trong đêm hỏa hoạn quyết định manh mối và lợi thế khởi đầu</div>
+          <div class="cc-grid" style="grid-template-columns:1fr" id="cc-fb-grid">
+            ${FLASHBACK_CHOICES.map((c) => {
+              const isSel = flashbackChoice === c.id;
+              return `
+                <div class="cc-card cc-bg-card ${isSel ? 'selected' : ''}" data-fb="${c.id}">
+                  <div style="display:flex;justify-content:space-between;align-items:center">
+                    <b style="font-size:13.5px;color:#93c5fd">${c.label}</b>
+                  </div>
+                  <div style="font-size:12px;color:#cbd5e1;margin:4px 0">${c.desc}</div>
+                  <div class="cc-attr-row">
+                    <span class="cc-attr-tag" style="color:#86efac">Khởi đầu: ${c.gain}</span>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+
+        <div class="card-row">
+          <label style="font-weight:700;display:block;margin-bottom:6px">5. Mức độ thử thách:</label>
           <div class="cc-grid" id="cc-diff-grid">
             ${(Object.keys(DIFFICULTIES) as Difficulty[]).map((dId) => {
               const d = DIFFICULTIES[dId];
@@ -919,6 +941,15 @@ export class UIManager {
         });
       });
 
+      // Đổi lựa chọn biến cố Kho số 7 in-place
+      el.querySelectorAll('[data-fb]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          flashbackChoice = (btn as HTMLElement).dataset.fb as any;
+          el.querySelectorAll('[data-fb]').forEach((b) => b.classList.remove('selected'));
+          btn.classList.add('selected');
+        });
+      });
+
       // Đổi độ khó in-place
       el.querySelectorAll('[data-diff]').forEach((btn) => {
         btn.addEventListener('click', () => {
@@ -956,7 +987,8 @@ export class UIManager {
           hairStyle,
           background,
           difficulty,
-          introSeen: false,
+          flashbackChoice,
+          introSeen: true,
         });
       });
     }, 'modal-cc');
@@ -1707,12 +1739,6 @@ export class UIManager {
        <div class="card-row">
          <label>Âm lượng: <input type="range" id="rng-vol" min="0" max="1" step="0.05" value="${st.volume}"/></label>
        </div>
-       <div class="card-row">
-         <div style="display:flex;justify-content:space-between;align-items:center">
-           <span>Đoạn phim mở đầu (3D Cutscene):</span>
-           <button class="btn btn-sm" id="btn-rewatch-cutscene">Xem lại mở đầu</button>
-         </div>
-       </div>
        ${this.hooks.onRestoreBackup ? `
        <div class="card-row">
          <div style="display:flex;justify-content:space-between;align-items:center">
@@ -1734,10 +1760,6 @@ export class UIManager {
           this.g.s.settings.volume = Number((e.target as HTMLInputElement).value);
           this.hooks.onSettingChange();
           this.g.commit();
-        });
-        el.querySelector('#btn-rewatch-cutscene')?.addEventListener('click', () => {
-          this.closeModal();
-          this.hooks.onRewatchIntro?.();
         });
         el.querySelector('#btn-restore-backup')?.addEventListener('click', () => {
           this.closeModal();

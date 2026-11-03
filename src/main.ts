@@ -156,9 +156,6 @@ class App {
         this.world.setQuality(this.g.s.settings.quality, this.renderer);
         this.sfx.volume = this.g.s.settings.volume;
       },
-      onRewatchIntro: () => {
-        this.cutscene.play(this.g.s.profile.name, this.g.s.profile.background, () => {});
-      },
       onUpdateAppearance: (p) => {
         this.g.s.profile.skin = p.skin;
         this.g.s.profile.hair = p.hair;
@@ -244,11 +241,15 @@ class App {
         this.ui.showCharacterCreation((createdProfile) => {
           this.g.applyProfile(createdProfile);
           this.rebuildPlayerRig(createdProfile);
-          this.cutscene.play(createdProfile.name, createdProfile.background, (choice) => {
-            this.g.applyFlashbackChoice(choice);
-            this.g.s.profile.introSeen = true;
-            this.saves.save(this.g.s);
-          });
+          const choice = createdProfile.flashbackChoice || 'keep_doc';
+          this.g.applyFlashbackChoice(choice);
+          this.g.s.profile.introSeen = true;
+          if (this.g.qStatus('nhap_trai') === 'locked') {
+            this.g.startQuest('nhap_trai');
+          }
+          this.saves.save(this.g.s);
+          this.ui.paused = false;
+          this.ui.checkOrientation();
         });
       },
       onContinue: () => {

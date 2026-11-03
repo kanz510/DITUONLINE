@@ -7,7 +7,10 @@ test.beforeEach(async ({ page }) => {
   await expect(page.locator('#landing-primary')).toBeVisible();
   await page.locator('#landing-primary').click();
   await page.locator('#btn-cc-submit').click();
-  await page.locator('#btn-cutscene-skip').click();
+  const skip = page.locator('#btn-cutscene-skip');
+  if (await skip.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await skip.click();
+  }
 });
 
 test('closing time escorts the player once and the game continues afterwards', async ({ page }) => {

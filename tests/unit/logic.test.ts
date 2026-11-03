@@ -366,6 +366,31 @@ describe('Hệ thống Cấp độ, Điểm kỹ năng & Xuất thân', () => {
     g3.applyFlashbackChoice('chase_contact');
     expect(g3.s.clues).toContain('nhan_dang_ke_cam_dau');
   });
+
+  it('luồng tạo nhân vật mới: lưu flashbackChoice, introSeen = true và quest nhap_trai active', () => {
+    const g = new GameLogic();
+    const profile = {
+      name: 'Minh Tuấn',
+      background: 'mechanic' as const,
+      difficulty: 'normal' as const,
+      skin: 0xe2b48d,
+      hair: 0x18181b,
+      hairStyle: 'short' as const,
+      preset: 0,
+      introSeen: true,
+      flashbackChoice: 'keep_doc' as const,
+    };
+    g.applyProfile(profile);
+    g.applyFlashbackChoice(profile.flashbackChoice);
+    g.s.profile.introSeen = true;
+    if (g.qStatus('nhap_trai') === 'locked') g.startQuest('nhap_trai');
+
+    expect(g.s.profile.name).toBe('Minh Tuấn');
+    expect(g.s.profile.introSeen).toBe(true);
+    expect(g.s.profile.flashbackChoice).toBe('keep_doc');
+    expect(g.s.clues).toContain('chung_tu_goc_kho_7');
+    expect(g.qStatus('nhap_trai')).toBe('active');
+  });
 });
 
 describe('Lượt chơi trọn vẹn', () => {

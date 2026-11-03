@@ -392,17 +392,13 @@ test('màn tạo nhân vật: thanh nút cố định đáy, chiều cao >= 48px
   await expect(page.locator('.toast')).toContainText('Tên nhân vật phải từ 2 đến 20 ký tự');
   await expect(modalCc).toBeVisible();
 
-  // 8. Nhập tên hợp lệ và bấm bắt đầu: chống bấm 2 lần, chuyển sang cutscene rồi vào game
+  // 8. Nhập tên hợp lệ và bấm bắt đầu: chống bấm 2 lần, chuyển thẳng vào game ngày 1 (bỏ cutscene)
   await inputName.fill('Minh Tuấn');
   await btnSubmit.click();
 
-  // Modal đóng ngay và Cutscene khởi chạy
-  const cutsceneOverlay = page.locator('#cutscene-overlay');
-  await expect(cutsceneOverlay).toBeVisible();
+  // Modal đóng ngay và vào thẳng game ngày 1
   await expect(modalCc).toHaveCount(0);
-
-  // Bỏ qua cutscene và vào game
-  await page.locator('#btn-cutscene-skip').click();
+  const cutsceneOverlay = page.locator('#cutscene-overlay');
   await expect(cutsceneOverlay).not.toBeVisible();
   await expect(page.locator('#hud-clock')).toBeVisible();
 

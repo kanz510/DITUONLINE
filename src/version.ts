@@ -6,9 +6,9 @@ export interface AppReleaseInfo {
   files?: number;
 }
 
-export const APP_VERSION = '0.4.5';
+export const APP_VERSION = '0.4.6';
 export const MILESTONE = 3;
-export let BUILD_HASH = 'b23a6d17f13c';
+export let BUILD_HASH = 'a8cb024c329d';
 
 export function getReleaseInfo(): AppReleaseInfo {
   const globalRel = typeof window !== 'undefined' ? (window as any).__APP_RELEASE__ : null;
