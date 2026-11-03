@@ -18,7 +18,6 @@ const glass = material(0x366b80, .28, .24);
 const amberGlass = material(0xfad78d, .12, .36, 0xe5a951);
 const concrete = material(0x71797e, .05, .85);
 const red = material(0xc6533b, .2, .55);
-const green = material(0x578b70, .08, .7);
 const white = material(0xe2e8e2, .1, .7);
 const blue = material(0x457eaa, .3, .55);
 
