@@ -1,5 +1,5 @@
 import {
-  BACKGROUNDS, CURFEW_CHECK, DAILY_REFORM_CAP, DAY_END, DAY_START, GAME_MIN_PER_SEC, ROLLCALL_ON_TIME_END,
+  BACKGROUNDS, CURFEW_CHECK, DAILY_REFORM_CAP, DAY_END, DAY_START, DIFFICULTIES, GAME_MIN_PER_SEC, ROLLCALL_ON_TIME_END,
   SCHEDULE, WORK_CLOCKIN_DEADLINE, blockAt, fmtMoney, fmtTime, isOpen, nextBlock, type AttributeId, type ScheduleBlock,
 } from './constants';
 import {
@@ -31,6 +31,18 @@ export const NPC_NAMES: Record<string, string> = {
 
 export const WORK_QUOTA = 3;
 export const EXTRA_SHIFT_MAX = 4;
+
+export type PerkId = 'library_borrow' | 'bay_excuse' | 'huy_work' | 'an_heal' | 'canteen_discount';
+
+export interface PerkInfo {
+  id: PerkId;
+  name: string;
+  source: string;
+  unlocked: boolean;
+  desc: string;
+  detail: string;
+  usageStatus?: string;
+}
 
 type Listener = (...args: any[]) => void;
 
@@ -138,6 +150,133 @@ export class GameLogic {
       this.event(`Thu thập manh mối: ${text}`);
       this.commit();
     }
+  }
+
+  // ───────────── Đặc quyền & Trợ giúp (Perks) ─────────────
+  getReviewPeriod(day = this.s.day): number {
+    return Math.floor((day - 1) / 4);
+  }
+
+  hasPerk(id: PerkId): boolean {
+    switch (id) {
+      case 'library_borrow':
+        return this.qStatus('lop_nghe_dau') === 'done';
+      case 'bay_excuse':
+        return this.rel('bay') >= 20;
+      case 'huy_work':
+        return this.rel('huy') >= 20;
+      case 'an_heal':
+        return this.rel('an') >= 15;
+      case 'canteen_discount':
+        return this.s.stats.reform >= 30;
+    }
+  }
+
+  canBayExcuse(): boolean {
+    if (!this.hasPerk('bay_excuse')) return false;
+    return this.s.flags.bay_excused_period !== this.getReviewPeriod();
+  }
+
+  useBayExcuse(target: 'rollcall' | 'work'): boolean {
+    if (!this.canBayExcuse()) return false;
+    this.s.flags.bay_excused_period = this.getReviewPeriod();
+    this.s.flags.bay_excused_day = this.s.day;
+    if (target === 'rollcall') {
+      this.s.daily.rollcall = 'excused';
+      const vio = this.s.violations.find((v) => v.day === this.s.day && v.id === 'missed_rollcall' && v.status !== 'overturned');
+      if (vio) vio.status = 'overturned';
+      this.notify('Chú Bảy đã đứng ra xin phép điểm danh giúp bạn (đặc quyền quan hệ, 1 lần/kỳ xét).', 'good');
+    } else {
+      this.s.daily.work = 'excused';
+      const vio = this.s.violations.find((v) => v.day === this.s.day && v.id === 'skip_work' && v.status !== 'overturned');
+      if (vio) vio.status = 'overturned';
+      this.notify('Chú Bảy đã bảo lãnh xin phép nghỉ ca lao động giúp bạn (đặc quyền quan hệ, 1 lần/kỳ xét).', 'good');
+    }
+    this.commit();
+    return true;
+  }
+
+  canAnHeal(): boolean {
+    if (!this.hasPerk('an_heal')) return false;
+    return this.s.flags.an_healed_day !== this.s.day;
+  }
+
+  useAnHeal(): { ok: boolean; reason?: string } {
+    if (!this.hasPerk('an_heal')) {
+      return { ok: false, reason: 'Cần đạt quan hệ Y sĩ An ≥ 15 để được khám và cấp thuốc miễn phí.' };
+    }
+    if (!this.canAnHeal()) {
+      return { ok: false, reason: 'Hôm nay Y sĩ An đã phát thuốc bồi dưỡng cho bạn rồi (1 lần/ngày).' };
+    }
+    this.s.flags.an_healed_day = this.s.day;
+    this.addStat('health', 25);
+    this.addStat('stamina', 35);
+    this.addStat('morale', 10);
+    this.notify('Y sĩ An khám và cấp thuốc bồi dưỡng: +25 Máu, +35 Thể lực, +10 Tinh thần.', 'good');
+    this.commit();
+    return { ok: true };
+  }
+
+  getPerks(): PerkInfo[] {
+    const period = this.getReviewPeriod();
+    const bayUsed = this.s.flags.bay_excused_period === period;
+    const anUsed = this.s.flags.an_healed_day === this.s.day;
+
+    return [
+      {
+        id: 'library_borrow',
+        name: 'Mượn sách thư viện',
+        source: 'Nhiệm vụ "Bài học nghề đầu tiên"',
+        unlocked: this.hasPerk('library_borrow'),
+        desc: 'Mượn cẩm nang pháp luật & tài liệu kỹ thuật tại giá sách thư viện.',
+        detail: 'Được phép mượn và đọc sách thư viện để giảm căng thẳng và tăng điểm cải tạo.',
+        usageStatus: this.hasPerk('library_borrow') ? 'Đã kích hoạt' : 'Cần hoàn thành "Bài học nghề đầu tiên"',
+      },
+      {
+        id: 'bay_excuse',
+        name: 'Bảo lãnh xin phép — Chú Bảy',
+        source: `Quan hệ Chú Bảy (${this.rel('bay')}/20)`,
+        unlocked: this.hasPerk('bay_excuse'),
+        desc: 'Xin phép vắng mặt khi lỡ điểm danh hoặc ca làm (1 lần/kỳ xét 4 ngày).',
+        detail: 'Chuyển trạng thái nghĩa vụ lỡ thành "excused" hợp lệ, không bị tính vi phạm.',
+        usageStatus: !this.hasPerk('bay_excuse')
+          ? 'Cần quan hệ Chú Bảy ≥ 20'
+          : bayUsed
+            ? `Đã dùng trong kỳ xét ${period + 1}`
+            : 'Khả dụng trong kỳ này',
+      },
+      {
+        id: 'huy_work',
+        name: 'Phụ việc ca xưởng — Huy',
+        source: `Quan hệ Huy (${this.rel('huy')}/20)`,
+        unlocked: this.hasPerk('huy_work'),
+        desc: 'Làm chung ca xưởng, Huy phụ lắp thêm 1 sản phẩm vào chỉ tiêu.',
+        detail: 'Khi hoàn thành sản phẩm trong ca sáng, Huy hỗ trợ thêm +1 sản phẩm chỉ tiêu.',
+        usageStatus: this.hasPerk('huy_work') ? 'Đang kích hoạt mỗi ca sáng' : 'Cần quan hệ Huy ≥ 20',
+      },
+      {
+        id: 'an_heal',
+        name: 'Khám chữa miễn phí — Y sĩ An',
+        source: `Quan hệ Y sĩ An (${this.rel('an')}/15)`,
+        unlocked: this.hasPerk('an_heal'),
+        desc: 'Khám bệnh và nhận thuốc bồi dưỡng thể lực miễn phí (1 lần/ngày).',
+        detail: 'Hồi phục +25 Máu, +35 Thể lực và +10 Tinh thần tại Phòng y tế.',
+        usageStatus: !this.hasPerk('an_heal')
+          ? 'Cần quan hệ Y sĩ An ≥ 15'
+          : anUsed
+            ? 'Đã dùng hôm nay'
+            : 'Khả dụng hôm nay',
+      },
+      {
+        id: 'canteen_discount',
+        name: 'Trợ giá Căn tin 10%',
+        source: `Điểm cải tạo (${this.s.stats.reform}/30)`,
+        unlocked: this.hasPerk('canteen_discount'),
+        desc: 'Giảm 10% giá tất cả hàng hóa tại Căn tin nhờ chấp hành cải tạo tốt.',
+        detail: 'Áp dụng tự động cho mọi món đồ khi mua tại quầy căn tin.',
+        usageStatus: this.hasPerk('canteen_discount') ? 'Đang giảm giá 10%' : 'Cần điểm cải tạo ≥ 30',
+      },
+    ];
   }
 
   // ───────────── Tiến trình Level & Kỹ năng ─────────────
@@ -249,16 +388,31 @@ export class GameLogic {
     this.s.stats.reform = clampStat(before + d);
     const real = this.s.stats.reform - before;
     if (real !== 0) this.notify(`${real > 0 ? '+' : ''}${real} điểm cải tạo: ${reason}`, real > 0 ? 'good' : 'bad');
+    if (before < 30 && this.s.stats.reform >= 30) {
+      this.notify('⭐ ĐẶC QUYỀN MỚI: Điểm cải tạo đạt 30 — Giảm giá 10% toàn bộ mặt hàng Căn tin!', 'good');
+    }
     return real;
   }
 
   changeRel(id: string, delta: number, memory?: string) {
     const r = this.s.relations[id];
     if (!r) return;
+    const prevVal = r.value;
     r.value = Math.max(-100, Math.min(100, r.value + delta));
     r.met = true;
     if (memory) r.memories.push({ day: this.s.day, text: memory });
     if (delta !== 0) this.notify(`${NPC_NAMES[id]} ${delta > 0 ? '+' : ''}${delta} quan hệ`, delta > 0 ? 'good' : 'bad');
+    this.checkPerkUnlocked(id, prevVal, r.value);
+  }
+
+  private checkPerkUnlocked(id: string, prev: number, next: number) {
+    if (id === 'bay' && prev < 20 && next >= 20) {
+      this.notify('⭐ ĐẶC QUYỀN MỚI: Chú Bảy nhận bảo lãnh xin phép vắng mặt (1 lần/kỳ xét)!', 'good');
+    } else if (id === 'huy' && prev < 20 && next >= 20) {
+      this.notify('⭐ ĐẶC QUYỀN MỚI: Huy hỗ trợ phụ việc làm ca xưởng (+1 sản phẩm/ca)!', 'good');
+    } else if (id === 'an' && prev < 15 && next >= 15) {
+      this.notify('⭐ ĐẶC QUYỀN MỚI: Y sĩ An nhận khám và cấp thuốc miễn phí (1 lần/ngày)!', 'good');
+    }
   }
 
   meet(id: string) {
@@ -275,7 +429,9 @@ export class GameLogic {
     if (!r || r.lastTalkDay === this.s.day) return false;
     r.lastTalkDay = this.s.day;
     if (r.value >= -10) {
+      const prevVal = r.value;
       r.value = Math.min(100, r.value + 1);
+      this.checkPerkUnlocked(id, prevVal, r.value);
       this.addStat('morale', 3);
     }
     this.checkDailyTasks({ category: 'relation', npcId: id as NpcId });
@@ -298,19 +454,29 @@ export class GameLogic {
     return this.s.minute >= 990 && this.s.minute < 1260;
   }
 
+  itemPrice(id: string): number {
+    const def = ITEMS[id];
+    if (!def?.price) return 0;
+    const diffMult = DIFFICULTIES[this.s.profile.difficulty]?.canteenPriceMultiplier ?? 1.0;
+    const reformDiscount = this.hasPerk('canteen_discount') ? 0.9 : 1.0;
+    return Math.max(1, Math.round(def.price * diffMult * reformDiscount));
+  }
+
   purchaseError(id: string): string | null {
     const def = ITEMS[id];
     if (!def?.price) return 'Mặt hàng không bán.';
     if (!this.canteenOpen()) return 'Căn tin chỉ mở 16:30–21:00.';
     if (this.canteenBanned()) return `Bạn đang bị cấm mua căn tin đến hết ngày ${this.s.flags.canteenBanUntil}.`;
-    if (this.s.stats.money < def.price) return `Không đủ tiền (cần ${fmtMoney(def.price)}).`;
+    const price = this.itemPrice(id);
+    if (this.s.stats.money < price) return `Không đủ tiền (cần ${fmtMoney(price)}).`;
     return null;
   }
 
   buy(id: string): string | null {
     const error = this.purchaseError(id);
     if (error) return error;
-    this.addStat('money', -ITEMS[id].price!);
+    const price = this.itemPrice(id);
+    this.addStat('money', -price);
     this.giveItem(id);
     if (id === 'mi_goi' && this.qStatus('mi_cho_huy') === 'active') this.completeObjective('mi_cho_huy', 'mua');
     this.commit();
@@ -496,6 +662,11 @@ export class GameLogic {
         ? `Nhiệm vụ "${def.title}" đã hoàn thành.`
         : `Chưa mở nhiệm vụ "${def.title}". ${def.requirement}`;
     }
+    if (q === 'sach_thu_vien' && obj === 'muon_sach') {
+      if (!this.hasPerk('library_borrow')) {
+        return 'Chưa thể mượn sách: Cần hoàn thành "Bài học nghề đầu tiên" để nhận chứng chỉ nghề.';
+      }
+    }
     const targetIndex = def.objectives.findIndex((o) => o.id === obj);
     if (targetIndex < 0) return 'Bước nhiệm vụ không tồn tại.';
     const target = def.objectives[targetIndex];
@@ -667,6 +838,7 @@ export class GameLogic {
         this.changeRel('phuc', 10, 'Minh hoàn thành bài học nghề an toàn');
         this.s.skills.vocationalExam++;
         this.startQuest('sach_thu_vien');
+        this.notify('⭐ ĐẶC QUYỀN MỚI: Đã nhận chứng chỉ nghề — Mở quyền mượn sách thư viện!', 'good');
         break;
 
       case 'nghi_an_thuoc':
@@ -889,6 +1061,16 @@ export class GameLogic {
       d.workUnits++;
       d.workQuality += q;
       this.event(`Lắp xong ổ cắm #${d.workUnits} (chất lượng ${q}%)`);
+
+      // Huy phụ làm thêm 1 sản phẩm nếu quan hệ >= 20 (1 lần mỗi ca sáng)
+      if (this.hasPerk('huy_work') && this.s.flags.huy_assisted_day !== this.s.day && d.workUnits < WORK_QUOTA) {
+        this.s.flags.huy_assisted_day = this.s.day;
+        d.workUnits++;
+        d.workQuality += 80;
+        this.notify('Huy phụ bạn lắp thêm 1 sản phẩm (đặc quyền Huy ≥ 20).', 'good');
+        this.event(`Huy phụ lắp xong ổ cắm #${d.workUnits}`);
+      }
+
       if (d.workUnits >= WORK_QUOTA) this.completeMorningQuota(manual);
       else this.notify(`Sản phẩm ${d.workUnits}/${WORK_QUOTA} — chất lượng ${q}%`, 'info');
     } else {
@@ -1067,6 +1249,8 @@ export class GameLogic {
         if (this.qStatus('nhap_trai') === 'active' && !this.qObj('nhap_trai', 'diem_danh')) {
           this.notify('Bạn bỏ lỡ điểm danh. Hãy có mặt ở ô vàng vào 06:30–07:00 ngày mai để hoàn thành bước này.', 'warn');
         }
+      } else if (this.canBayExcuse()) {
+        this.useBayExcuse('rollcall');
       } else {
         d.rollcall = 'missed';
         this.recordViolation('missed_rollcall', `d${this.s.day}`, 'Quản giáo Lan điểm danh 06:30–07:00, không có mặt.');
@@ -1087,8 +1271,12 @@ export class GameLogic {
     const d = this.s.daily;
     if (d.work !== 'pending') return;
     if (!d.workClockedIn || d.workUnits === 0) {
-      d.work = 'missed';
-      this.recordViolation('skip_work', `d${this.s.day}`, d.workClockedIn ? 'Đã chấm công nhưng không hoàn thành sản phẩm nào.' : 'Không chấm công ca sáng 08:00–11:30.', { grace: this.s.day === 1 });
+      if (this.canBayExcuse()) {
+        this.useBayExcuse('work');
+      } else {
+        d.work = 'missed';
+        this.recordViolation('skip_work', `d${this.s.day}`, d.workClockedIn ? 'Đã chấm công nhưng không hoàn thành sản phẩm nào.' : 'Không chấm công ca sáng 08:00–11:30.', { grace: this.s.day === 1 });
+      }
     } else {
       d.work = 'late';
       const pay = Math.round((this.wage(d.workQuality / d.workUnits) * d.workUnits) / WORK_QUOTA);

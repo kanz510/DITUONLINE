@@ -1006,6 +1006,10 @@ export class UIManager {
           <span class="icon">👤</span>
           <span>Nhân vật & Kỹ năng</span>
         </button>
+        <button class="menu-card-btn" data-menu="perks">
+          <span class="icon">⭐</span>
+          <span>Đặc quyền đã mở</span>
+        </button>
         <button class="menu-card-btn" data-menu="journal">
           <span class="icon">📜</span>
           <span>Nhật ký nhiệm vụ ${isTouch ? '' : '(J)'}</span>
@@ -1050,6 +1054,35 @@ export class UIManager {
         });
       },
     );
+  }
+
+  // ───────────── Đặc quyền đã mở ─────────────
+  showPerks() {
+    const perks = this.g.getPerks();
+    const rows = perks.map((p) => `
+      <div class="card-row" style="border-left: 3px solid ${p.unlocked ? '#4ade80' : '#64748b'}; padding-left: 10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <b style="font-size:14px;color:${p.unlocked ? '#fde68a' : '#94a3b8'}">${p.name}</b>
+          <span class="tag ${p.unlocked ? 'good' : 'muted'}">${p.unlocked ? 'ĐÃ MỞ' : 'CHƯA MỞ'}</span>
+        </div>
+        <div style="font-size:12.5px;color:#cbd5e1;margin-bottom:4px">${p.desc}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:#94a3b8">
+          <span>Nguồn: <b>${p.source}</b></span>
+          <span style="color:${p.unlocked ? '#86efac' : '#f87171'}">${p.usageStatus ?? ''}</span>
+        </div>
+      </div>
+    `).join('');
+
+    this.showModal(`
+      <h2>ĐẶC QUYỀN ĐÃ MỞ (PERKS)</h2>
+      <div class="hud-sub" style="margin-bottom:12px">Quyền lợi và trợ giúp thực tế từ cải tạo và quan hệ trong trại giam</div>
+      <div style="display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow-y:auto;padding-right:4px">
+        ${rows}
+      </div>
+      <div style="margin-top:14px;display:flex;justify-content:flex-end">
+        <button class="btn btn-accent" data-close>Đóng</button>
+      </div>
+    `);
   }
 
   // ───────────── Nhân vật & Kỹ năng ─────────────
@@ -1337,6 +1370,7 @@ export class UIManager {
   openPanel(name: string) {
     switch (name) {
       case 'profile': return this.showProfileAndSkills();
+      case 'perks': return this.showPerks();
       case 'journal': return this.showJournal();
       case 'record': return this.showRecord();
       case 'relations': return this.showRelations();
@@ -1349,6 +1383,36 @@ export class UIManager {
 
   // ───────────── Hội thoại ─────────────
   showDialogue(node: DNode, onEnd?: () => void) {
+    if (node.speaker === 'Y sĩ An' && this.g.hasPerk('an_heal') && !node.choices.some((c) => c.label.includes('Y sĩ An khám'))) {
+      const alreadyHealed = !this.g.canAnHeal();
+      node.choices.unshift({
+        label: alreadyHealed
+          ? 'Hôm nay Y sĩ An đã cấp thuốc bồi dưỡng rồi (đã dùng).'
+          : '🩺 Nhờ Y sĩ An khám & cấp thuốc miễn phí (Đặc quyền An ≥ 15)',
+        disabled: alreadyHealed ? 'Đã dùng hôm nay' : undefined,
+        run: () => {
+          if (!alreadyHealed) {
+            this.g.useAnHeal();
+          }
+          return null;
+        },
+      });
+    }
+
+    if (node.speaker === 'Chú Bảy' && this.g.hasPerk('bay_excuse') && !node.choices.some((c) => c.label.includes('Chú Bảy bảo lãnh'))) {
+      const canRoll = this.g.s.daily.rollcall === 'missed';
+      const canWork = this.g.s.daily.work === 'missed';
+      if (this.g.canBayExcuse() && (canRoll || canWork)) {
+        node.choices.unshift({
+          label: `🤝 Nhờ Chú Bảy bảo lãnh xin phép vắng ${canRoll ? 'điểm danh' : 'ca làm'} (1 lần/kỳ xét)`,
+          run: () => {
+            this.g.useBayExcuse(canRoll ? 'rollcall' : 'work');
+            return null;
+          },
+        });
+      }
+    }
+
     const choicesHtml = node.choices
       .map(
         (c, i) => `
@@ -2045,6 +2109,7 @@ export class UIManager {
 
   // ───────────── Căn tin ─────────────
   showCanteen(feedback?: string) {
+    const hasDiscount = this.g.hasPerk('canteen_discount');
     const status = !this.g.canteenOpen()
       ? 'Căn tin đang đóng cửa. Mở cửa 16:30–21:00.'
       : this.g.canteenBanned()
@@ -2054,10 +2119,12 @@ export class UIManager {
     const rows = shopIds
       .map((id) => {
         const it = ITEMS[id];
+        const price = this.g.itemPrice(id);
         const reason = this.g.purchaseError(id);
+        const discountBadge = hasDiscount ? '<span class="tag good" style="font-size:10px;margin-left:4px">−10%</span>' : '';
         return `
         <div class="card-row" style="display:flex;justify-content:space-between;align-items:center">
-          <div><b>${it.name}</b> — ${fmtMoney(it.price!)}<div class="hud-sub">${it.desc}</div></div>
+          <div><b>${it.name}</b> — ${fmtMoney(price)}${discountBadge}<div class="hud-sub">${it.desc}</div></div>
           <div style="text-align:right">
             <button class="btn btn-accent" data-buy="${id}" ${reason ? 'disabled' : ''}>Mua</button>
             ${reason ? `<div class="hud-sub" style="max-width:150px">${reason}</div>` : ''}
@@ -2067,7 +2134,7 @@ export class UIManager {
       .join('');
     this.showModal(
       `<h2>Quầy căn tin (Tiền hiện có: ${fmtMoney(this.g.s.stats.money)})</h2>
-       <div class="hud-sub" style="margin-bottom:8px">Mở cửa 16:30–21:00. Nhu yếu phẩm & đồ ăn bổ sung thể lực.</div>
+       <div class="hud-sub" style="margin-bottom:8px">Mở cửa 16:30–21:00. Nhu yếu phẩm & đồ ăn bổ sung thể lực.${hasDiscount ? ' <b style="color:#4ade80">(Đang hưởng đặc quyền giảm giá 10%)</b>' : ''}</div>
        <div class="card-row" id="canteen-status" role="status">${status}</div>
        ${rows}
        <button class="btn" data-close>Đóng</button>`,
@@ -2107,24 +2174,47 @@ export class UIManager {
 
   // ───────────── Đọc sách thư viện ─────────────
   showLibraryReader() {
+    const hasPerk = this.g.hasPerk('library_borrow');
     const needsBorrow = this.g.qStatus('sach_thu_vien') === 'active' &&
       !this.g.qObj('sach_thu_vien', 'muon_sach');
     this.showModal(`
       <h2>Thư viện trại giam An Phú</h2>
       <div class="card-row">
         Giá sách gồm nhiều đầu sách cẩm nang phổ biến giáo dục pháp luật, sổ tay nghề cơ điện và tác phẩm văn học phục vụ cải tạo.
+        ${hasPerk
+          ? '<div class="tag good" style="margin-top:6px;display:inline-block">✔ Đã có chứng chỉ nghề — Quyền mượn sách khả dụng</div>'
+          : '<div class="tag warn" style="margin-top:6px;display:inline-block">🔒 Chưa có quyền mượn sách (Cần chứng chỉ từ "Bài học nghề đầu tiên")</div>'}
       </div>
       <div class="choice-list">
-        ${needsBorrow
-          ? '<button class="choice-btn important" id="lib-borrow-law">Bước 1: Mượn cẩm nang pháp luật từ giá sách</button>'
-          : '<button class="choice-btn" id="lib-read-law">Đọc Cẩm nang pháp luật & quyền giảm án (−10 căng thẳng, +1 điểm cải tạo)</button>'}
+        ${!hasPerk
+          ? '<button class="choice-btn" id="lib-borrow-blocked"><span class="tag bad" style="margin-right:6px">Khóa</span> Mượn sách thư viện (Cần chứng chỉ nghề "Bài học nghề đầu tiên")</button>'
+          : needsBorrow
+            ? '<button class="choice-btn important" id="lib-borrow-law">Bước 1: Mượn cẩm nang pháp luật từ giá sách</button>'
+            : '<button class="choice-btn" id="lib-borrow-extra">Mượn sách đọc thêm (−5 căng thẳng, +1 điểm cải tạo)</button>'}
+        ${hasPerk
+          ? '<button class="choice-btn" id="lib-read-law">Đọc Cẩm nang pháp luật & quyền giảm án (−10 căng thẳng, +1 điểm cải tạo)</button>'
+          : '<button class="choice-btn" id="lib-read-law-blocked" disabled><span class="tag bad" style="margin-right:6px">Khóa</span> Đọc cẩm nang tại chỗ (Cần chứng chỉ nghề)</button>'}
         <button class="choice-btn" id="lib-read-tech">Đọc Sách hướng dẫn kỹ thuật điện dân dụng (−5 căng thẳng)</button>
         <button class="choice-btn" data-close>Rời giá sách</button>
       </div>
     `, (el) => {
+      el.querySelector('#lib-borrow-blocked')?.addEventListener('click', () => {
+        this.toast('Cần hoàn thành "Bài học nghề đầu tiên" để nhận chứng chỉ trước khi được mượn sách thư viện.', 'warn');
+      });
+      el.querySelector('#lib-borrow-extra')?.addEventListener('click', () => {
+        this.g.addStat('stress', -5);
+        this.g.addReform(1, 'Mượn sách thư viện', true);
+        this.toast('Đã mượn sách đọc thêm (−5 căng thẳng, +1 điểm cải tạo).', 'good');
+      });
       el.querySelector('#lib-borrow-law')?.addEventListener('click', () => {
+        if (!this.g.hasPerk('library_borrow')) {
+          this.toast('Cần hoàn thành "Bài học nghề đầu tiên" để nhận chứng chỉ nghề.', 'warn');
+          return;
+        }
+        this.g.addStat('stress', -5);
+        this.g.addReform(1, 'Mượn sách thư viện', true);
         this.g.completeObjective('sach_thu_vien', 'muon_sach');
-        this.toast('Đã mượn sách. Bước tiếp theo: đọc cẩm nang pháp luật.', 'good');
+        this.toast('Đã mượn sách (−5 căng thẳng, +1 điểm cải tạo). Bước tiếp theo: đọc cẩm nang pháp luật.', 'good');
         this.showLibraryReader();
       });
       el.querySelector('#lib-read-law')?.addEventListener('click', () => {
