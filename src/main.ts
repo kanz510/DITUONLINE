@@ -103,6 +103,10 @@ class App {
     this.checkStartupLockout();
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    // Cinematic grading; quality still controls pixel density and shadow cost.
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.17;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.world = new PrisonWorld();
