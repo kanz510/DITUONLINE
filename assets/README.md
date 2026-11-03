@@ -209,3 +209,10 @@ Bản nguồn tại `assets/models/original/`, bản copy dùng lúc chạy tạ
 - `cell_sanitation_unit_blendstra.glb` — buồng giam: toilet + bồn rửa bản Blendstra (gốc Y giữa, cần +0,53 m khi gắn); ĐÃ CHỌN bản này để tích hợp thay cho cell_sanitation_unit.glb (bản Pack 01 giữ lại nhưng không dùng)
 
 Ghi chú: chưa đấu nối vào game — sẽ tích hợp sau.
+
+## Pack 02 — Furniture v1 (DITUONLINE_Furniture_Pack_v1, staged 2026-11-03, NOT yet integrated)
+
+- 11 GLB 2.0 nguyên bản (PBR, tỉ lệ mét, chân đế mặt đất, mặt trước -Z, không Draco/KTX2): canteen_table, canteen_bench, classroom_desk, classroom_chair, guard_office_desk, guard_office_chair, visitation_table, visitation_chair, yard_concrete_table, yard_concrete_stool, workshop_bench — tại assets/models/original/ + public/models/original/ (byte-identical).
+- canteen_table_set_blendstra.glb — bộ bàn nhà ăn + 2 ghế băng dựng bằng Blendstra (55 nodes, 2.6×0.69×0.91 m). CHÚ Ý: file này Y-CENTERED (min_y −0.345) — lúc tích hợp phải bù đáy (giống toilet Blendstra), không đặt ở Y=0 trực tiếp.
+- Tài liệu: MANIFEST_furniture_v1.json + README_ANTIGRAVITY.md + PREVIEW.png tại assets/models/original/.
+- CHƯA tích hợp vào game — Antigravity tích hợp sau (thay visual PROPS tương ứng, giữ collider/nav/quest).
