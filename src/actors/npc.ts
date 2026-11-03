@@ -5,10 +5,10 @@ import { NODES } from '../world/layout';
 import { findPath, nearestNode } from '../world/nav';
 import { HumanoidRig } from './humanoid';
 
-// Stable Kenney skin per identity. This is visual only; NPC schedule/state remains untouched.
+// Stable badge seeds only; all NPCs, including officers, use procedural chibi visuals.
 const NPC_MODEL_SKINS: Record<NpcId, string> = {
   bay: 'g', huy: 'a', lam: 'c',
-  lan: 'j', tung: 'j', tu: 'b', // j = authentic blue police uniform; k is a red casual suit
+  lan: 'q', tung: 'q', tu: 'b', // same visual branch as Thầy Phúc; no Kenney replacement
   son: 'd', khai: 'e', phuc: 'q',
   an: 'i', mai: 'l',
 };

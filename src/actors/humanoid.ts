@@ -1,23 +1,5 @@
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import type { Appearance, Pose } from '../data/npcs';
-
-// Use the original Kenney guard GLBs for the two uniformed prison officers.
-// The GLB retains its relative characters/Textures/texture-j.png path.
-// Other NPCs and the player keep the established chibi procedural appearance.
-const guardLoader = new GLTFLoader();
-const guardCache = new Map<string, Promise<{ scene: THREE.Group; clips: THREE.AnimationClip[] }>>();
-function loadGuard(skin: string): Promise<{ scene: THREE.Group; clips: THREE.AnimationClip[] }> {
-  let pending = guardCache.get(skin);
-  if (!pending) {
-    pending = guardLoader.loadAsync(`${import.meta.env.BASE_URL}models/characters/character-${skin}.glb`)
-      .then((data) => ({ scene: data.scene, clips: data.animations }))
-      .catch((error: unknown) => { guardCache.delete(skin); throw error; });
-    guardCache.set(skin, pending);
-  }
-  return pending;
-}
-
 
 /** Chibi geometry only. The scene uses metres, with a nominal 1.7m tall actor.
  * Keeping the same named pivot groups preserves the existing pose animation.
@@ -67,14 +49,9 @@ export class HumanoidRig {
   pose: Pose = 'stand';
   phase = Math.random() * 10;
   labelSprite: THREE.Sprite | null = null;
-  private guardModel: THREE.Group | null = null;
-  private guardMixer: THREE.AnimationMixer | null = null;
-  private guardActions = new Map<string, THREE.AnimationAction>();
-  private guardClip = '';
-  private isDisposed = false;
 
-  // modelSkin identifies Kenney guard skins for Lan/Tùng; for everyone else
-  // it remains only a stable number-badge seed. No change to NPC schedules.
+  // modelSkin remains a stable badge seed only; every officer shares
+  // the same procedural chibi rig, with no delayed model replacement.
   constructor(look: Appearance, labelText?: string, modelSkin?: string) {
     this.root.scale.set(look.build, look.height, look.build);
     this.root.add(this.body);
@@ -270,61 +247,9 @@ export class HumanoidRig {
     this.labelSprite = makeLabel(labelText ?? 'BẠN', look.accent, !labelText);
     this.labelSprite.position.set(0, 2.05, 0);
     this.root.add(this.labelSprite);
-    if (isOfficer && modelSkin === 'j') {
-      void this.attachGuardGLB(modelSkin);
-    }
-  }
-
-  private async attachGuardGLB(skin: string): Promise<void> {
-    try {
-      const source = await loadGuard(skin);
-      if (this.isDisposed || source.clips.length === 0) return;
-      const model = source.scene.clone(true);
-      model.name = 'guard.kenney.' + skin;
-      const bounds = new THREE.Box3().setFromObject(model);
-      const height = bounds.max.y - bounds.min.y;
-      if (!Number.isFinite(height) || height < 0.05) return;
-      const scale = 1.7 / height;
-      model.scale.setScalar(scale);
-      model.position.set(
-        -(bounds.min.x + bounds.max.x) * .5 * scale,
-        -bounds.min.y * scale,
-        -(bounds.min.z + bounds.max.z) * .5 * scale,
-      );
-      model.traverse((child) => {
-        if (child instanceof THREE.Mesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
-        }
-      });
-      const mixer = new THREE.AnimationMixer(model);
-      const actions = new Map<string, THREE.AnimationAction>();
-      for (const clip of source.clips) {
-        actions.set(clip.name.toLowerCase(), mixer.clipAction(clip));
-      }
-      if (!actions.has('idle') || !actions.has('walk')) {
-        mixer.uncacheRoot(model);
-        return; // Keep the chibi fallback if clips are incompatible.
-      }
-      this.guardModel = model;
-      this.guardMixer = mixer;
-      this.guardActions = actions;
-      this.guardClip = '';
-      this.root.add(model);
-      this.body.visible = false;
-      this.update(0, 0); // Start the current pose immediately after loading.
-    } catch (error) {
-      // The procedural officer remains usable if an asset or texture fails.
-      console.warn('[Guard GLB] Keeping procedural fallback:', skin, error);
-    }
   }
 
   dispose() {
-    this.isDisposed = true;
-    this.guardMixer?.stopAllAction();
-    // Kenney source geometry and materials are shared by cached GLB clones.
-    // Never dispose these shared resources with the procedural fallback rig.
-    if (this.guardModel) this.root.remove(this.guardModel);
     // Rebuilding the player's appearance must not leak chibi mesh resources.
     // The striped texture is intentionally shared between all inmate rigs.
     const geometries = new Set<THREE.BufferGeometry>();
@@ -347,27 +272,6 @@ export class HumanoidRig {
   }
 
   update(dt: number, speed = 0) {
-    if (this.guardMixer) {
-      // Same five gameplay poses, mapped to the GLB's existing 27 node clips.
-      // Motion and NPC world position remain controlled by the original game.
-      const requested = this.pose === 'walk' ? 'walk'
-        : this.pose === 'sit' ? 'sit'
-          : this.pose === 'work' ? 'interact-right'
-            : this.pose === 'talk' ? 'emote-yes' : 'idle';
-      const clip = this.guardActions.has(requested) ? requested : 'idle';
-      if (clip !== this.guardClip) {
-        const old = this.guardActions.get(this.guardClip);
-        const next = this.guardActions.get(clip)!;
-        old?.fadeOut(.18);
-        next.reset().fadeIn(.18).play();
-        this.guardClip = clip;
-      }
-      const walk = this.guardActions.get('walk');
-      walk?.setEffectiveTimeScale(this.pose === 'walk'
-        ? Math.max(.7, Math.min(1.5, speed / 3.2)) : 1);
-      this.guardMixer.update(Math.min(Math.max(dt, 0), .1));
-      return;
-    }
     // Preserve the exact state machine and pose pivots used by the old rig.
     this.phase += dt * (this.pose === 'walk' ? Math.max(4, speed * 2.2) : 2.5);
     const p = this.phase;
