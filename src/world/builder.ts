@@ -319,7 +319,9 @@ export class PrisonWorld {
       // Preserve existing fallback geometry until the model is ready.
       const asset = p.kind === 'bunk' && (p.x > 20 || (p.x > 5 && p.z > 10))
         ? 'furniture/bedSingle.glb'
-        : propAssets[p.kind];
+        : p.kind === 'tree' && Math.floor(Math.abs(p.x * 17 + p.z * 11)) % 2 === 0
+          ? 'nature/tree_oak.glb'
+          : propAssets[p.kind];
       if (asset) {
         void loadProp(asset).then((template) => {
           const model = template.clone(true);
@@ -360,6 +362,25 @@ export class PrisonWorld {
       } else if (p.kind === 'shelf' && p.x < -20 && p.z > 10) {
         void upgradePropModel(obj, placeholder, 'models/furniture/bookcaseOpen.glb',
           { width: p.w, depth: p.d }, { rotateY: Math.PI / 2 });
+        // Dress the existing library shelf with CC0 book stacks. All meshes
+        // remain inside its current PROPS collision footprint.
+        void loadProp('furniture/books.glb').then((template) => {
+          const bounds = new THREE.Box3().setFromObject(template);
+          const size = bounds.getSize(new THREE.Vector3());
+          const center = bounds.getCenter(new THREE.Vector3());
+          if (Math.min(size.x, size.y, size.z) <= .001) return;
+          for (let i = 0; i < 3; i++) {
+            const books = template.clone(true);
+            const scale = Math.min(.36 / size.x, .33 / size.y, .45 / size.z);
+            books.scale.setScalar(scale);
+            books.position.set(-center.x * scale, .56 + i * .48 - bounds.min.y * scale,
+              (-.75 + i * .75) - center.z * scale);
+            books.traverse((mesh) => {
+              if (mesh instanceof THREE.Mesh) mesh.castShadow = true;
+            });
+            obj.add(books);
+          }
+        }).catch((error) => console.warn('[Books GLB] Shelf remains usable:', error));
       }
       if (p.kind === 'tree' || p.kind === 'lamp' || p.kind === 'shelf' || p.kind === 'tower') this.cameraObstacles.push(obj);
       obj.position.set(p.x, 0, p.z);
