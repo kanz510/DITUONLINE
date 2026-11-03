@@ -8,6 +8,13 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-03 — ChatGPT — Cổng trại giam + dây thép gai + đèn cảnh giới ban đêm
+- `src/world/builder.ts`: thêm `buildPerimeterDetails()` ngay sau `buildWalls()`: dùng một `THREE.InstancedMesh` cho các vòng concertina dọc toàn bộ tường rào `WALLS[kind=perimeter]`, không sinh thêm collider dưới đất. Thêm mô hình mặt cổng sắt (trang trí nằm trên tường bao có sẵn, không phải cửa/đường đi mới), biển `TRẠI GIAM AN PHÚ`, chấn song, đèn pha màu vàng. `update()` điều chỉnh độ sáng đèn ngày/đêm, không đổi giờ giấc/game logic.
+- `tests/e2e/visual-upgrade.spec.ts`: ngoài ảnh landing/xưởng và test resume save, bổ sung assert đối tượng `prison.main-gate.facade` và một `perimeter.concertina-wire` xuất hiện trong scene runtime. Unit/TS/Vite/Playwright trên run GitHub Actions sau cùng là bằng chứng kỹ thuật; không khẳng định đã thử trên Safari vật lý.
+- Commit: `ab31767676816e9631c4210065403eaf0bb635ae` (scenery), `a10c57d4df6dca7e8c571a5a924289978b52ce20` (visual assert).
+- Giữ nguyên `src/world/layout.ts`, graph nav, `PROPS` footprint, cổng chức năng/đường khóa và mọi quest/save. Các đồ ở đây chỉ trang trí trên tường bao đã có collider.
+- Lưu ý cho agent sau: đừng biến graphic main gate thành đường đi nếu chưa thiết kế và test gate interaction; không đổi `WALLS` hoặc mở đường nav trong đợt cải thiện hình ảnh. Nếu xuất GLB Blendstra vào runtime trong tương lai, đồng bộ đủ bản GLB đã kiểm chứng và giữ collider/path unchanged.
+
 ### 2026-11-03 — ChatGPT — Đồ họa trại giam đợt lớn + màn bắt đầu cinematic, đã CI/Playwright
 - Người dùng giao ChatGPT sửa trực tiếp main, ưu tiên miễn phí, tận dụng plugin đã kết nối, nâng cả asset hình hộp và trang bắt đầu có phong cách trại giam. **Không thay đổi gameplay, quest, dữ liệu save, vị trí PROPS hay navigation NPC.**
 - **Màn hình mở đầu mới**: `src/ui/landing.ts` và `src/ui/landing.css`, artwork SVG nguyên bản về cổng sắt/tháp canh/tù nhân chibi, palette xanh thép/vàng. Hai luồng `Bắt đầu nhập trại` và `Tiếp tục hồ sơ`, hướng dẫn, xác nhận riêng trước khi xóa save cũ. Escape HTML tên nhân vật. `src/main.ts` nối callback vào luồng khởi tạo/nhân vật cũ, không đổi save schema. Sửa `src/ui/manager.ts`: giữ paused khi còn màn landing dù xoay iPhone, tránh game chạy đằng sau. Confirm New Game thiết lập trạng thái trắng trước reload để handler beforeunload không ghi đè save cũ. Hướng dẫn/confirmation được đặt ở panel bên phải CTA và có nút X riêng, đã fix trường hợp click hướng dẫn lần nữa bị overlay che.
