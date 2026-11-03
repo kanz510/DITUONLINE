@@ -10,10 +10,10 @@ import { START_SENTENCE } from '../../src/logic/constants';
 import { migrate } from '../../src/logic/save';
 
 describe('FIX 1 & FIX A: Ghế ngồi, Va chạm & Camera Obstacles', () => {
-  it('mọi MESS_SEATS đều có ghế tương ứng trong PROPS', () => {
+  it('mọi MESS_SEATS đều thuộc về bàn ăn Blendstra trong PROPS', () => {
     for (const [sx, sz] of MESS_SEATS) {
-      const chair = PROPS.find((p) => p.kind === 'chair' && Math.hypot(p.x - sx, p.z - sz) < 0.15);
-      expect(chair).toBeDefined();
+      const table = PROPS.find((p) => p.kind === 'table' && Math.hypot(p.x - sx, p.z - sz) < 1.8);
+      expect(table).toBeDefined();
     }
   });
 

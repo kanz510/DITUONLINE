@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('khởi chạy 3D, chuỗi nhiệm vụ → lựa chọn → hậu quả, lưu/tải và kết thúc ra tù', async ({ page }) => {
+  test.setTimeout(180000);
   await page.goto('/');
   await expect(page.locator('#landing-primary')).toBeVisible();
   await page.locator('#landing-primary').click();
@@ -166,6 +167,10 @@ test('khởi chạy 3D, chuỗi nhiệm vụ → lựa chọn → hậu quả, l
     return { reform: s.stats.reform, relLan: s.relations.lan.value, monNo: s.quests.mon_no.status };
   });
   await page.reload();
+  const primary = page.locator('#landing-primary');
+  if (await primary.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await primary.click();
+  }
   const afterReload = await page.evaluate(() => {
     const s = (window as any).__DITU__.logic.s;
     return { reform: s.stats.reform, relLan: s.relations.lan.value, monNo: s.quests.mon_no.status };

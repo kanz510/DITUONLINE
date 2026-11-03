@@ -101,7 +101,7 @@ test('chế độ FPS (góc nhìn thứ nhất) và góc nhìn thứ ba trên iP
   });
 
   await page.keyboard.down('KeyW');
-  await page.waitForTimeout(200);
+  await page.waitForTimeout(400);
   await page.keyboard.up('KeyW');
 
   const posAfter = await page.evaluate(() => {

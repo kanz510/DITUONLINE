@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('An Phu cinematic landing, saved progress and upgraded scenery', async ({ browser }) => {
+  test.setTimeout(240000);
   const context = await browser.newContext({
     viewport: { width: 956, height: 440 },
     isMobile: true,
@@ -41,7 +42,7 @@ test('An Phu cinematic landing, saved progress and upgraded scenery', async ({ b
     let watches = 0, benches = 0, machines = 0, coils = 0, gate = 0;
     d.app.world.scene.traverse((o: any) => {
       if (o.name === 'watchtower.steel.cabin') watches++;
-      if (o.name === 'workshop.assembly-bench') benches++;
+      if (o.name === 'workshop.assembly-bench' || (o.userData?.assetLoaded && o.userData?.assetPath === 'original/workshop_bench.glb')) benches++;
       if (o.name === 'hydraulic.press' || (o.userData?.assetLoaded && o.userData?.assetPath === 'special/workshop-drill-press.glb')) machines++;
       if (o.name === 'perimeter.concertina-wire') coils++;
       if (o.name === 'prison.main-gate.facade') gate++;

@@ -168,7 +168,8 @@ export type PropKind =
   | 'visit-sofa' | 'visit-side-table' | 'garden-pot'
   | 'yard-bush' | 'yard-flower' | 'yard-rock'
   | 'park-ambulance' | 'park-police' | 'park-van' | 'park-delivery'
-  | 'cell-toilet' | 'cell-locker' | 'medical-trolley';
+  | 'cell-toilet' | 'cell-locker' | 'medical-trolley'
+  | 'yard-concrete-stool';
 
 export interface PropDef {
   kind: PropKind;
@@ -196,27 +197,16 @@ P.push(
   { kind: 'cabinet', x: -13.5, z: -18.7, w: 1.6, d: 0.55, collide: true },
   { kind: 'desk', x: -8.0, z: -19.6, w: 1.8, d: 0.8, collide: true },
   { kind: 'chair', x: -8.0, z: -20.3, w: 0.5, d: 0.5 },
-  // Nhà ăn
-  { kind: 'counter', x: 5, z: -30, w: 10, d: 1, collide: true },
-  { kind: 'canteen', x: 13.5, z: -31.2, w: 3, d: 0.8, collide: true },
-  { kind: 'table', x: 1.5, z: -26.2, w: 3.2, d: 2.2, collide: true },
-  { kind: 'table', x: 10.5, z: -26.2, w: 3.2, d: 2.2, collide: true },
-  { kind: 'table', x: 1.5, z: -22.2, w: 3.2, d: 2.2, collide: true },
-  { kind: 'table', x: 10.5, z: -22.2, w: 3.2, d: 2.2, collide: true },
-  // 8 ghế ăn khớp chính xác 8 MESS_SEATS
-  { kind: 'chair', x: 0.6, z: -24.7, w: 0.45, d: 0.45, rot: Math.PI, label: 'Ghế nhà ăn' },
-  { kind: 'chair', x: 2.4, z: -24.7, w: 0.45, d: 0.45, rot: Math.PI, label: 'Ghế nhà ăn' },
-  { kind: 'chair', x: 0.6, z: -27.7, w: 0.45, d: 0.45, rot: 0, label: 'Ghế nhà ăn' },
-  { kind: 'chair', x: 2.4, z: -27.7, w: 0.45, d: 0.45, rot: 0, label: 'Ghế nhà ăn' },
-  { kind: 'chair', x: 9.6, z: -24.7, w: 0.45, d: 0.45, rot: Math.PI, label: 'Ghế nhà ăn' },
-  { kind: 'chair', x: 11.4, z: -24.7, w: 0.45, d: 0.45, rot: Math.PI, label: 'Ghế nhà ăn' },
-  { kind: 'chair', x: 9.6, z: -20.7, w: 0.45, d: 0.45, rot: Math.PI, label: 'Ghế nhà ăn' },
-  { kind: 'chair', x: 0.6, z: -20.7, w: 0.45, d: 0.45, rot: Math.PI, label: 'Ghế nhà ăn' },
-  // Xưởng
-  { kind: 'workbench', x: 16, z: -1, w: 2.4, d: 1.0, collide: true },
-  { kind: 'workbench', x: 20, z: -1, w: 2.4, d: 1.0, collide: true },
-  { kind: 'workbench', x: 16, z: 4, w: 2.4, d: 1.0, collide: true },
-  { kind: 'workbench', x: 20, z: 4, w: 2.4, d: 1.0, collide: true },
+  // Nhà ăn: 4 bàn ăn dùng bộ Blendstra (gồm bàn 2.6x0.91m + 2 ghế băng 2 bên)
+  { kind: 'table', x: 1.5, z: -26.2, w: 2.6, d: 0.90, collide: true, label: 'Bàn ăn nhà ăn' },
+  { kind: 'table', x: 10.5, z: -26.2, w: 2.6, d: 0.90, collide: true, label: 'Bàn ăn nhà ăn' },
+  { kind: 'table', x: 1.5, z: -22.2, w: 2.6, d: 0.90, collide: true, label: 'Bàn ăn nhà ăn' },
+  { kind: 'table', x: 10.5, z: -22.2, w: 2.6, d: 0.90, collide: true, label: 'Bàn ăn nhà ăn' },
+  // Xưởng: 4 bàn lắp ráp (workshop_bench.glb có gắn ê-tô và bảng dụng cụ phía sau)
+  { kind: 'workbench', x: 16, z: -1, w: 1.85, d: 0.8, rot: Math.PI, collide: true },
+  { kind: 'workbench', x: 20, z: -1, w: 1.85, d: 0.8, rot: Math.PI, collide: true },
+  { kind: 'workbench', x: 16, z: 4, w: 1.85, d: 0.8, rot: Math.PI, collide: true },
+  { kind: 'workbench', x: 20, z: 4, w: 1.85, d: 0.8, rot: Math.PI, collide: true },
   { kind: 'board', x: 12.19, z: -6, w: 1.3, d: 0.05, rot: Math.PI / 2, label: 'CHẤM CÔNG' },
   { kind: 'bench', x: 14.2, z: 7.2, w: 2.4, d: 0.5, collide: true },
   { kind: 'crate', x: 13.5, z: 6.5, w: 1.2, d: 1.2, collide: true },
@@ -226,16 +216,20 @@ P.push(
   { kind: 'shelf', x: 27.3, z: -9, w: 0.8, d: 4.5, collide: true },
   { kind: 'shelf', x: 27.3, z: -5.2, w: 0.8, d: 1.6, collide: true, label: 'drill' },
   { kind: 'crate', x: 23, z: -11.2, w: 1.2, d: 1.2, collide: true },
-  // Văn phòng
-  { kind: 'desk', x: -4, z: 16, w: 3, d: 1, collide: true },
+  // Văn phòng: bàn làm việc cán bộ (guard_office_desk.glb) và ghế xoay (guard_office_chair.glb)
+  { kind: 'desk', x: -4, z: 16, w: 1.65, d: 0.8, rot: Math.PI, collide: true, label: 'Bàn làm việc cán bộ' },
   { kind: 'cabinet', x: -10.8, z: 18.8, w: 2, d: 0.7, collide: true },
   { kind: 'cabinet', x: 2.6, z: 18.8, w: 2, d: 0.7, collide: true },
-  { kind: 'chair', x: -4.6, z: 14.5, w: 0.5, d: 0.5 },
+  { kind: 'chair', x: -4, z: 17.2, w: 0.65, d: 0.65, rot: 0, label: 'Ghế xoay quản giáo' },
+  { kind: 'chair', x: -4.6, z: 14.8, w: 0.65, d: 0.65, rot: Math.PI, label: 'Ghế tiếp dân' },
   { kind: 'board', x: -11.81, z: 14, w: 1.4, d: 0.05, rot: Math.PI / 2, label: 'KỶ LUẬT' },
-  // Sân
+  // Sân: Bàn cờ đá tròn (yard_concrete_table.glb) và 4 đôn bê tông (yard_concrete_stool.glb)
   { kind: 'pullup', x: -22.5, z: 5.2, w: 2.2, d: 0.3, collide: true },
-  { kind: 'stonetable', x: -10, z: 4.6, w: 1.3, d: 1.3, collide: true },
-  { kind: 'bench', x: -10, z: 3.3, w: 1.8, d: 0.5, collide: true, label: 'Ghế bàn cờ đá' },
+  { kind: 'stonetable', x: -10, z: 4.6, w: 1.32, d: 1.32, collide: true, label: 'Bàn cờ đá' },
+  { kind: 'yard-concrete-stool', x: -10, z: 3.5, w: 0.48, d: 0.48, collide: true, label: 'Đôn bê tông sân trại' },
+  { kind: 'yard-concrete-stool', x: -10, z: 5.7, w: 0.48, d: 0.48, collide: true, label: 'Đôn bê tông sân trại' },
+  { kind: 'yard-concrete-stool', x: -8.9, z: 4.6, w: 0.48, d: 0.48, collide: true, label: 'Đôn bê tông sân trại' },
+  { kind: 'yard-concrete-stool', x: -11.1, z: 4.6, w: 0.48, d: 0.48, collide: true, label: 'Đôn bê tông sân trại' },
   { kind: 'tree', x: -15, z: -8, w: 0.8, d: 0.8, collide: true },
   { kind: 'tree', x: -14, z: 5, w: 0.8, d: 0.8, collide: true },
   { kind: 'tree', x: 7, z: 17, w: 0.8, d: 0.8, collide: true },
@@ -255,20 +249,23 @@ P.push(
   { kind: 'desk', x: 23, z: -22, w: 2.4, d: 1.0, collide: true },
   { kind: 'chair', x: 23, z: -23.1, w: 0.5, d: 0.5, rot: 0, label: 'Ghế y sĩ' },
   { kind: 'medical-trolley', x: 26.85, z: -27.5, w: 0.62, d: 0.52, collide: true, label: 'Xe đẩy thuốc y tế' },
-  // Lớp học nghề & Thư viện
-  { kind: 'desk', x: -24, z: 13, w: 2.4, d: 1.0, collide: true },
-  { kind: 'chair', x: -24, z: 14.1, w: 0.45, d: 0.45, rot: 0, label: 'Ghế học nghề' },
-  { kind: 'desk', x: -18, z: 13, w: 2.4, d: 1.0, collide: true },
-  { kind: 'chair', x: -18, z: 14.1, w: 0.45, d: 0.45, rot: 0, label: 'Ghế học nghề' },
-  { kind: 'desk', x: -21.5, z: 17.5, w: 2.6, d: 1.0, collide: true },
-  { kind: 'chair', x: -21.5, z: 18.6, w: 0.45, d: 0.45, rot: 0, label: 'Ghế giáo viên' },
+  // Lớp học nghề & Thư viện: bàn học (classroom_desk.glb) và ghế học (classroom_chair.glb)
+  { kind: 'desk', x: -24, z: 13, w: 0.85, d: 0.6, rot: Math.PI, collide: true },
+  { kind: 'chair', x: -24, z: 13.85, w: 0.48, d: 0.48, rot: 0, label: 'Ghế học nghề' },
+  { kind: 'desk', x: -18, z: 13, w: 0.85, d: 0.6, rot: Math.PI, collide: true },
+  { kind: 'chair', x: -18, z: 13.85, w: 0.48, d: 0.48, rot: 0, label: 'Ghế học nghề' },
+  { kind: 'desk', x: -21.5, z: 17.5, w: 1.65, d: 0.8, rot: Math.PI, collide: true, label: 'Bàn giáo viên' },
+  { kind: 'chair', x: -21.5, z: 18.5, w: 0.48, d: 0.48, rot: 0, label: 'Ghế giáo viên' },
   { kind: 'shelf', x: -26.8, z: 16.5, w: 0.8, d: 3.2, collide: true },
-  { kind: 'chair', x: -25.5, z: 16.0, w: 0.45, d: 0.45, rot: Math.PI / 2, label: 'Ghế đọc sách thư viện' },
+  { kind: 'chair', x: -25.5, z: 16.0, w: 0.48, d: 0.48, rot: Math.PI / 2, label: 'Ghế đọc sách thư viện' },
   { kind: 'board', x: -27.81, z: 12, w: 1.4, d: 0.05, rot: Math.PI / 2, label: 'LỚP HỌC NGHỀ' },
-  // Phòng Thăm gặp
+  // Phòng Thăm gặp: vách kính, bàn thăm gặp (visitation_table.glb) và ghế (visitation_chair.glb)
   { kind: 'counter', x: -24, z: -9.5, w: 6.8, d: 0.8, collide: true },
   { kind: 'chair', x: -22.5, z: -8.5, w: 0.5, d: 0.5, rot: 0, label: 'Ghế người nhà' },
   { kind: 'chair', x: -25.5, z: -10.5, w: 0.5, d: 0.5, rot: Math.PI, label: 'Ghế phạm nhân thăm' },
+  { kind: 'table', x: -23.5, z: -6.0, w: 1.56, d: 0.69, collide: true, label: 'Bàn thăm gặp' },
+  { kind: 'chair', x: -23.5, z: -5.25, w: 0.5, d: 0.5, rot: Math.PI, label: 'Ghế bàn thăm gặp khách' },
+  { kind: 'chair', x: -23.5, z: -6.75, w: 0.5, d: 0.5, rot: 0, label: 'Ghế bàn thăm gặp cán bộ' },
   // Khu Kỷ luật
   { kind: 'bunk', x: 10, z: 18, w: 1.1, d: 2.0, collide: true },
 
@@ -381,8 +378,14 @@ export function rollcallSlot(i: number): [number, number] {
 }
 export const LAN_ROLLCALL: [number, number] = [-9, -11.6];
 
-/** Chỗ ngồi nhà ăn: [x, z, hướng] (đặt ngoài mép bàn để không bị xuyên) */
+/** Chỗ ngồi nhà ăn: [x, z, hướng] khớp chính xác 2 ghế băng trong model canteen_table_set_blendstra.glb */
 export const MESS_SEATS: [number, number, number][] = [
-  [0.6, -24.7, Math.PI], [2.4, -24.7, Math.PI], [0.6, -27.7, 0], [2.4, -27.7, 0],
-  [9.6, -24.7, Math.PI], [11.4, -24.7, Math.PI], [9.6, -20.7, Math.PI], [0.6, -20.7, Math.PI],
+  // Bàn 1 (x: 1.5, z: -26.2): Băng ghế phía Nam nhìn về phía Bắc (Math.PI)
+  [0.6, -25.45, Math.PI], [2.4, -25.45, Math.PI],
+  // Bàn 1 (x: 1.5, z: -26.2): Băng ghế phía Bắc nhìn về phía Nam (0)
+  [0.6, -26.95, 0], [2.4, -26.95, 0],
+  // Bàn 2 (x: 10.5, z: -26.2): Băng ghế phía Nam nhìn về phía Bắc (Math.PI)
+  [9.6, -25.45, Math.PI], [11.4, -25.45, Math.PI],
+  // Bàn 3 & 4 (z: -22.2): Băng ghế phía Nam nhìn về phía Bắc (Math.PI)
+  [9.6, -21.45, Math.PI], [0.6, -21.45, Math.PI],
 ];

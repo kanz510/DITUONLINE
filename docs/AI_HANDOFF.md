@@ -8,6 +8,23 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-03 — Antigravity — Tích hợp Furniture Pack v1 (Bàn ghế PBR 3D, Blendstra Canteen Set, Đôn đá, Bàn xưởng & Bàn học) (v0.4.14)
+- **Tích hợp 10 Model GLB PBR Furniture Pack v1 nguyên bản:**
+  - **Bàn ăn nhà ăn (Blendstra):** Sử dụng `canteen_table_set_blendstra.glb` (bàn dài + 2 ghế băng tích hợp 2 bên). Kích thước footprint collider `2.6m x 0.90m` (chỉ cản mặt bàn, chừa trống hoàn toàn 2 bên ghế băng). Bù đáy `Y = -bounds.min.y` bảo đảm chân chạm sàn `y = 0.0`. Khay cơm `canteen_meal_tray.glb` đặt trực tiếp trên mặt bàn `y = 0.828m`. Bỏ 8 ghế đơn rời trước đây để không chồng lấn. Cập nhật `MESS_SEATS` bám sát vị trí mặt ghế băng thật trong GLB (`z = table.z ± 0.75m`).
+  - **Bàn xưởng lao động:** Sử dụng `workshop_bench.glb` (rộng 1.85m, sâu 0.79m, cao 1.43m, có bảng treo dụng cụ pegboard và ê-tô đúc). Xoay `rot: Math.PI` để bảng dụng cụ quay ra sau tường/lối đi, ê-tô và mặt bàn mở rộng hướng thẳng về phía tù nhân đang thao tác.
+  - **Bàn làm việc cán bộ & Ghế văn phòng:** Sử dụng `guard_office_desk.glb` (rộng 1.62m, sâu 0.76m, cao 1.26m tính cả đèn bàn) và ghế xoay `guard_office_chair.glb`. Bàn xoay `rot: Math.PI` để tấm modesty panel hướng ra cửa tiếp dân và các ngăn kéo hướng về phía Quản giáo. Đặt ghế xoay tại `[-4, 17.2]` (`rot: 0`) khớp chính xác vị trí Quản giáo Lan ngồi làm việc. Đài radio `guard_desk_radio.glb` đặt chuẩn trên mặt bàn tại `y = 0.76m`. Ghế tiếp dân `[-4.6, 14.8]` quay mặt vào bàn.
+  - **Bàn học & Ghế học nghề:** Sử dụng `classroom_desk.glb` (rộng 0.81m, sâu 0.57m, có hộc để sách và rãnh bút) xoay `rot: Math.PI` và `classroom_chair.glb` (rộng 0.48m, sâu 0.47m) đặt tại các vị trí học viên và bàn giáo viên.
+  - **Bàn & Ghế phòng thăm gặp:** Bàn `visitation_table.glb` (1.56m x 0.69m) đặt tại khu tư vấn phòng thăm gặp cùng 2 ghế `visitation_chair.glb`. Giữ nguyên vách kính an toàn `visitation.shatterproof-glass` và cụm điện thoại thăm gặp `visitation-phone.glb`.
+  - **Bàn đá & Đôn bê tông sân trại:** Bàn cờ đá tròn `yard_concrete_table.glb` (đường kính 1.32m có mặt bàn cờ tướng/cờ vua) và 4 ghế đôn tròn `yard_concrete_stool.glb` bố trí quanh bàn đá ở khoảng cách `0.85m` (vị trí Chú Bảy ngồi chơi cờ tại `[-10, 3.5]` khớp chính xác đôn đá phía Nam).
+- **Camera Obstacles & Fallback:**
+  - Đăng ký `'chair'` và `'yard-concrete-stool'` vào `cameraObstacles` trong `builder.ts` để camera góc nhìn thứ 3 không bao giờ xuyên qua đồ nội thất mới.
+  - Bổ sung procedural fallback cho `yard-concrete-stool` trong `makePropMesh`.
+- **Kiểm thử tự động:**
+  - Thêm unit test `tests/unit/furniture-pack.test.ts` (9 bài test): kiểm tra 10 file GLB nguyên bản, parser glTF 2.0, kích thước bàn ăn 2.6x0.9m, 8 điểm `MESS_SEATS` khớp băng ghế Blendstra, không đè collider lên ghế ngồi hay ngưỡng cửa/hành lang, đôn bê tông quanh bàn cờ đá, xoay bàn xưởng và đăng ký camera obstacles.
+  - Cập nhật test `tests/unit/visual-balance.test.ts` khớp bàn ăn Blendstra.
+  - Thêm E2E test `tests/e2e/furniture-pack.spec.ts` chụp 4 ảnh màn hình: Nhà ăn, Lớp học nghề, Phòng quản giáo, Sân trại trên iPhone landscape 956x440.
+  - Kết quả: **99/99 unit tests PASS (100%)**, **E2E Playwright PASS (100%)**.
+
 ### 2026-11-03 — Antigravity — Sửa đồ họa 8 ảnh & Cân bằng Gameplay (Ghế ngồi, Bot tách mềm, Stamina, Nhịp giảm án) (v0.4.13)
 - **FIX 1 & FIX A — Ghế ngồi, Va chạm & Camera Obstacles:**
   - **8 Ghế ăn nhà ăn:** Bổ sung 8 ghế đơn khớp chính xác 8 vị trí `MESS_SEATS` (`[0.6, -24.7]`, `[2.4, -24.7]`, `[0.6, -27.7]`, `[2.4, -27.7]`, `[9.6, -24.7]`, `[11.4, -24.7]`, `[9.6, -20.7]`, `[0.6, -20.7]`).

@@ -36,10 +36,14 @@ const propAssets: Record<string, string> = {
   'park-van': 'special/prison-transfer-bus.glb',
   press: 'special/workshop-drill-press.glb',
   'park-delivery': 'vehicles/delivery.glb',
-  // Model nguyên bản
+  // Model nguyên bản Pack 01
   'cell-toilet': 'original/cell_sanitation_unit_blendstra.glb',
   'cell-locker': 'original/single_prison_locker.glb',
   'medical-trolley': 'original/infirmary_medical_trolley.glb',
+  // Model nguyên bản Pack 02 (Furniture Pack v1)
+  workbench: 'original/workshop_bench.glb',
+  stonetable: 'original/yard_concrete_table.glb',
+  'yard-concrete-stool': 'original/yard_concrete_stool.glb',
 };
 const propCache = new Map<string, Promise<THREE.Group>>();
 function loadProp(path: string) {
@@ -467,17 +471,43 @@ export class PrisonWorld {
       const obj = new THREE.Group();
       obj.name = 'prop.' + p.kind;
       obj.add(placeholder);
-      // Clone shared CC0 GLBs after a single load, keeping procedural fallback
-      // visible until the corresponding file AND its relative texture load.
-      const asset = p.kind === 'bunk' && p.x > 20 && p.z < -20
-        ? 'special/hospital-bed.glb'
-        : p.kind === 'bunk' && (p.x > 20 || (p.x > 5 && p.z > 10))
-          ? 'furniture/bedSingle.glb'
-        : p.kind === 'tree' && Math.floor(Math.abs(p.x * 17 + p.z * 11)) % 2 === 0
-          ? 'nature/tree_oak.glb'
-          : p.kind === 'yard-flower' && p.x > 0
-            ? 'nature/flower_yellowA.glb'
-            : propAssets[p.kind];
+      // Phân bổ asset theo từng khu vực chuyên biệt (ưu tiên 10 model Furniture Pack v1 nguyên bản)
+      let asset: string | undefined;
+      if (p.kind === 'bunk' && p.x > 20 && p.z < -20) {
+        asset = 'special/hospital-bed.glb';
+      } else if (p.kind === 'bunk' && (p.x > 20 || (p.x > 5 && p.z > 10))) {
+        asset = 'furniture/bedSingle.glb';
+      } else if (p.kind === 'tree' && Math.floor(Math.abs(p.x * 17 + p.z * 11)) % 2 === 0) {
+        asset = 'nature/tree_oak.glb';
+      } else if (p.kind === 'yard-flower' && p.x > 0) {
+        asset = 'nature/flower_yellowA.glb';
+      } else if (p.kind === 'table' && p.x > -2 && p.x < 16 && p.z < -18) {
+        // Nhà ăn: 4 bàn ăn dùng bộ Blendstra (bàn + 2 ghế băng)
+        asset = 'original/canteen_table_set_blendstra.glb';
+      } else if (p.kind === 'desk' && p.x < -15 && p.z > 10) {
+        // Phòng học & Thư viện: bàn học
+        asset = 'original/classroom_desk.glb';
+      } else if (p.kind === 'chair' && p.x < -15 && p.z > 10) {
+        // Phòng học & Thư viện: ghế học
+        asset = 'original/classroom_chair.glb';
+      } else if (p.kind === 'desk' && p.x > -12 && p.x < 4 && p.z > 10) {
+        // Phòng cán bộ: bàn làm việc cán bộ
+        asset = 'original/guard_office_desk.glb';
+      } else if (p.kind === 'chair' && p.x > -12 && p.x < 4 && p.z > 10) {
+        // Phòng cán bộ: ghế xoay cán bộ
+        asset = 'original/guard_office_chair.glb';
+      } else if ((p.kind === 'table' || p.kind === 'visit-side-table') && p.x < -20 && p.z < 0) {
+        // Phòng thăm gặp: bàn thăm gặp
+        asset = 'original/visitation_table.glb';
+      } else if (p.kind === 'chair' && p.x < -20 && p.z < 0) {
+        // Phòng thăm gặp: ghế thăm gặp
+        asset = 'original/visitation_chair.glb';
+      } else if (p.kind === 'yard-concrete-stool' || (p.kind === 'chair' && Math.hypot(p.x - (-10), p.z - 4.6) < 2.0)) {
+        // Sân trại: đôn bê tông
+        asset = 'original/yard_concrete_stool.glb';
+      } else {
+        asset = propAssets[p.kind];
+      }
       if (asset) {
         void loadProp(asset).then((template) => {
           const model = template.clone(true);
@@ -492,21 +522,28 @@ export class PrisonWorld {
           const height = bounds.max.y - bounds.min.y;
           if (!Number.isFinite(width * depth * height) ||
               Math.min(width, depth, height) <= 0.001) return;
-          // Uniform scale prevents squashing. The declared PROPS boxes remain
-          // the ONLY collision source (vehicle footprint included).
-          const maxHeight = p.kind === 'tree' ? 4.5
-            : p.kind === 'bunk' ? 2.0
-              : p.kind === 'cell-locker' ? 1.65
-                : p.kind === 'cell-toilet' ? 1.4
-                  : p.kind === 'medical-trolley' ? 1.1
-                    : p.kind === 'kitchen-fridge' ? 2.25
-                      : isVehicle ? 2.4
-                        : p.kind === 'press' ? 2.45
-                          : p.kind === 'garden-pot' ? 1.3
-                          : p.kind.startsWith('yard-') ? 0.85 : 1.9;
-          const factor = p.kind === 'tree'
-            ? 4.5 / height
-            : Math.min(p.w / width, p.d / depth, maxHeight / height) * 0.96;
+          const isOriginalPack = asset.startsWith('original/');
+          let factor = 1.0;
+          if (isOriginalPack) {
+            // Model trong original/ là asset tỉ lệ chuẩn 1:1 mét (PBR)
+            factor = 1.0;
+          } else {
+            // Uniform scale prevents squashing. The declared PROPS boxes remain
+            // the ONLY collision source (vehicle footprint included).
+            const maxHeight = p.kind === 'tree' ? 4.5
+              : p.kind === 'bunk' ? 2.0
+                : p.kind === 'cell-locker' ? 1.65
+                  : p.kind === 'cell-toilet' ? 1.4
+                    : p.kind === 'medical-trolley' ? 1.1
+                      : p.kind === 'kitchen-fridge' ? 2.25
+                        : isVehicle ? 2.4
+                          : p.kind === 'press' ? 2.45
+                            : p.kind === 'garden-pot' ? 1.3
+                            : p.kind.startsWith('yard-') ? 0.85 : 1.9;
+            factor = p.kind === 'tree'
+              ? 4.5 / height
+              : Math.min(p.w / width, p.d / depth, maxHeight / height) * 0.96;
+          }
           model.scale.setScalar(factor);
           model.position.set(
             -(bounds.min.x + bounds.max.x) * 0.5 * factor,
@@ -562,7 +599,7 @@ export class PrisonWorld {
               const radio = radioSrc.clone(true);
               radio.name = 'original.guard_desk_radio';
               const radioBounds = new THREE.Box3().setFromObject(radioSrc);
-              const deskTopY = bounds.max.y * factor;
+              const deskTopY = 0.76;
               radio.position.set(0.65, deskTopY - radioBounds.min.y, -0.05);
               radio.rotation.y = -Math.PI / 6;
               radio.traverse((child) => {
@@ -622,7 +659,8 @@ export class PrisonWorld {
       const cameraObstacleKinds = new Set([
         'tree', 'lamp', 'shelf', 'tower', 'cell-locker',
         'bench', 'table', 'desk', 'workbench', 'counter', 'canteen', 'stonetable',
-        'bunk', 'cabinet', 'press', 'tank', 'cell-toilet', 'medical-trolley'
+        'bunk', 'cabinet', 'press', 'tank', 'cell-toilet', 'medical-trolley',
+        'chair', 'yard-concrete-stool'
       ]);
       if (cameraObstacleKinds.has(p.kind)) this.cameraObstacles.push(obj);
       obj.position.set(p.x, 0, p.z);
@@ -771,6 +809,12 @@ export class PrisonWorld {
         const p0 = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.7, 10), stone);
         p0.position.y = 0.35;
         g.add(t, p0);
+        break;
+      }
+      case 'yard-concrete-stool': {
+        const stool = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.47, 16), stone);
+        stool.position.y = 0.235;
+        g.add(stool);
         break;
       }
       case 'tree': {
