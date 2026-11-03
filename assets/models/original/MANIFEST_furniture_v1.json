@@ -1,0 +1,244 @@
+{
+  "pack": "DITUONLINE_Furniture_Pack_v1",
+  "version": "1.0",
+  "origin": "new original procedural meshes",
+  "engine": "Three.js 0.170 / glTF 2.0",
+  "unit": "meters",
+  "coordinate": "Y-up",
+  "external_dependencies": [],
+  "draco": false,
+  "ktx2": false,
+  "models": [
+    {
+      "slug": "canteen_table",
+      "title": "Bàn dài nhà ăn",
+      "file": "canteen_table.glb",
+      "usage": "Thay ngoại hình bàn dài căn tin, không đổi collider cũ",
+      "sha256": "5db22446b45ca00f8da504d5fe861b83806a72664e235ec976bba82a2afcd1a5",
+      "size_bytes": 38420,
+      "triangles": 4000,
+      "meshes": 19,
+      "dimensions_m": [
+        2.5,
+        0.828,
+        0.88
+      ],
+      "min_y_m": 0.005,
+      "collider_when_new": true,
+      "style": "stylized prison furniture PBR",
+      "y_up": true,
+      "front": "-Z",
+      "license": "original CC0 / freely reusable"
+    },
+    {
+      "slug": "canteen_bench",
+      "title": "Ghế băng nhà ăn",
+      "file": "canteen_bench.glb",
+      "usage": "Hai bên bàn ăn; nên đặt trên footprint đã có hoặc cập nhật PROPS/nav",
+      "sha256": "166ef6d3e21c65eac6fef70bd978b200a6bd4786fa2dfb007df49cf936f1be67",
+      "size_bytes": 36372,
+      "triangles": 3744,
+      "meshes": 18,
+      "dimensions_m": [
+        2.2,
+        0.51,
+        0.365
+      ],
+      "min_y_m": 0.001,
+      "collider_when_new": true,
+      "style": "stylized prison furniture PBR",
+      "y_up": true,
+      "front": "-Z",
+      "license": "original CC0 / freely reusable"
+    },
+    {
+      "slug": "guard_office_desk",
+      "title": "Bàn làm việc quản giáo",
+      "file": "guard_office_desk.glb",
+      "usage": "Phòng cán bộ: dùng thay desk/visual, vẫn giữ logic và collider",
+      "sha256": "54f95c62ef25609811f253c30c8322b8eafc8441401a7f71bdae85a1a9c40d39",
+      "size_bytes": 51208,
+      "triangles": 5448,
+      "meshes": 24,
+      "dimensions_m": [
+        1.62,
+        1.259,
+        0.76
+      ],
+      "min_y_m": 0.004,
+      "collider_when_new": true,
+      "style": "stylized prison furniture PBR",
+      "y_up": true,
+      "front": "-Z",
+      "license": "original CC0 / freely reusable"
+    },
+    {
+      "slug": "guard_office_chair",
+      "title": "Ghế xoay quản giáo",
+      "file": "guard_office_chair.glb",
+      "usage": "Đặt ghế sát bàn; có 5 chân và tựa lưng cong giả lập",
+      "sha256": "9205c0865c6d7b22627f1fb377533ba1c62c492a6ce9908e5f8ce56f87eb99b6",
+      "size_bytes": 37384,
+      "triangles": 2912,
+      "meshes": 27,
+      "dimensions_m": [
+        0.641,
+        1.215,
+        0.7
+      ],
+      "min_y_m": 0.005,
+      "collider_when_new": true,
+      "style": "stylized prison furniture PBR",
+      "y_up": true,
+      "front": "-Z",
+      "license": "original CC0 / freely reusable"
+    },
+    {
+      "slug": "classroom_desk",
+      "title": "Bàn học nghề",
+      "file": "classroom_desk.glb",
+      "usage": "Bàn đơn cho lớp học nghề / học văn hoá",
+      "sha256": "d81b8aae475d562ac170064cf4cc6429ba5106fabd2e817e2a0b53a9682e9aaf",
+      "size_bytes": 32804,
+      "triangles": 3584,
+      "meshes": 14,
+      "dimensions_m": [
+        0.81,
+        0.802,
+        0.57
+      ],
+      "min_y_m": 0.002,
+      "collider_when_new": true,
+      "style": "stylized prison furniture PBR",
+      "y_up": true,
+      "front": "-Z",
+      "license": "original CC0 / freely reusable"
+    },
+    {
+      "slug": "classroom_chair",
+      "title": "Ghế học nghề",
+      "file": "classroom_chair.glb",
+      "usage": "Ghế học nghề gỗ/thép cùng phong cách bàn đơn",
+      "sha256": "036e0ec1a36adf2215f24f66d2ed06366bce0c2b323f61453c28faa24b4f28ef",
+      "size_bytes": 30268,
+      "triangles": 3328,
+      "meshes": 13,
+      "dimensions_m": [
+        0.48,
+        0.993,
+        0.47
+      ],
+      "min_y_m": 0.002,
+      "collider_when_new": true,
+      "style": "stylized prison furniture PBR",
+      "y_up": true,
+      "front": "-Z",
+      "license": "original CC0 / freely reusable"
+    },
+    {
+      "slug": "visitation_table",
+      "title": "Bàn thăm gặp",
+      "file": "visitation_table.glb",
+      "usage": "Bàn thăm gặp có chia ô, KHÔNG tự thêm kính nếu game đã có vách",
+      "sha256": "25c50ec93e1b751d15ed31b16a5e8eb579a0512f14daed150a34f6130fdef3d2",
+      "size_bytes": 34952,
+      "triangles": 3664,
+      "meshes": 16,
+      "dimensions_m": [
+        1.56,
+        0.826,
+        0.69
+      ],
+      "min_y_m": 0.004,
+      "collider_when_new": true,
+      "style": "stylized prison furniture PBR",
+      "y_up": true,
+      "front": "-Z",
+      "license": "original CC0 / freely reusable"
+    },
+    {
+      "slug": "visitation_chair",
+      "title": "Ghế thăm gặp",
+      "file": "visitation_chair.glb",
+      "usage": "Ghế khách ngồi fixed-frame; bổ sung vào layout nếu đặt độc lập",
+      "sha256": "4cf5c68423c8f8f3e135f0fd2e99119d55a48468eba1ce794a304c9d6c1c8982",
+      "size_bytes": 32780,
+      "triangles": 3584,
+      "meshes": 14,
+      "dimensions_m": [
+        0.496,
+        0.979,
+        0.492
+      ],
+      "min_y_m": 0.002,
+      "collider_when_new": true,
+      "style": "stylized prison furniture PBR",
+      "y_up": true,
+      "front": "-Z",
+      "license": "original CC0 / freely reusable"
+    },
+    {
+      "slug": "yard_concrete_table",
+      "title": "Bàn tròn sân tù",
+      "file": "yard_concrete_table.glb",
+      "usage": "Bàn tròn sân sinh hoạt, phù hợp bàn cờ đá",
+      "sha256": "9fb3fd1308d11abc81d0acab184de4912158c89cad397acecb8575d6421b1668",
+      "size_bytes": 37252,
+      "triangles": 2928,
+      "meshes": 13,
+      "dimensions_m": [
+        1.324,
+        0.812,
+        1.324
+      ],
+      "min_y_m": -0.0,
+      "collider_when_new": true,
+      "style": "stylized prison furniture PBR",
+      "y_up": true,
+      "front": "-Z",
+      "license": "original CC0 / freely reusable"
+    },
+    {
+      "slug": "yard_concrete_stool",
+      "title": "Ghế đôn bê tông sân tù",
+      "file": "yard_concrete_stool.glb",
+      "usage": "Ghế ngồi gần bàn đá; đặt tránh lối tuần tra",
+      "sha256": "8592168e83919d554163b92a20016b0820e3b21ec25cb54e30c1a79e684f254d",
+      "size_bytes": 11768,
+      "triangles": 528,
+      "meshes": 4,
+      "dimensions_m": [
+        0.476,
+        0.474,
+        0.476
+      ],
+      "min_y_m": 0.003,
+      "collider_when_new": true,
+      "style": "stylized prison furniture PBR",
+      "y_up": true,
+      "front": "-Z",
+      "license": "original CC0 / freely reusable"
+    },
+    {
+      "slug": "workshop_bench",
+      "title": "Bàn thợ xưởng lao động",
+      "file": "workshop_bench.glb",
+      "usage": "Thay ngoại hình workbench hiện tại, không thay nhiệm vụ",
+      "sha256": "e237192aea686721b2794e3fb87021ede96e3c41b594ea99e15b4ea7bb06c82f",
+      "size_bytes": 70716,
+      "triangles": 5416,
+      "meshes": 64,
+      "dimensions_m": [
+        1.85,
+        1.429,
+        0.79
+      ],
+      "min_y_m": 0.001,
+      "collider_when_new": true,
+      "style": "stylized prison furniture PBR",
+      "y_up": true,
+      "front": "-Z",
+      "license": "original CC0 / freely reusable"
+    }
+  ]
+}
