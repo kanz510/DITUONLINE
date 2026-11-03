@@ -1,0 +1,138 @@
+
+/* Original cinematic title screen: lightweight HTML/SVG, no image/video requests. */
+.landing-screen, .landing-screen * { box-sizing: border-box; }
+.landing-screen {
+  position: fixed; inset: 0; z-index: 380; isolation: isolate;
+  overflow: hidden; color: #f7f3e9;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  background: radial-gradient(ellipse 70% 95% at 82% 37%, #3b4a48 0%, #182a31 49%, #080f18 95%);
+  pointer-events: auto; touch-action: pan-y;
+}
+.landing-screen [hidden] { display: none !important; }
+.landing-atmosphere { position: absolute; z-index: -1; inset: 0; overflow: hidden; pointer-events: none; }
+.landing-atmosphere::before {
+  content: ""; position: absolute; inset: 0; z-index: 5;
+  background: linear-gradient(90deg, #09131f 0%, #09131f 27%, rgba(9,19,31,.97) 38%, rgba(9,19,31,.45) 63%, rgba(9,19,31,.12) 100%),
+    linear-gradient(0deg, rgba(5,12,20,.75), transparent 41%);
+}
+.landing-atmosphere::after {
+  content:""; position: absolute; inset: 0; z-index: 6; opacity:.13;
+  background-image: repeating-linear-gradient(0deg, transparent 0, transparent 3px, rgba(211,223,228,.23) 4px);
+}
+.landing-scene { position: absolute; right: 0; bottom: -7%; width: min(72vw, 800px); height: 120%; filter: drop-shadow(0 18px 28px rgba(0,0,0,.65)); }
+.landing-beam {
+  position:absolute; top:-22%; right:2%; width:60%; height:130%;
+  background: conic-gradient(from 205deg at 75% 16%, transparent 0deg, rgba(254,189,95,.21) 21deg, transparent 44deg);
+  transform-origin: 77% 16%; animation: landing-sweep 11s ease-in-out infinite alternate;
+}
+@keyframes landing-sweep { from { transform: rotate(-10deg); } to { transform: rotate(11deg); } }
+.landing-fence-left, .landing-fence-right {
+  position:absolute; inset:auto auto 0 0; height:65%; width:12%; opacity:.32;
+  background: repeating-linear-gradient(85deg, transparent 0 16px, #b0bab5 17px 19px, transparent 20px 26px),
+              repeating-linear-gradient(-85deg, transparent 0 16px, #b0bab5 17px 19px, transparent 20px 26px);
+}
+.landing-fence-right { left:auto; right:0; width:9%; }
+.landing-header {
+  position: absolute; top: max(19px,env(safe-area-inset-top)); left:max(28px,env(safe-area-inset-left));
+  right:max(28px,env(safe-area-inset-right)); display:flex; gap: 12px; justify-content:space-between; align-items:center;
+  color: #c9c8bf; font-size: 10px; font-weight: 750; letter-spacing: .15em; text-transform: uppercase;
+}
+.landing-agency { display:flex; align-items:center; gap: 9px; white-space:nowrap; }
+.landing-agency i { color:#b78546; font-style: normal; }
+.landing-stamp {
+  display:inline-grid; place-items:center; width:30px; height:30px; border:1.5px solid #c49b5c;
+  border-radius: 50%; color:#e5bf82; font-size: 11px; letter-spacing: -.04em;
+  box-shadow: inset 0 0 0 3px rgba(195,150,78,.12);
+}
+.landing-version { opacity: .66; font-size: 9px; white-space:nowrap; }
+.landing-copy {
+  position: relative; z-index: 10; display:flex; flex-direction:column; align-items:flex-start;
+  justify-content: center; padding:58px 12px 36px max(44px,env(safe-area-inset-left));
+  width:min(560px,61vw); height:100%; min-height:0;
+}
+.landing-eyebrow { margin:0 0 10px; color:#dda75b; letter-spacing:.24em; font-weight:800; font-size:10px; }
+.landing-eyebrow::before { content:""; display:inline-block; height:2px; width:26px; margin:0 12px 3px 0; background:#d9a252; }
+.landing-wordmark {
+  display:flex; flex-direction:column; margin:0; line-height:.82;
+  font-family:Impact,"Arial Black",system-ui,sans-serif; font-weight:1000;
+  font-size:clamp(48px,7.3vw,98px); letter-spacing:.018em; transform: scaleX(.95);
+  transform-origin: left center; text-shadow:0 5px 15px rgba(0,0,0,.35);
+}
+.landing-wordmark strong { color:#e9ab50; letter-spacing:.035em; font-weight:inherit; }
+.landing-wordmark strong span { color:#fff3d7; }
+.landing-quote {
+  font-size:clamp(10px,1.3vw,15px); color:#c6d0d1;
+  margin: 17px 0 15px; line-height:1.35; max-width:390px;
+}
+.landing-quote b { color:#f0eddf; font-weight:750; }
+.landing-save {
+  display:flex; align-items:center; gap:10px; width:100%; max-width:377px;
+  margin-bottom: 10px; padding: 7px 11px;
+  border-left:2px solid #e1a756; border-radius:2px 9px 9px 2px;
+  background:rgba(25,41,49,.62); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+}
+.landing-save-icon { color:#f4c079; font-size:22px; line-height:1; }
+.landing-save b, .landing-save small { display:block; }
+.landing-save b { font-size:10px; letter-spacing:.14em; color:#eab978; }
+.landing-save small { margin-top:3px; font-size:11px; color:#d5d8d2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.landing-actions { display:flex; align-items:stretch; gap:7px; flex-wrap:wrap; max-width:415px; }
+.landing-actions button, .landing-confirm button {
+  appearance:none; -webkit-appearance:none; border-radius:8px; min-height:39px;
+  padding:8px 13px; font-size:11px; font-weight:850; line-height:1.15; letter-spacing:.055em;
+  cursor:pointer; touch-action:manipulation; transition:background .18s, transform .18s, border-color .18s;
+}
+.landing-actions button:active, .landing-confirm button:active { transform:translateY(1px); }
+.landing-actions button:focus-visible, .landing-confirm button:focus-visible { outline:2px solid #fbd18c; outline-offset:3px; }
+.landing-cta {
+  display:flex; gap:10px; align-items:center; justify-content:space-between;
+  width:100%; background:linear-gradient(115deg,#efbd63,#cb812d); color:#1e211f; border:1px solid #ffe0a1;
+  box-shadow:0 7px 24px rgba(219,136,42,.18),inset 0 1px rgba(255,255,255,.42);
+}
+.landing-cta:hover { background:linear-gradient(115deg,#f9d087,#e59a42); }
+.landing-cta>span { display:grid;place-items:center;width:23px;height:23px;border-radius:6px;background:#2f3025;color:#ffe2a1;font-size:15px; }
+.landing-cta>b { font-size:23px; line-height:10px; }
+.landing-secondary, .landing-guide {
+  color:#e3e1db; border:1px solid rgba(159,180,180,.45); background:rgba(24,37,45,.77);
+}
+.landing-secondary:hover, .landing-guide:hover { background:rgba(43,64,72,.9); }
+.landing-secondary { flex:1 1 180px; }
+.landing-guide { flex:1 1 120px; }
+.landing-rules-panel, .landing-confirm {
+  position:absolute; bottom:15%; width:min(425px,90%); z-index:15; padding:14px 16px;
+  border:1px solid #b48c4e; border-radius:10px;
+  background:#17242d; box-shadow:0 17px 35px rgba(0,0,0,.55);
+  color:#d8dedb; font-size:12px; line-height:1.5;
+}
+.landing-rules-panel b, .landing-confirm b { color:#ebbd72; letter-spacing:.07em; font-size:12px; }
+.landing-rules-panel p, .landing-confirm p { margin:7px 0; }
+.landing-confirm { bottom:7%; }
+.landing-confirm button { margin:6px 6px 0 0; color:white; }
+.landing-danger { border:1px solid #fa7777; background:#963f38; }
+.landing-bottom {
+  position:absolute; bottom:max(15px,env(safe-area-inset-bottom)); left:max(28px,env(safe-area-inset-left));
+  right:max(28px,env(safe-area-inset-right)); display:flex;justify-content:space-between;align-items:center;
+  color:#a6b5b0; font-size:9px; font-weight:700; letter-spacing:.18em;
+}
+.landing-bottom span:first-child { color:#c0d9bb; }
+@media (max-height:500px) and (orientation:landscape) {
+  .landing-copy { width:min(492px,59vw); padding:53px 12px 27px max(34px,env(safe-area-inset-left)); }
+  .landing-eyebrow { font-size:9px; margin-bottom:8px; }
+  .landing-wordmark { font-size:clamp(43px,6.8vw,78px); }
+  .landing-quote { margin:12px 0 9px; line-height:1.25; font-size:12px; }
+  .landing-save { padding:5px 9px; margin-bottom:8px; }
+  .landing-actions button { min-height:37px; }
+  .landing-header { top:max(10px,env(safe-area-inset-top)); }
+  .landing-bottom { bottom:max(8px,env(safe-area-inset-bottom)); }
+  .landing-scene { right:-2%; width:min(69vw,750px); height:125%; bottom:-16%; }
+}
+@media (max-width:700px) and (orientation:landscape) {
+  .landing-copy { width:65vw; padding-left:max(20px,env(safe-area-inset-left)); }
+  .landing-wordmark { font-size:clamp(38px,7vw,56px); }
+  .landing-header,.landing-bottom { left:20px;right:20px; }
+  .landing-version,.landing-bottom span:last-child { display:none; }
+  .landing-actions button { font-size:9px; min-height:34px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .landing-beam { animation:none; }
+  .landing-actions button { transition:none; }
+}
