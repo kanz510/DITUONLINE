@@ -3,13 +3,13 @@ import type { Box } from './layout';
 export class Collision {
   boxes: Box[] = [];
   sightBlockers: Box[] = [];
-  dynamic: () => Box[] = () => [];
+  dynamic: (actorX?: number, actorZ?: number) => Box[] = () => [];
 
   /** Di chuyển hình tròn bán kính r, đẩy ra khỏi các hộp va chạm. */
   move(x: number, z: number, dx: number, dz: number, r: number): [number, number] {
     let nx = x + dx;
     let nz = z + dz;
-    const all = this.boxes.concat(this.dynamic());
+    const all = this.boxes.concat(this.dynamic(x, z));
     for (let iter = 0; iter < 3; iter++) {
       let moved = false;
       for (const b of all) {
@@ -45,7 +45,7 @@ export class Collision {
 
   /** Kiểm tra điểm (x, z) với bán kính r có bị kẹt vào hộp va chạm không. */
   canPlace(x: number, z: number, r = 0.3): boolean {
-    const all = this.boxes.concat(this.dynamic());
+    const all = this.boxes.concat(this.dynamic(x, z));
     for (const b of all) {
       if (x > b.x1 - r && x < b.x2 + r && z > b.z1 - r && z < b.z2 + r) {
         const cx = Math.max(b.x1, Math.min(x, b.x2));

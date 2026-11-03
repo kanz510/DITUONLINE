@@ -51,6 +51,7 @@ export class HumanoidRig {
   pose: Pose = 'stand';
   phase = Math.random() * 10;
   labelSprite: THREE.Sprite | null = null;
+  bubbleSprite: THREE.Sprite | null = null;
 
   // modelSkin remains a stable badge seed only; every officer shares
   // the same procedural chibi rig, with no delayed model replacement.
@@ -271,6 +272,22 @@ export class HumanoidRig {
     }
     this.labelSprite?.material.map?.dispose();
     this.labelSprite?.material.dispose();
+    this.bubbleSprite?.material.map?.dispose();
+    this.bubbleSprite?.material.dispose();
+  }
+
+  showSpeechBubble(text: string | null) {
+    if (this.bubbleSprite) {
+      this.bubbleSprite.material.map?.dispose();
+      this.bubbleSprite.material.dispose();
+      this.root.remove(this.bubbleSprite);
+      this.bubbleSprite = null;
+    }
+    if (text) {
+      this.bubbleSprite = makeSpeechBubble(text);
+      this.bubbleSprite.position.set(0, 2.55, 0);
+      this.root.add(this.bubbleSprite);
+    }
   }
 
   update(dt: number, speed = 0) {
@@ -357,5 +374,65 @@ function makeLabel(text: string, colorHex: number, player: boolean): THREE.Sprit
   const material = new THREE.SpriteMaterial({ map: texture, depthTest: false, transparent: true });
   const sprite = new THREE.Sprite(material);
   sprite.scale.set(1.14, 0.29, 1);
+  return sprite;
+}
+
+function makeSpeechBubble(text: string): THREE.Sprite {
+  if (typeof document === 'undefined') return new THREE.Sprite();
+  const cv = document.createElement('canvas');
+  cv.width = 384;
+  cv.height = 128;
+  const ctx = cv.getContext('2d')!;
+
+  // Bubble background (white with rounded corners and dark border)
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.roundRect(8, 8, 368, 88, 16);
+  ctx.fill();
+  ctx.stroke();
+
+  // Pointer triangle pointing down
+  ctx.beginPath();
+  ctx.moveTo(176, 96);
+  ctx.lineTo(192, 116);
+  ctx.lineTo(208, 96);
+  ctx.closePath();
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+  ctx.strokeStyle = '#334155';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(176, 96);
+  ctx.lineTo(192, 116);
+  ctx.lineTo(208, 96);
+  ctx.stroke();
+  // Clear the seam
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(178, 92, 28, 6);
+
+  ctx.fillStyle = '#0f172a';
+  ctx.font = 'bold 21px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  if (text.length > 26) {
+    const mid = Math.floor(text.length / 2);
+    const sp = text.lastIndexOf(' ', mid + 4);
+    const splitAt = sp > 8 ? sp : mid;
+    const l1 = text.slice(0, splitAt);
+    const l2 = text.slice(splitAt).trim();
+    ctx.fillText(l1, 192, 36, 340);
+    ctx.fillText(l2, 192, 66, 340);
+  } else {
+    ctx.fillText(text, 192, 52, 340);
+  }
+
+  const texture = new THREE.CanvasTexture(cv);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const material = new THREE.SpriteMaterial({ map: texture, depthTest: false, transparent: true });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(1.9, 0.63, 1);
   return sprite;
 }

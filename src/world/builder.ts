@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import {
-  BUILDINGS, DOORS, PROPS, WALLS, ZONES, propBox, type Box, type PropDef, type WallDef,
+  BUILDINGS, DOORS, PROPS, WALLS, ZONES, inBox, zonesAt, propBox, type Box, type PropDef, type WallDef,
 } from './layout';
 import { Collision } from './collision';
 import { surfaceMaterial, upgradePropModel } from '../graphics/assets';
@@ -56,6 +56,7 @@ function loadProp(path: string) {
 }
 
 function signTex(title: string, sub = '', bg = '#1e293b', fg = '#f8fafc'): THREE.CanvasTexture {
+  if (typeof document === 'undefined') return new THREE.CanvasTexture(null as any);
   const cv = document.createElement('canvas');
   cv.width = 512;
   cv.height = 256;
@@ -453,13 +454,25 @@ export class PrisonWorld {
     }
   }
 
-  updateDoors(isOpenFn: (area: string) => boolean): Box[] {
+  updateDoors(isOpenFn: (area: string) => boolean, actorX?: number, actorZ?: number): Box[] {
     const closed: Box[] = [];
+    const actorZones = (actorX !== undefined && actorZ !== undefined) ? zonesAt(actorX, actorZ) : [];
     for (const d of DOORS) {
       const open = isOpenFn(d.area);
       const m = this.doorMeshes[d.id];
       if (m) m.visible = !open;
-      if (!open) closed.push(d.box);
+      if (!open) {
+        // Cửa đóng chỉ chặn chiều VÀO, chiều RA luôn mở được:
+        // Nếu actor đang ở trong khu vực đóng cửa (hoặc trong hộp cửa), không chặn actor đó ra ngoài.
+        const isInside = (actorX !== undefined && actorZ !== undefined) && (
+          actorZones.includes(d.area) ||
+          (d.area === 'cellblock' && actorZones.includes('cell3')) ||
+          inBox(d.box, actorX, actorZ)
+        );
+        if (!isInside) {
+          closed.push(d.box);
+        }
+      }
     }
     return closed;
   }

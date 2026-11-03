@@ -17,6 +17,7 @@ function stringSeed(input: string): number {
 }
 
 function createMicroTexture(kind: string, repeatX: number, repeatY: number): THREE.CanvasTexture {
+  if (typeof document === 'undefined') return new THREE.CanvasTexture(null as any);
   const cv = document.createElement('canvas');
   cv.width = 128;
   cv.height = 128;

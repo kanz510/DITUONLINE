@@ -8,6 +8,31 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-04 — Antigravity — VIỆC 8: Kẹt phòng khi hết giờ (1 chiều), Bóng chat Web Speech API, Quản giáo tương tác ngẫu nhiên
+- **Vấn đề đã xử lý:**
+  - 8a: `updateDoors` trước đây đóng cửa là chặn cả 2 chiều (cửa hiện + collider chặn cả vào lẫn ra), khiến người chơi hoặc NPC bên trong phòng khi hết giờ bị kẹt lại. Thiếu cảnh báo đóng cửa trước 15 phút cho các khu vực có giờ quy định.
+  - 8b: NPC chưa có bóng thoại ngẫu nhiên tán gẫu, không gian trại thiếu tiếng nói và tính cách sinh động.
+  - 8c: Cán bộ quản giáo (Lan, Tùng) chỉ đi tuần đơn điệu, thiếu tương tác ngẫu nhiên kỷ luật / nhắc nhở phạm nhân NPC.
+- **Giải pháp:**
+  - 8a: Cửa đóng chỉ chặn chiều VÀO, chiều RA luôn mở được:
+    - Trong `src/world/collision.ts`, `dynamic(actorX?: number, actorZ?: number)` nhận vị trí của actor để tính toán va chạm theo vị trí thực tế.
+    - Trong `src/world/builder.ts:updateDoors`, nếu actor đang ở trong khu vực đóng cửa (`zonesAt(actorX, actorZ).includes(d.area)`) hoặc đang đứng trong hộp cửa (`inBox(d.box, actorX, actorZ)`), hộp cửa `d.box` sẽ KHÔNG chặn actor đó nữa. Cả người chơi và NPC đều có thể tự do bước ra sân mà không cần dịch chuyển tức thời. Khi đã ra ngoài sân, cửa đóng tiếp tục chặn chiều vào như bình thường.
+    - Trong `src/main.ts:checkAreaLockoutsAndWarnings`, duyệt toàn bộ khu vực có giờ trong `ACCESS` và phát cảnh báo trước 15 phút: `⚠️ [Tên khu]: Sắp đóng cửa, vui lòng rời khu vực.` khi người chơi đang có mặt trong phòng.
+  - 8b: Bóng chat NPC tán gẫu vu vơ có đọc giọng nói qua Web Speech API:
+    - Bổ sung `barks` đặc trưng cho toàn bộ 10 NPC trong `src/data/npcs.ts` (chú Bảy ấm áp, Huy lo lắng, Lâm đòi nợ/tính toán, Lan nghiêm nghị, Tùng kỷ luật, An quan tâm sức khỏe, Thầy Phúc dạy dỗ, Chị Mai mong ngóng, v.v.). Khi nhiệm vụ `mon_no` đang mở, Lâm tự động đổi sang nhóm câu đe dọa đòi nợ.
+    - Tạo `src/core/speech.ts` triển khai `SpeechEngine` singleton giao tiếp với Web Speech API (`speechSynthesis`, tiếng Việt `vi-VN`). Tự động unlock âm thanh ngay ở lần chạm/nhấn phím đầu tiên của người chơi. Tự động hủy câu đọc dở khi có câu mới hoặc khi mở hội thoại/cutscene. Bọc `try/catch` an toàn nếu trình duyệt không hỗ trợ.
+    - Cải tiến `HumanoidRig` (`src/actors/humanoid.ts`) với `showSpeechBubble(text)` vẽ bóng chat canvas nền trắng, viền xám đậm, mũi nhọn chỉ xuống đỉnh đầu, tự động ngắt dòng thông minh.
+    - Mỗi NPC tự đếm thời gian riêng (25–45s khi người chơi trong bán kính 12m, không nói trùng lúc đối thoại hay điểm danh), bóng chat hiện trong 4s rồi tự ẩn.
+    - Thêm tùy chọn `#chk-npc-voice` "Thoại NPC (Đọc bóng chat)" trong modal Cài đặt (`src/ui/manager.ts`, `src/logic/state.ts`), mặc định BẬT; âm lượng thoại đi theo thanh âm lượng chung.
+  - 8c: Quản giáo tương tác ngẫu nhiên với phạm nhân NPC:
+    - Cán bộ Lan và Tùng khi đi tuần gặp phạm nhân NPC trong vòng 4m sẽ ngẫu nhiên kích hoạt tương tác (cooldown 40–70s/quản giáo, không xảy ra lúc điểm danh/hội thoại/cutscene):
+      - CHỬI: Quản giáo hiện bóng chat nhắc nhở ("Đi đứng cho ngay ngắn!", "Chấp hành nội quy!", v.v.), phạm nhân dừng lại xoay mặt về phía cán bộ 3 giây.
+      - ĐÁNH DẠY: Quản giáo bước sát vung tay (pose 'work'), phạm nhân giật mình cúi gập người (pose 'sit') 3 giây + bóng chat "...".
+      - Xong hành động cả 2 tự động tiếp tục lịch trình ban đầu. Hành động này TUYỆT ĐỐI KHÔNG ảnh hưởng đến người chơi (không trừ máu/chỉ số/thể lực/nhiệm vụ).
+- **Kiểm thử:**
+  - Thêm `tests/unit/npc-interaction.test.ts` (4 bài test): kiểm tra cửa đóng cho phép thoát 1 chiều từ bên trong nhưng chặn từ bên ngoài; kiểm tra toàn bộ NPC có mảng câu nói `barks`; kiểm tra `SpeechEngine` bật/tắt và an toàn khi thiếu Web Speech API; kiểm tra timer và đối tượng phạm nhân cho quản giáo.
+  - Toàn bộ 133 unit tests PASS 100%, toàn bộ 17 Playwright E2E tests PASS 100%.
+
 ### 2026-11-04 — Antigravity — VIỆC 7: Sửa 3 lỗi hình ảnh (quầy cơm, đài quan sát, bục trắng trước cửa)
 - **Vấn đề đã xử lý:**
   - 7a: Khôi phục 2 quầy nhà ăn (quầy phát cơm và quầy căn tin) bị mất trong lần refactor trước.

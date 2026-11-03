@@ -16,6 +16,7 @@ import type { SoundEngine } from '../core/audio';
 import { getReleaseInfo, type AppReleaseInfo } from '../version';
 import { getDailySchedule, getQuestWaitingDetails, getQuestOverdueStatus, getActiveQuestOverdue, SIDE_QUEST_UNLOCK_RULES } from '../logic/daily-plan';
 import { FLASHBACK_CHOICES } from '../core/cutscene';
+import { speechEngine } from '../core/speech';
 
 export interface PromptTarget {
   id: string;
@@ -1470,6 +1471,7 @@ export class UIManager {
 
   // ───────────── Hội thoại ─────────────
   showDialogue(node: DNode, onEnd?: () => void) {
+    speechEngine.stop();
     if (node.speaker === 'Y sĩ An' && this.g.hasPerk('an_heal') && !node.choices.some((c) => c.label.includes('Y sĩ An khám'))) {
       const alreadyHealed = !this.g.canAnHeal();
       node.choices.unshift({
@@ -2037,6 +2039,12 @@ export class UIManager {
        <div class="card-row">
          <label>Âm lượng: <input type="range" id="rng-vol" min="0" max="1" step="0.05" value="${st.volume}"/></label>
        </div>
+       <div class="card-row">
+         <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+           <input type="checkbox" id="chk-npc-voice" ${st.npcVoice !== false ? 'checked' : ''}/>
+           <span>Thoại NPC (Đọc bóng chat)</span>
+         </label>
+       </div>
        ${this.hooks.onRestoreBackup ? `
        <div class="card-row">
          <div style="display:flex;justify-content:space-between;align-items:center">
@@ -2061,6 +2069,12 @@ export class UIManager {
         });
         el.querySelector('#rng-vol')?.addEventListener('input', (e) => {
           this.g.s.settings.volume = Number((e.target as HTMLInputElement).value);
+          this.hooks.onSettingChange();
+          this.g.commit();
+        });
+        el.querySelector('#chk-npc-voice')?.addEventListener('change', (e) => {
+          this.g.s.settings.npcVoice = (e.target as HTMLInputElement).checked;
+          speechEngine.setEnabled(this.g.s.settings.npcVoice);
           this.hooks.onSettingChange();
           this.g.commit();
         });

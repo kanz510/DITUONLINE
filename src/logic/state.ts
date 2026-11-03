@@ -191,7 +191,15 @@ export interface GameState {
   ending: string | null;
   hearing: Hearing | null;
   nextId: number;
-  settings: { quality: 'low' | 'medium' | 'high'; volume: number; guide: boolean; sensitivity: number; cameraMode?: 'third' | 'first' };
+  settings: {
+    quality: 'low' | 'medium' | 'high';
+    volume: number;
+    guide: boolean;
+    sensitivity: number;
+    cameraMode?: 'third' | 'first';
+    npcVoice?: boolean;
+    bgm?: boolean;
+  };
 }
 
 export function clampStat(v: number, lo = 0, hi = 100) {
@@ -315,6 +323,6 @@ export function createInitialState(customProfile?: Partial<CharacterProfile>): G
     ending: null,
     hearing: null,
     nextId: 1,
-    settings: { quality: 'medium', volume: 0.7, guide: true, sensitivity: 1, cameraMode: 'third' },
+    settings: { quality: 'medium', volume: 0.7, guide: true, sensitivity: 1, cameraMode: 'third', npcVoice: true, bgm: true },
   };
 }

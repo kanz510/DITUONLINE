@@ -37,6 +37,7 @@ export interface NpcDef {
   look: Appearance;
   schedule: ScheduleSlot[];
   whereHint: string;
+  barks?: string[];
 }
 
 function inmateSchedule(
@@ -69,6 +70,12 @@ export const NPCS: Record<NpcId, NpcDef> = {
     story: true,
     look: { uniform: 'inmate', skin: 0xd8a882, hair: 0xb7bec9, hairStyle: 'short', accent: 0x2b6cb0, height: 0.98, build: 1.06, glasses: true },
     whereHint: 'Buồng 3 (sáng sớm/trưa/tối), Nhà ăn (giờ ăn), Bàn lắp ráp #2 (ca sáng), Bàn cờ đá ngoài sân (giờ tự do).',
+    barks: [
+      'Ráng giữ mình nghen con, đừng cuốn vào chuyện bậy bạ.',
+      'Ăn cơm xong nghỉ ngơi chút đi, chiều còn vô ca.',
+      'Cải tạo tốt là con đường ngắn nhất để về nhà.',
+      'Đời người ai chẳng vấp ngã, quan trọng là biết đứng lên.',
+    ],
     schedule: inmateSchedule(
       'c3', [-12.9, -28.8], 0, 0,
       'wsB2', NODES.wsB2,
@@ -84,6 +91,12 @@ export const NPCS: Record<NpcId, NpcDef> = {
     story: true,
     look: { uniform: 'inmate-orange', skin: 0xe9b98f, hair: 0x7c3428, hairStyle: 'buzz', accent: 0xffbd73, height: 1.0, build: 0.96 },
     whereHint: 'Buồng 3 (sáng sớm/trưa/tối), Nhà ăn (giờ ăn), Bàn lắp ráp #3 (ca sáng), Khu xà đơn hoặc căn tin (giờ tự do).',
+    barks: [
+      'Không biết mấy thằng buồng bên lại tính giở trò gì...',
+      'Mong sao cho mau hết án, ngột ngạt quá rồi.',
+      'Cơm hôm nay hơi khô, nuốt không vô nổi.',
+      'Ê Minh, có chuyện gì nhớ hú tao một tiếng nghe.',
+    ],
     schedule: inmateSchedule(
       'c3', [-15.2, -26.5], 1, 1,
       'wsB3', NODES.wsB3,
@@ -99,6 +112,12 @@ export const NPCS: Record<NpcId, NpcDef> = {
     story: true,
     look: { uniform: 'inmate', skin: 0xc99672, hair: 0x191614, hairStyle: 'bald', accent: 0x991b1b, height: 1.04, build: 1.18 },
     whereHint: 'Buồng 4, Nhà ăn (giờ ăn), Bàn lắp ráp #4 (ca sáng), Góc khuất sau xưởng (13:30–16:30), Ghế đá sân (tối).',
+    barks: [
+      'Ở đây ai biết điều thì sống khỏe, nghe chưa?',
+      'Chuyện của người khác thì bớt tò mò lại.',
+      'Món nợ nào rồi cũng có lúc phải thanh toán.',
+      'Khôn hồn thì liệu mà làm cho đàng hoàng.',
+    ],
     schedule: inmateSchedule(
       'c4', [-8.75, -28.4], 2, 4,
       'wsB4', NODES.wsB4,
@@ -114,6 +133,12 @@ export const NPCS: Record<NpcId, NpcDef> = {
     story: true,
     look: { uniform: 'officer', skin: 0xe5b894, hair: 0x282128, hairStyle: 'bun', accent: 0x93c5fd, height: 0.99, build: 0.94, cap: true },
     whereHint: 'Ô điểm danh (06:30–07:00), Phòng quản giáo phía Nam sân (07:00–17:00), Tuần tra sân (buổi tối).',
+    barks: [
+      'Nghiêm túc chấp hành nội quy, không tụ tập mất trật tự!',
+      'Cải tạo tốt thì mới có tên trong danh sách giảm án.',
+      'Mọi hành vi vi phạm đều sẽ lập biên bản xử lý.',
+      'Đi lại đúng tuyến, không lai vãng khu vực cấm.',
+    ],
     schedule: [
       { from: 360, to: 390, node: 'offLan', pos: [-4, 17.3], rot: Math.PI, pose: 'stand', activity: 'Chuẩn bị sổ điểm danh' },
       { from: 390, to: 420, node: 'rc', pos: LAN_ROLLCALL, rot: 0, pose: 'stand', activity: 'Điểm danh sáng' },
@@ -130,6 +155,12 @@ export const NPCS: Record<NpcId, NpcDef> = {
     story: true,
     look: { uniform: 'officer', skin: 0xd9a982, hair: 0x171a26, hairStyle: 'short', accent: 0xbfdbfe, height: 1.03, build: 1.09, cap: true },
     whereHint: 'Xưởng lao động (giờ làm việc), Tuần tra sân & hành lang (ngoài giờ).',
+    barks: [
+      'Các buồng chú ý kiểm tra tư trang trước giờ điểm danh.',
+      'Lao động là nghĩa vụ, tập trung làm việc đi!',
+      'Ai xong ca thì dọn dẹp dụng cụ ngăn nắp.',
+      'Đứng lại, chấp hành hiệu lệnh kiểm tra!',
+    ],
     schedule: [
       { from: 360, to: 480, node: 'cbOut', pose: 'walk', activity: 'Tuần tra buổi sáng', patrol: ['cbOut', 'rc', 'messOut', 'yC'] },
       { from: 480, to: 690, node: 'wsHub', pose: 'walk', activity: 'Giám sát xưởng', patrol: ['wsBoard', 'wsHub', 'wsRow', 'wsRow2', 'wsHub', 'wsStoreOut'] },
@@ -147,6 +178,11 @@ export const NPCS: Record<NpcId, NpcDef> = {
     story: false,
     look: { uniform: 'inmate-orange', skin: 0xd5a27c, hair: 0x543a27, hairStyle: 'short', accent: 0xffd28a, height: 0.99, build: 1.08 },
     whereHint: 'Buồng 1, Nhà ăn, Xưởng.',
+    barks: [
+      'Bữa nay canh chua nấu vừa miệng ghê.',
+      'Làm xưởng mệt mà vui, tối về ngủ thẳng giấc.',
+      'Gắng làm cho xong chỉ tiêu hôm nay thôi.',
+    ],
     schedule: inmateSchedule('c1', [-25.25, -27.8], 3, 2, 'wsRest', [24.2, 4.5], 'yBench2', [-15, 3.6], 'stand', 'Đi dạo sân', 'yC', [-3.8, -5.2], 'stand', 'Hóng gió'),
   },
   son: {
@@ -157,6 +193,11 @@ export const NPCS: Record<NpcId, NpcDef> = {
     story: false,
     look: { uniform: 'inmate', skin: 0xe0b28c, hair: 0x9e4f30, hairStyle: 'buzz', accent: 0x7c3aed, height: 1.01, build: 1.0 },
     whereHint: 'Buồng 2, Nhà ăn, Xưởng, Khu xà đơn.',
+    barks: [
+      'Hôm nay đu xà lên được thêm năm cái, đã thiệt!',
+      'Chiều nay ai ra đá cầu với tao không?',
+      'Khỏe người thì tinh thần mới phấn chấn được chứ!',
+    ],
     schedule: inmateSchedule('c2', [-19.75, -27.8], 4, 3, 'wsRest', [24.2, 0], 'yEx', [-22.5, 3.6], 'stand', 'Tập thể dục', 'yW', [-17, -4], 'stand', 'Nói chuyện ngoài sân'),
   },
   khai: {
@@ -167,6 +208,11 @@ export const NPCS: Record<NpcId, NpcDef> = {
     story: false,
     look: { uniform: 'inmate-orange', skin: 0xcf9b74, hair: 0x221e20, hairStyle: 'buzz', accent: 0xffc78e, height: 0.98, build: 1.03 },
     whereHint: 'Buồng 4, Nhà ăn, Xưởng, Góc sau xưởng.',
+    barks: [
+      'Nhìn cái gì mà nhìn, đi chỗ khác chơi!',
+      'Liệu hồn đấy, đừng để anh Lâm phải nhắc.',
+      'Anh Lâm dặn cái gì là phải nghe răm rắp.',
+    ],
     schedule: inmateSchedule('c4', [-7.9, -26.8], 5, 5, 'wsRest', [14.2, 6.4], 'lamCorner', [18.5, 13.2], 'stand', 'Canh chừng cho Lâm', 'yE', [8, -6], 'stand', 'Đứng ở sân Đông'),
   },
   phuc: {
@@ -177,6 +223,12 @@ export const NPCS: Record<NpcId, NpcDef> = {
     story: true,
     look: { uniform: 'officer', skin: 0xd4a373, hair: 0x59524b, hairStyle: 'short', accent: 0x60a5fa, height: 1.02, build: 1.0, cap: true, glasses: true },
     whereHint: 'Lớp học nghề & Thư viện (chiều 14:00–16:30 & tối 19:00–21:00), Nhà ăn (giờ ăn).',
+    barks: [
+      'Học lấy cái nghề, mai mốt về xã hội không lo đói.',
+      'Làm thợ thì tay nghề phải tỉ mỉ, nóng vội là hỏng.',
+      'Sách là người bạn tốt nhất, đọc thêm mở mang đầu óc.',
+      'Chăm chỉ rèn luyện thì tay nghề mới mau tiến bộ.',
+    ],
     schedule: [
       { from: 360, to: 480, node: 'classLib', pos: [-25, 16], rot: 0, pose: 'work', activity: 'Chuẩn bị giáo án tại thư viện' },
       { from: 480, to: 690, node: 'classPhuc', pos: [-21.5, 16.5], rot: Math.PI, pose: 'stand', activity: 'Soạn giáo trình nghề' },
@@ -196,6 +248,12 @@ export const NPCS: Record<NpcId, NpcDef> = {
     story: true,
     look: { uniform: 'medic', skin: 0xf5d0b5, hair: 0x49312e, hairStyle: 'bun', accent: 0x22d3ee, height: 0.98, build: 0.94 },
     whereHint: 'Phòng y tế (07:30–11:30 & 13:30–17:00), Nhà ăn (giờ ăn).',
+    barks: [
+      'Ai thấy trong người sốt hay mệt thì vào phòng y tế ngay.',
+      'Thời tiết chuyển mùa, nhớ uống nhiều nước ấm.',
+      'Uống thuốc phải đúng giờ, đừng có bỏ cữ.',
+      'Giữ gìn vệ sinh buồng giam cho sạch sẽ nghe chưa.',
+    ],
     schedule: [
       { from: 360, to: 450, node: 'medDesk', pos: [23, -23.1], rot: 0, pose: 'stand', activity: 'Kiểm tra hồ sơ bệnh án' },
       { from: 450, to: 690, node: 'medDesk', pos: [23, -23.1], rot: 0, pose: 'sit', activity: 'Khám bệnh buổi sáng' },
@@ -215,6 +273,12 @@ export const NPCS: Record<NpcId, NpcDef> = {
     story: true,
     look: { uniform: 'visitor', skin: 0xe2b48d, hair: 0x65402f, hairStyle: 'bun', accent: 0xec4899, height: 0.97, build: 0.94 },
     whereHint: 'Phòng thăm gặp (giờ thăm gặp 08:00–11:00 & 14:00–17:00).',
+    barks: [
+      'Minh ơi, ở trong này ráng giữ gìn sức khỏe nghen em.',
+      'Mẹ ở nhà vẫn ngày ngày mong tin em đó.',
+      'Chị có gửi ít đồ thăm nuôi, em nhận được chưa?',
+      'Ráng lên em, cả nhà luôn chờ em về.',
+    ],
     schedule: [
       { from: 360, to: 480, node: 'visitMai', pos: [-25.5, -10.25], rot: 0, pose: 'sit', activity: 'Chờ đăng ký vào thăm' },
       { from: 480, to: 660, node: 'visitMai', pos: [-25.5, -10.25], rot: 0, pose: 'sit', activity: 'Ngồi đợi Minh bên vách kính' },

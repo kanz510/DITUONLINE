@@ -41,19 +41,21 @@ export function surfaceMaterial(
   // 128px shared microdetail supplies PBR roughness/bump while the original
   // color JPEG remains the source of truth and keeps its relative asset URL.
   applyPBRMicroDetail(material, image, repeatX, repeatY);
-  textureLoader.load(
-    assetUrl(`textures/${image}`),
-    (texture) => {
-      texture.colorSpace = THREE.SRGBColorSpace;
-      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-      texture.repeat.set(repeatX, repeatY);
-      texture.anisotropy = 2; // save bandwidth on mobile while retaining mipmapping
-      material.map = texture;
-      material.needsUpdate = true;
-    },
-    undefined,
-    (error) => console.warn('[PrisonWorld] Texture failed, keeping solid material:', image, error),
-  );
+  if (typeof document !== 'undefined') {
+    textureLoader.load(
+      assetUrl(`textures/${image}`),
+      (texture) => {
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(repeatX, repeatY);
+        texture.anisotropy = 2; // save bandwidth on mobile while retaining mipmapping
+        material.map = texture;
+        material.needsUpdate = true;
+      },
+      undefined,
+      (error) => console.warn('[PrisonWorld] Texture failed, keeping solid material:', image, error),
+    );
+  }
   return material;
 }
 

@@ -25,6 +25,10 @@ export class NpcActor {
   yieldTimer = 0;
   blockedTimer = 0;
   dodgeCount = 0;
+  bubbleTimer = 0;
+  barkTimer = 25 + Math.random() * 20;
+  currentBark: string | null = null;
+  guardDisciplineTimer = 40 + Math.random() * 30;
   private stuckTimer = 0;
   private stuckLastX = 0;
   private stuckLastZ = 0;
@@ -107,6 +111,18 @@ export class NpcActor {
     }
   }
 
+  clearBark() {
+    this.bubbleTimer = 0;
+    this.currentBark = null;
+    this.rig.showSpeechBubble(null);
+  }
+
+  sayBark(text: string, duration = 4.0) {
+    this.currentBark = text;
+    this.bubbleTimer = duration;
+    this.rig.showSpeechBubble(text);
+  }
+
   /** Đặt thẳng tới vị trí theo giờ hiện tại (khi mới vào ngày / sau khi tua giờ). */
   snapToSchedule(minute: number) {
     const sl = slotFor(this.def, minute);
@@ -145,6 +161,13 @@ export class NpcActor {
   }
 
   update(dt: number, minute: number, col?: Collision) {
+    if (this.bubbleTimer > 0) {
+      this.bubbleTimer -= dt;
+      if (this.bubbleTimer <= 0) {
+        this.clearBark();
+      }
+    }
+
     if (this.state === 'talk') {
       this.rig.pose = 'talk';
       this.rig.update(dt, 0);

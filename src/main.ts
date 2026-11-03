@@ -18,6 +18,7 @@ import { HumanoidRig } from './actors/humanoid';
 import { NpcActor } from './actors/npc';
 import { InputController, ThirdPersonCamera } from './core/controls';
 import { SoundEngine } from './core/audio';
+import { speechEngine } from './core/speech';
 import { CutsceneController } from './core/cutscene';
 import { UIManager, type PromptTarget, type GuideTarget } from './ui/manager';
 import { fetchLiveRelease } from './version';
@@ -139,7 +140,9 @@ class App {
       this.world.scene.add(a.rig.root);
     }
 
-    this.world.collision.dynamic = () => this.world.updateDoors((area) => this.isDoorPassable(area));
+    this.world.collision.dynamic = (actorX?: number, actorZ?: number) =>
+      this.world.updateDoors((area) => this.isDoorPassable(area), actorX, actorZ);
+    speechEngine.init();
 
     this.ui = new UIManager(uiRoot, this.g, this.sfx, {
       npcs: () => this.npcs,
@@ -519,15 +522,18 @@ class App {
     const curMin = this.g.s.minute;
     const p = this.g.s.player;
 
-    // Cảnh báo trước 15 phút khi khu vực sắp đóng cửa
+    // Cảnh báo trước 15 phút khi mọi khu vực có giờ sắp đóng cửa
     if (curMin !== this.lastWarningMinute) {
-      for (const [area, info] of Object.entries(AREA_EXIT_MAP)) {
+      for (const [area, rule] of Object.entries(ACCESS)) {
         const openNow = this.g.isOpen(area);
         const openIn15 = this.g.isOpenAt(area, curMin + 15);
-        if (openNow && !openIn15 && inBox(info.insideBox, p.x, p.z)) {
-          this.ui.toast(`⚠️ Chú ý: ${info.name} sẽ đóng cửa trong 15 phút nữa! Vui lòng hoàn thành công việc và rời khu vực.`, 'warn');
-          this.lastWarningMinute = curMin;
-          break;
+        if (openNow && !openIn15) {
+          const inArea = zonesAt(p.x, p.z).includes(area) || (area === 'cellblock' && zonesAt(p.x, p.z).includes('cell3'));
+          if (inArea) {
+            this.ui.toast(`⚠️ ${rule.label}: Sắp đóng cửa, vui lòng rời khu vực.`, 'warn');
+            this.lastWarningMinute = curMin;
+            break;
+          }
         }
       }
     }
@@ -614,9 +620,16 @@ class App {
 
   private step(dt: number) {
     if (this.cutscene.isActive()) {
+      speechEngine.stop();
+      for (const a of Object.values(this.npcs)) { if (a.bubbleTimer > 0) a.clearBark(); }
       this.cutscene.update(dt);
       this.renderer.render(this.world.scene, this.tpCam.cam);
       return;
+    }
+
+    if (this.ui.hasOpenModal()) {
+      speechEngine.stop();
+      for (const a of Object.values(this.npcs)) { if (a.bubbleTimer > 0) a.clearBark(); }
     }
 
     const p = this.g.s.player;
@@ -672,6 +685,74 @@ class App {
         if (a.rig.labelSprite) {
           const d = Math.hypot(a.x - p.x, a.z - p.z);
           a.rig.labelSprite.visible = d < 8.0;
+        }
+
+        // 8b: NPC idle chatter
+        const dPlayer = Math.hypot(a.x - p.x, a.z - p.z);
+        if (dPlayer <= 12.0 && a.state !== 'talk' && !this.cutscene.isActive() && !this.ui.hasOpenModal() && (this.g.s.minute < 390 || this.g.s.minute >= 420)) {
+          a.barkTimer -= dt;
+          if (a.barkTimer <= 0) {
+            a.barkTimer = 25 + Math.random() * 20;
+            let barks = a.def.barks ?? [];
+            if (a.def.id === 'lam' && this.g.qStatus('mon_no') === 'active') {
+              barks = [
+                'Bảo thằng Huy lo liệu cho sớm, kiên nhẫn của tao có hạn.',
+                'Tiền bạc sòng phẳng thì mới dễ sống ở đây.',
+                'Hẹn ngày nào thì trả ngày đó, đừng để tao nhắc lại.',
+                'Món nợ nào rồi cũng có lúc phải thanh toán.',
+              ];
+            }
+            if (barks.length > 0) {
+              const line = barks[Math.floor(Math.random() * barks.length)];
+              a.sayBark(line, 4.0);
+              if (this.g.s.settings.npcVoice !== false && (this.g.s.settings.volume ?? 1) > 0) {
+                speechEngine.speak(line, this.g.s.settings.volume ?? 0.7);
+              }
+            }
+          }
+        }
+      }
+
+      // 8c: Guard random discipline/interaction on NPC inmates
+      if (!this.cutscene.isActive() && !this.ui.hasOpenModal() && (this.g.s.minute < 390 || this.g.s.minute >= 420)) {
+        for (const guardId of ['lan', 'tung'] as NpcId[]) {
+          const guard = this.npcs[guardId];
+          if (!guard || guard.state === 'talk') continue;
+          guard.guardDisciplineTimer -= dt;
+          if (guard.guardDisciplineTimer <= 0) {
+            guard.guardDisciplineTimer = 40 + Math.random() * 30; // 40-70s
+            const inmateCandidates: NpcId[] = ['tu', 'son', 'khai', 'huy', 'bay', 'lam'];
+            const nearby = inmateCandidates
+              .map((cid) => this.npcs[cid])
+              .filter((inmate) => inmate && inmate.state !== 'talk' && inmate.yieldTimer <= 0 && Math.hypot(inmate.x - guard.x, inmate.z - guard.z) <= 4.0);
+            if (nearby.length > 0) {
+              const target = nearby[Math.floor(Math.random() * nearby.length)];
+              const isScold = Math.random() < 0.5;
+              if (isScold) {
+                const scolds = [
+                  'Đi đứng cho ngay ngắn, không nhìn ngó lung tung!',
+                  'Nghiêm túc chấp hành nội quy trại!',
+                  'Không được tụ tập thì thầm, tản ra mau!',
+                  'Làm việc cho tử tế, đừng có lơ là!',
+                ];
+                const scold = scolds[Math.floor(Math.random() * scolds.length)];
+                guard.sayBark(scold, 3.0);
+                if (this.g.s.settings.npcVoice !== false && (this.g.s.settings.volume ?? 1) > 0) {
+                  speechEngine.speak(scold, this.g.s.settings.volume ?? 0.7);
+                }
+                target.faceToward(guard.x, guard.z);
+                target.yield(3.0);
+              } else {
+                guard.faceToward(target.x, target.z);
+                guard.rig.pose = 'work';
+                guard.yield(2.5);
+                target.faceToward(guard.x, guard.z);
+                target.rig.pose = 'sit';
+                target.yield(3.0);
+                target.sayBark('...', 3.0);
+              }
+            }
+          }
         }
       }
 
