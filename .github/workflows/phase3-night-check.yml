@@ -1,0 +1,28 @@
+name: Phase 3 cinematic night and overcast regression
+on:
+  push:
+    branches: [verify/phase3-all-20261103]
+    paths: [.github/workflows/phase3-night-check.yml]
+permissions:
+  contents: read
+jobs:
+  night-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run test:unit
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test tests/e2e/phase3-visual.spec.ts --reporter=list
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase3-night-legibility-shots
+          path: screenshots/phase3-*.png
+          if-no-files-found: warn
