@@ -17,6 +17,17 @@ import { getReleaseInfo, type AppReleaseInfo } from '../version';
 import { getDailySchedule, getQuestWaitingDetails, getQuestOverdueStatus, getActiveQuestOverdue, SIDE_QUEST_UNLOCK_RULES } from '../logic/daily-plan';
 import { FLASHBACK_CHOICES } from '../core/cutscene';
 import { speechEngine } from '../core/speech';
+import { exportSaveString, importSaveString } from '../logic/save';
+
+export function getSuspicionStage(suspicion: number): { label: string; color: string; desc: string } {
+  if (suspicion < 30) {
+    return { label: 'Bình thường', color: '#22c55e', desc: 'Cán bộ không để ý, an toàn.' };
+  } else if (suspicion < 50) {
+    return { label: 'Đang bị để ý', color: '#f59e0b', desc: 'Có ánh mắt quan sát từ cán bộ. Chú ý hành vi!' };
+  } else {
+    return { label: 'Nguy cơ bị khám xét', color: '#ef4444', desc: 'Mức độ cảnh báo đỏ! Nguy cơ cao bị cán bộ khám xét buồng hoặc chặn kiểm tra bất ngờ.' };
+  }
+}
 
 export interface PromptTarget {
   id: string;
@@ -110,6 +121,7 @@ export class UIManager {
       onTrackQuest?: (qid: string) => void;
       getTrackedQuest?: () => string | null;
       getQuestGuide?: (qid: string) => { tx?: number; tz?: number; label: string; isLocked?: boolean; safeX?: number; safeZ?: number; targetName: string; stepDesc?: string; hint?: string } | null;
+      onImportSave?: (state: any) => void;
     },
   ) {
     this.root = container;
@@ -489,6 +501,11 @@ export class UIManager {
       ? `<button class="btn-skip-quest-hud" id="btn-hud-skip-quest" style="background:#dc2626;color:#fff;border:none;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700;cursor:pointer;margin-left:4px" title="Bỏ qua nhiệm vụ này (chịu phạt -5 cải tạo)">Bỏ qua (phạt)</button>`
       : '';
 
+    const monNo = s.quests.mon_no;
+    const monNoWaitingHtml = (monNo && monNo.status === 'active')
+      ? `<div class="quest-row-debt" style="color:#f87171;font-size:11px;font-weight:600;margin-top:2px">⏳ Lâm đang chờ — đã ${Math.max(0, s.day - (monNo.startedDay ?? s.day))} ngày</div>`
+      : '';
+
     const shortLabel = isWaiting && waitingDetails.timeRange ? `Chờ mở cửa: ${waitingDetails.timeRange}` : (destName || qTitle);
     const questHTML = this.questCollapsed
       ? `
@@ -511,7 +528,7 @@ export class UIManager {
             <span class="quest-toggle-icon" id="btn-quest-toggle" title="Thu gọn bảng nhiệm vụ">▾</span>
           </div>
         </div>
-        <div class="quest-row-desc">${qStep}${qProg}</div>
+        <div class="quest-row-desc">${qStep}${qProg}${monNoWaitingHtml}</div>
         <div class="quest-row-footer">
           <div class="quest-dest-info" id="quest-dest-info">
             <span>📍 <b>${destName}</b></span>
@@ -1440,10 +1457,10 @@ export class UIManager {
       </div>
       <div class="card-row">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-          <span>👀 <b>Mức nghi ngờ</b>: ${Math.round(st.suspicion)}/100</span>
-          ${bar(st.suspicion, st.suspicion > 50 ? '#ef4444' : '#64748b')}
+          <span>👀 <b>Mức nghi ngờ</b>: ${Math.round(st.suspicion)}/100 — <b style="color:${getSuspicionStage(st.suspicion).color}">[${getSuspicionStage(st.suspicion).label}]</b></span>
+          ${bar(st.suspicion, st.suspicion >= 50 ? '#ef4444' : st.suspicion >= 30 ? '#f59e0b' : '#22c55e')}
         </div>
-        <div class="hud-sub">Tăng khi lảng vảng gần khu cấm, kho vật tư. Khi quá cao sẽ bị quản giáo khám xét bất ngờ.</div>
+        <div class="hud-sub">${getSuspicionStage(st.suspicion).desc} (Khám xét buồng giam kích hoạt từ nghi ngờ ≥ 50).</div>
       </div>
       <div class="card-row">
         <div>💰 <b>Tiền lưu ký / căn tin</b>: <span style="color:#fde68a;font-size:15px;font-weight:700">${fmtMoney(st.money)}</span></div>
@@ -1627,8 +1644,24 @@ export class UIManager {
       ? this.g.s.clues.map((c) => `<div class="card-row" style="border-color:#38bdf8">🔍 <b>Manh mối:</b> ${c}</div>`).join('')
       : '<div class="hud-sub">Chưa có manh mối nào trong sổ tay điều tra.</div>';
 
+    const susp = getSuspicionStage(s.stats.suspicion);
+    const monNo = s.quests.mon_no;
+    const monNoDays = (monNo && monNo.status === 'active') ? Math.max(0, s.day - (monNo.startedDay ?? s.day)) : 0;
+
     this.showModal(`
       <h2>NHẬT KÝ & TIẾN TRÌNH NHIỆM VỤ</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;background:#1e293b;padding:8px 12px;border-radius:6px;margin-bottom:12px;border-left:4px solid ${susp.color}">
+        <div>
+          <span style="font-size:12px;color:#94a3b8">Mức độ bị để ý:</span>
+          <b style="color:${susp.color};margin-left:6px">${susp.label} (${Math.round(s.stats.suspicion)}/100)</b>
+        </div>
+        <span style="font-size:11px;color:#cbd5e1">${susp.desc}</span>
+      </div>
+      ${monNo && monNo.status === 'active' ? `
+        <div style="background:#450a0a;border:1px solid #dc2626;padding:8px 12px;border-radius:6px;margin-bottom:12px;color:#fca5a5;font-size:12px">
+          ⏳ <b>Món nợ của Huy:</b> Lâm đang chờ thanh toán — đã <b>${monNoDays}</b> ngày. Hãy thận trọng!
+        </div>
+      ` : ''}
       <div class="journal-section">
         <h3>📌 Việc bắt buộc hôm nay</h3>
         ${mandatoryHtml}
@@ -1780,6 +1813,78 @@ export class UIManager {
         ${actionRow}
       </div>
     `;
+  }
+
+  showChapterSummary(chapterNum: number) {
+    const s = this.g.s;
+    const chapterTitles: Record<number, string> = {
+      1: 'Chương 1 — Người mới & Nề nếp',
+      2: 'Chương 2 — Chọn chỗ đứng',
+      3: 'Chương 3 — Giá của sự thật',
+      4: 'Chương 4 — Ngày trở về',
+    };
+    const title = chapterTitles[chapterNum] || `Chương ${chapterNum}`;
+
+    const chapQuests = QUEST_ORDER.filter((qid) => QUESTS[qid]?.chapter === chapterNum);
+    const doneQuests = chapQuests.filter((qid) => s.quests[qid]?.status === 'done');
+
+    let totalXp = 0;
+    let totalReform = 0;
+
+    const questListHtml = doneQuests.map((qid) => {
+      const qDef = QUESTS[qid];
+      const qData = s.quests[qid];
+      totalXp += qDef.xp || 0;
+      const refMatch = qDef.reward.match(/\+(\d+)\s*cải tạo/i);
+      if (refMatch) totalReform += parseInt(refMatch[1], 10);
+
+      let branchText = '';
+      const br = this.g.qBranch(qid);
+      if (qDef.branches && br) {
+        const bDesc = qDef.branches[br] || qData?.outcome || br;
+        branchText = `<div style="font-size:12px;color:#38bdf8;margin-top:2px">↳ Lựa chọn: <b>${bDesc}</b></div>`;
+      } else if (qData?.outcome) {
+        branchText = `<div style="font-size:12px;color:#38bdf8;margin-top:2px">↳ Kết quả: <b>${qData.outcome}</b></div>`;
+      }
+
+      return `
+        <div class="card-row" style="margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <b style="color:#f8fafc">✔ ${qDef.title}</b>
+            <span style="font-size:11px;color:#a3e635">+${qDef.xp} XP</span>
+          </div>
+          <div class="hud-sub">${qDef.reward}</div>
+          ${branchText}
+        </div>
+      `;
+    }).join('');
+
+    this.showModal(`
+      <div style="text-align:center;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:700;color:#f59e0b;letter-spacing:1px;text-transform:uppercase">TỔNG KẾT CHƯƠNG VỪA QUA</div>
+        <h2 style="margin:4px 0 8px">${title}</h2>
+        <div class="hud-sub">Tổng kết tiến trình cải tạo và các quyết định bạn đã đưa ra</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+        <div style="background:#1e293b;padding:10px;border-radius:6px;text-align:center">
+          <div style="font-size:11px;color:#94a3b8">Tổng kinh nghiệm</div>
+          <div style="font-size:18px;font-weight:800;color:#38bdf8">+${totalXp} XP</div>
+        </div>
+        <div style="background:#1e293b;padding:10px;border-radius:6px;text-align:center">
+          <div style="font-size:11px;color:#94a3b8">Điểm cải tạo tích lũy</div>
+          <div style="font-size:18px;font-weight:800;color:#22c55e">+${totalReform} Điểm</div>
+        </div>
+      </div>
+
+      <div style="max-height:220px;overflow-y:auto;margin-bottom:14px;padding-right:4px">
+        ${questListHtml || '<div class="hud-sub">Chưa có nhiệm vụ hoàn thành trong chương này.</div>'}
+      </div>
+
+      <div style="text-align:center">
+        <button class="btn btn-accent" data-close style="min-width:140px">Tiếp tục chơi</button>
+      </div>
+    `);
   }
 
   // ───────────── Hồ sơ án & Giảm án ─────────────
@@ -2056,6 +2161,16 @@ export class UIManager {
            <span>Thoại NPC (Đọc bóng chat)</span>
          </label>
        </div>
+       <div class="card-row">
+         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+           <span>Sao lưu & Khôi phục dữ liệu:</span>
+           <div style="display:flex;gap:6px">
+             <button class="btn btn-sm" id="btn-export-save">📦 Sao lưu save</button>
+             <button class="btn btn-sm" id="btn-import-save">📥 Khôi phục save</button>
+           </div>
+         </div>
+         <div class="hud-sub">Sao chép mã lưu để cất giữ / đổi thiết bị hoặc dán mã để khôi phục. Dữ liệu chỉ nằm trên máy bạn.</div>
+       </div>
        ${this.hooks.onRestoreBackup ? `
        <div class="card-row">
          <div style="display:flex;justify-content:space-between;align-items:center">
@@ -2094,6 +2209,67 @@ export class UIManager {
           speechEngine.setEnabled(this.g.s.settings.npcVoice);
           this.hooks.onSettingChange();
           this.g.commit();
+        });
+        el.querySelector('#btn-export-save')?.addEventListener('click', () => {
+          const code = exportSaveString(this.g.s);
+          this.showModal(`
+            <h2>SAO LƯU TIẾN TRÌNH</h2>
+            <div class="hud-sub" style="margin-bottom:10px">Sao chép toàn bộ đoạn mã bên dưới để cất giữ hoặc chuyển sang trình duyệt / thiết bị khác.</div>
+            <textarea id="txt-save-code" readonly style="width:100%;height:140px;background:#0f172a;color:#f8fafc;font-family:monospace;font-size:11px;border:1px solid #334155;border-radius:6px;padding:8px;box-sizing:border-box;resize:none">${code}</textarea>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+              <button class="btn" data-close>Đóng</button>
+              <button class="btn btn-accent" id="btn-copy-save">📋 Sao chép vào clipboard</button>
+            </div>
+          `, (exportEl) => {
+            exportEl.querySelector('#btn-copy-save')?.addEventListener('click', () => {
+              if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                navigator.clipboard.writeText(code).then(() => {
+                  this.toast('Đã sao chép mã save vào bộ nhớ tạm!', 'info');
+                }).catch(() => {
+                  const txt = exportEl.querySelector('#txt-save-code') as HTMLTextAreaElement;
+                  txt?.select();
+                  document.execCommand('copy');
+                  this.toast('Đã chọn toàn bộ mã save (bấm Ctrl+C để chép)', 'info');
+                });
+              } else {
+                const txt = exportEl.querySelector('#txt-save-code') as HTMLTextAreaElement;
+                txt?.select();
+                document.execCommand('copy');
+                this.toast('Đã chọn toàn bộ mã save (bấm Ctrl+C để chép)', 'info');
+              }
+            });
+          });
+        });
+        el.querySelector('#btn-import-save')?.addEventListener('click', () => {
+          this.showModal(`
+            <h2>KHÔI PHỤC TIẾN TRÌNH</h2>
+            <div class="hud-sub" style="margin-bottom:10px">Dán đoạn mã sao lưu bạn đã lưu trước đó vào khung dưới đây:</div>
+            <textarea id="txt-import-code" placeholder="Dán mã sao lưu vào đây..." style="width:100%;height:140px;background:#0f172a;color:#f8fafc;font-family:monospace;font-size:11px;border:1px solid #334155;border-radius:6px;padding:8px;box-sizing:border-box;resize:none"></textarea>
+            <div id="import-err-msg" style="color:#ef4444;font-size:12px;margin-top:6px;min-height:18px"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+              <button class="btn" data-close>Hủy</button>
+              <button class="btn btn-accent" id="btn-confirm-import">Khôi phục & Tải lại</button>
+            </div>
+          `, (importEl) => {
+            importEl.querySelector('#btn-confirm-import')?.addEventListener('click', () => {
+              const txt = (importEl.querySelector('#txt-import-code') as HTMLTextAreaElement)?.value || '';
+              const res = importSaveString(txt);
+              if (!res.success || !res.state) {
+                const errEl = importEl.querySelector('#import-err-msg');
+                if (errEl) errEl.textContent = res.error || 'Mã sao lưu không hợp lệ.';
+                this.toast(res.error || 'Mã sao lưu không hợp lệ.', 'warn');
+                return;
+              }
+              this.closeModal();
+              this.toast('Khôi phục save thành công! Đang tải lại...', 'info');
+              if (this.hooks.onImportSave) {
+                this.hooks.onImportSave(res.state);
+              } else {
+                localStorage.setItem('dituonline_save_v2', JSON.stringify({ version: 2, savedAt: Date.now(), state: res.state }));
+                window.location.reload();
+              }
+            });
+          });
         });
         el.querySelector('#btn-restore-backup')?.addEventListener('click', () => {
           this.closeModal();

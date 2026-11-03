@@ -333,7 +333,7 @@ export const QUESTS: Record<string, QuestDef> = {
     requirement: 'Sau buổi thăm gặp của Chị Mai.',
     recommendedLevel: 4,
     objectives: [
-      { id: 'nhan_thu', text: 'Nhận thư tại bàn trực cán bộ hành lang buồng giam' },
+      { id: 'nhan_thu', text: 'Đến Bàn tiếp nhận trong Phòng quản giáo nhận thư từ gia đình' },
       { id: 'hoi_am', text: 'Viết thư hồi âm trấn an mẹ và gửi vào hòm thư trại' },
     ],
     reward: '−20 căng thẳng, +15 quan hệ Chị Mai, 35 XP.',

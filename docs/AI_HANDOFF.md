@@ -492,5 +492,12 @@
 - Lưu ý cho Antigravity: đọc hai file này, kiểm tra commit mới nhất và diff trước khi sửa. Bổ sung mục bàn giao sau mỗi lần làm việc.
 - Commit: xem lịch sử Git cho commit tạo tài liệu này.
 
+### 2026-11-04 — Antigravity — VIỆC 10: Sửa text nhiệm vụ lá thư, đồng hồ áp lực, vang lại lựa chọn & tổng kết chương, sao lưu save
+- **10a:** Cập nhật mô tả bước `nhan_thu` của `la_thu_que_nha` thành "Đến Bàn tiếp nhận trong Phòng quản giáo nhận thư từ gia đình".
+- **10b:** Thêm hiển thị mức nghi ngờ theo 3 giai đoạn: "Bình thường" (<30), "Đang bị để ý" (30-49), "Nguy cơ bị khám xét" (>=50) trong chi tiết chỉ số và đỉnh nhật ký nhiệm vụ; HUD hiện dòng cảnh báo áp lực nợ `⏳ Lâm đang chờ — đã X ngày` khi `mon_no` đang active.
+- **10c:** Thêm sự kiện `chapterComplete` trong `game.ts` khi `s.chapter` tăng (sau `mon_no`, `manh_moi_kho_7`, `bay_vat_cam`) và modal `showChapterSummary(chapterNum)` liệt kê các nhiệm vụ hoàn thành, nhánh đã chọn, tổng XP & điểm cải tạo; bổ sung 3 lựa chọn thoại vang lại (Huy, Chú Bảy, Quản giáo Lan) dựa trên cờ lựa chọn có sẵn.
+- **10d:** Thêm `exportSaveString` và `importSaveString` trong `src/logic/save.ts` với kiểm tra hợp lệ, bảo vệ an toàn save hiện tại nếu mã hỏng; thêm 2 nút "📦 Sao lưu save" (kèm copy clipboard) và "📥 Khôi phục save" trong modal Cài đặt trò chơi.
+- **Kiểm thử:** 142/142 unit tests PASS (thêm suite `tests/unit/features-v10.test.ts`), 17/17 Playwright E2E tests PASS.
+
 ## Việc tiếp theo
-- Kiểm tra mã nguồn hiện tại, tái hiện lỗi cụ thể, sửa từng nhóm lỗi và ghi nhật ký tại đây.
+- Triển khai VIỆC 11: Nhiệm vụ khó và hấp dẫn hơn (Thử thách phụ tự chọn, Lựa chọn đánh đổi thật, Ngưỡng chỉ số/kỹ năng hiện rõ trước).

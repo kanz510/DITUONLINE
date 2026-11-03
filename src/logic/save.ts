@@ -226,6 +226,43 @@ export function healStuckQuests(s: GameState): boolean {
   return healed;
 }
 
+export function exportSaveString(state: GameState): string {
+  const env: SaveEnvelope = { version: SAVE_VERSION, savedAt: Date.now(), state };
+  const json = JSON.stringify(env);
+  if (typeof btoa !== 'undefined') {
+    try {
+      return btoa(encodeURIComponent(json));
+    } catch {
+      return json;
+    }
+  }
+  return json;
+}
+
+export function importSaveString(code: string, storage?: StorageLike | null): { success: boolean; state?: GameState; error?: string } {
+  try {
+    let json = code.trim();
+    if (typeof atob !== 'undefined') {
+      try {
+        json = decodeURIComponent(atob(json));
+      } catch {
+        // May already be raw JSON
+      }
+    }
+    const parsed = JSON.parse(json);
+    if (!parsed || typeof parsed !== 'object') {
+      return { success: false, error: 'Định dạng mã sao lưu không hợp lệ.' };
+    }
+    const state = migrate(parsed, storage);
+    if (!state || !state.player || !state.stats || !state.quests) {
+      return { success: false, error: 'Dữ liệu save bị thiếu hoặc không tương thích phiên bản.' };
+    }
+    return { success: true, state };
+  } catch (err: any) {
+    return { success: false, error: 'Không thể giải mã bản sao lưu: ' + (err?.message || 'Lỗi cú pháp') };
+  }
+}
+
 export function serialize(state: GameState): string {
   const env: SaveEnvelope = { version: SAVE_VERSION, savedAt: Date.now(), state };
   return JSON.stringify(env);
@@ -284,6 +321,18 @@ export class SaveManager {
 
   clear() {
     this.storage?.removeItem(this.key);
+  }
+
+  exportSave(state: GameState): string {
+    return exportSaveString(state);
+  }
+
+  importSave(code: string): { success: boolean; state?: GameState; error?: string } {
+    const res = importSaveString(code, this.storage);
+    if (res.success && res.state) {
+      this.save(res.state);
+    }
+    return res;
   }
 
   savedAt(): number | null {

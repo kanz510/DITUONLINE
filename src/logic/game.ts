@@ -907,7 +907,9 @@ export class GameLogic {
           this.changeRel('lam', -50, 'Bị Minh đánh trước mặt cả sân');
           this.s.flags.huy_debt_cleared = true;
         }
+        const prevChap1 = this.s.chapter;
         this.s.chapter = Math.max(this.s.chapter, 2);
+        if (this.s.chapter > prevChap1) this.emit('chapterComplete', prevChap1, this.s.chapter);
         this.startQuest('lop_nghe_dau');
         this.startQuest('nghi_an_thuoc');
         this.startQuest('phong_tham_gap');
@@ -941,7 +943,9 @@ export class GameLogic {
         this.addReform(4, 'Tìm ra manh mối kho số 7');
         this.addClue('van_don_kho_7', 'Mảnh vận đơn dán trên kiện hàng cũ ở kho xưởng mang mã KHO-07-AP.');
         this.giveItem('manh_van_don_kho_7', 1);
+        const prevChap2 = this.s.chapter;
         this.s.chapter = Math.max(this.s.chapter, 3);
+        if (this.s.chapter > prevChap2) this.emit('chapterComplete', prevChap2, this.s.chapter);
         this.startQuest('doi_chieu_chung_tu');
         this.startQuest('la_thu_que_nha');
         this.startQuest('ren_luyen_the_chat');
@@ -1012,7 +1016,9 @@ export class GameLogic {
           this.changeRel('lan', 10, 'Quản giáo Lan ghi nhận Minh bình tĩnh giải trình hợp lệ');
           this.changeRel('tung', 15, 'Cán bộ Tùng đánh giá cao sự trung thực');
         }
+        const prevChap3 = this.s.chapter;
         this.s.chapter = Math.max(this.s.chapter, 4);
+        if (this.s.chapter > prevChap3) this.emit('chapterComplete', prevChap3, this.s.chapter);
         this.startQuest('ho_so_giai_trinh');
         this.startQuest('loi_hua_chu_bay');
         this.startQuest('truyen_nghe_cho_huy');

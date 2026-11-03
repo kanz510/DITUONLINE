@@ -258,6 +258,28 @@ function bayDialogue(g: GameLogic): DNode {
     });
   }
 
+  // Vang lại lựa chọn: cam_do_im_lang
+  if (g.qStatus('cam_do_im_lang') === 'done') {
+    choices.push({
+      label: 'Chú Bảy, về lời đề nghị của Lâm đợt trước...',
+      run: () => {
+        if (g.s.flags.accepted_lam_bribe) {
+          return {
+            speaker: 'Chú Bảy',
+            text: 'Chú thấy thằng Lâm dạo này có vẻ vị nể cháu, nhưng tiền của nó cầm nóng tay lắm cháu à. Đừng để nó dắt mũi mình sâu hơn.',
+            choices: [{ label: 'Cháu hiểu rồi chú Bảy.', run: () => null }],
+          };
+        } else {
+          return {
+            speaker: 'Chú Bảy',
+            text: 'Cháu từ chối cọc tiền của thằng Lâm là rất bản lĩnh! Cầm đồng tiền bẩn trong tù thì mất luôn đường về cháu ạ.',
+            choices: [{ label: 'Cháu chỉ muốn trong sạch để sớm về.', run: () => null }],
+          };
+        }
+      },
+    });
+  }
+
   const gift = giftChoice('bay', 'thuoc_cam', 'vỉ thuốc cảm', g, 'Cảm ơn cậu, chú đang đau họng quá. Người tốt như cậu ở đâu cũng sống được.');
   if (gift) choices.push(gift);
 
@@ -375,6 +397,34 @@ function huyDialogue(g: GameLogic): DNode {
           text: `Tôi nhớ rồi ${pName} ạ. Ra trại tôi sẽ học nghề và làm ăn chân chính!`,
           choices: [{ label: 'Tốt lắm!', run: () => null }],
         };
+      },
+    });
+  }
+
+  // Vang lại lựa chọn: mon_no
+  if (g.qStatus('mon_no') === 'done') {
+    choices.push({
+      label: 'Về món nợ hôm trước với Lâm...',
+      run: () => {
+        if (g.s.flags.stole_for_lam) {
+          return {
+            speaker: 'Huy',
+            text: 'Tôi vẫn ân hận vì để ông phải mạo hiểm lấy đồ kho cho Lâm vì tôi... May mà không bị phát hiện, từ giờ tôi cạch đỏ đen đến già!',
+            choices: [{ label: 'Nhớ lấy bài học đó.', run: () => null }],
+          };
+        } else if (g.s.flags.report_with_note) {
+          return {
+            speaker: 'Huy',
+            text: 'May mà hôm đó ông dũng cảm mang giấy nợ báo Quản giáo Lan giải quyết dứt điểm. Giờ Lâm không dám ho he gì nữa.',
+            choices: [{ label: 'Đúng luật là an toàn nhất.', run: () => null }],
+          };
+        } else {
+          return {
+            speaker: 'Huy',
+            text: 'Cảm ơn ông lần nữa vì đã đứng ra giải quyết êm thấm món nợ với Lâm. Tôi nợ ông một ân tình lớn.',
+            choices: [{ label: 'Bạn cùng buồng giúp nhau là bình thường.', run: () => null }],
+          };
+        }
       },
     });
   }
@@ -668,6 +718,27 @@ function lanDialogue(g: GameLogic, openAppeal: () => void): DNode {
           choices: [{ label: 'Bước ra cổng trại và đón nhận tương lai', run: () => null }],
         };
       },
+    });
+  }
+
+  // Vang lại lựa chọn: ho_so_kho_7_cleared hoặc bay_vat_cam
+  if (g.s.flags.ho_so_kho_7_cleared) {
+    choices.push({
+      label: 'Thưa cán bộ, về hồ sơ giải trình kho số 7...',
+      run: () => ({
+        speaker: 'Quản giáo Lan',
+        text: 'Hồ sơ giải trình vụ kho số 7 đã được Hội đồng thụ lý minh bạch. Bản giải trình trung thực của anh đã giúp làm rõ sự thật và giữ vững kỷ cương trại.',
+        choices: [{ label: 'Cảm ơn cán bộ đã lắng nghe.', run: () => null }],
+      }),
+    });
+  } else if (g.qStatus('bay_vat_cam') === 'done') {
+    choices.push({
+      label: 'Thưa cán bộ, về vụ việc bị gài bẫy buồng giam...',
+      run: () => ({
+        speaker: 'Quản giáo Lan',
+        text: 'Vụ vật cấm gài bẫy buồng giam hôm trước, thái độ bình tĩnh khai báo trung thực của anh đã giúp cán bộ phân biệt rõ trắng đen. Cứ yên tâm cải tạo.',
+        choices: [{ label: 'Tôi luôn tin tưởng vào cán bộ.', run: () => null }],
+      }),
     });
   }
 

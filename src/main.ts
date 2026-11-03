@@ -214,6 +214,10 @@ class App {
         const liveNpcs = Object.fromEntries(Object.entries(this.npcs).map(([id, npc]) => [id, { x: npc.x, z: npc.z }]));
         return resolveQuestDestination(qid, this.g.s, liveNpcs);
       },
+      onImportSave: (state) => {
+        this.saves.save(state);
+        window.location.reload();
+      },
     });
 
     fetchLiveRelease().then((rel) => this.ui.updateReleaseInfo(rel));
@@ -350,6 +354,7 @@ class App {
     this.g.on('save', () => this.saves.save(this.g.s));
     this.g.on('violation', (v) => this.ui.showViolationBanner(v));
     this.g.on('sideQuestUnlocked', () => this.ui.highlightQuestBar());
+    this.g.on('chapterComplete', (oldChap: number) => this.ui.showChapterSummary(oldChap));
     this.g.on('levelUp', () => this.sfx.levelUp());
     this.g.on('workUnit', () => this.sfx.hammer());
     this.g.on('block', (b: { id: string; label: string; start: number; where: string }) => {
