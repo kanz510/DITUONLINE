@@ -1,0 +1,37 @@
+name: Visual verification - Prison graphics
+on:
+  push:
+    paths:
+      - 'src/ui/landing.ts'
+      - 'src/ui/landing.css'
+      - 'src/world/hero-props.ts'
+      - 'src/world/builder.ts'
+      - 'src/main.ts'
+      - 'tests/e2e/visual-upgrade.spec.ts'
+      - '.github/workflows/visual-upgrade.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  visual-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run test:unit
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test tests/e2e/visual-upgrade.spec.ts --reporter=list
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: prison-visual-iphone
+          path: |
+            screenshots/
+            test-results/
+          if-no-files-found: warn
