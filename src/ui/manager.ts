@@ -138,7 +138,7 @@ export class UIManager {
     } else {
       this.orientOverlay.style.display = 'none';
       if (this.pausedByOrientation) {
-        if (!this.hasOpenModal()) this.paused = false;
+        if (!this.hasOpenModal() && !document.getElementById('game-landing')) this.paused = false;
         this.pausedByOrientation = false;
       }
     }
