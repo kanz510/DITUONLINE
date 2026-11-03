@@ -65,3 +65,61 @@ describe('GLB / texture bundle contract', () => {
     }
   });
 });
+
+
+describe('Đợt 1 dùng GLB Kenney và bảo toàn đường đi', () => {
+  const kinds = new Set([
+    'kitchen-fridge', 'kitchen-sink', 'kitchen-stove',
+    'visit-sofa', 'visit-side-table', 'garden-pot',
+    'yard-bush', 'yard-flower', 'yard-rock',
+    'park-ambulance', 'park-police', 'park-van', 'park-delivery',
+  ]);
+  const added = PROPS.filter((p) => kinds.has(p.kind));
+
+  it('15 vật thể mới đều đăng ký collider, không chặn 75 cạnh di chuyển NPC', () => {
+    expect(added).toHaveLength(15);
+    expect(added.every((p) => p.collide)).toBe(true);
+    expect(isConnected()).toBe(true);
+    for (const p of added) {
+      const box = propBox(p);
+      const expanded = {
+        x1: box.x1 - .36, x2: box.x2 + .36,
+        z1: box.z1 - .36, z2: box.z2 + .36,
+      };
+      for (const [from, to] of EDGES) {
+        const a = NODES[from], b = NODES[to];
+        expect(segBox(a[0], a[1], b[0], b[1], expanded),
+          `${p.kind} @ (${p.x}, ${p.z}) blocks ${from}->${to}`).toBe(false);
+      }
+      // No furniture/vehicle can physically overlap an existing prop collider.
+      for (const other of PROPS) {
+        if (other === p || !other.collide) continue;
+        const o = propBox(other);
+        const overlap = box.x1 < o.x2 && box.x2 > o.x1 &&
+          box.z1 < o.z2 && box.z2 > o.z1;
+        expect(overlap, `${p.kind} overlaps ${other.kind}`).toBe(false);
+      }
+    }
+  });
+
+  it('ship GLB 2.0 textures and all kitchen/visitation/yard/vehicle source files', () => {
+    for (const model of [
+      'furniture/kitchenFridge.glb', 'furniture/kitchenSink.glb',
+      'furniture/kitchenStoveElectric.glb', 'furniture/loungeSofa.glb',
+      'furniture/sideTable.glb', 'furniture/pottedPlant.glb',
+      'nature/plant_bush.glb', 'nature/flower_redA.glb',
+      'nature/flower_yellowA.glb', 'nature/rock_largeA.glb',
+      'vehicles/ambulance.glb', 'vehicles/police.glb',
+      'vehicles/van.glb', 'vehicles/delivery.glb',
+      'characters/character-j.glb', 'characters/character-k.glb',
+    ]) {
+      expect(validGlb(`public/models/${model}`), model).toBe(true);
+    }
+    for (const texture of [
+      'vehicles/Textures/colormap-vehicles.png',
+      'characters/Textures/texture-j.png', 'characters/Textures/texture-k.png',
+    ]) {
+      expect(existsSync(`public/models/${texture}`), texture).toBe(true);
+    }
+  });
+});
