@@ -59,6 +59,51 @@ test('An Phu cinematic landing, saved progress and upgraded scenery', async ({ b
   expect(result.gate).toBe(1);
   expect(result.toneMapping).toBeGreaterThan(0);
   expect(result.collisions).toBeGreaterThan(25);
+  // New batch-1 GLBs must actually load, not just exist under public/.
+  // Also verify that the two named wardens use the original Kenney models,
+  // while the playable inmate remains the custom chibi rig.
+  await expect.poll(() => page.evaluate(() => {
+    const d = (window as any).__DITU__;
+    const kinds = new Set([
+      'kitchen-fridge', 'kitchen-sink', 'kitchen-stove',
+      'visit-sofa', 'visit-side-table', 'garden-pot',
+      'yard-bush', 'yard-flower', 'yard-rock',
+      'park-ambulance', 'park-police', 'park-van', 'park-delivery',
+    ]);
+    let count = 0;
+    d.app.world.scene.traverse((o: any) => {
+      if (o.name.startsWith('prop.') &&
+          kinds.has(o.name.slice(5)) && o.userData.assetLoaded) count++;
+    });
+    return {
+      loaded: count,
+      lan: !!d.app.npcs.lan.rig.root.getObjectByName('guard.kenney.j'),
+      tung: !!d.app.npcs.tung.rig.root.getObjectByName('guard.kenney.k'),
+      chibiPlayerVisible: d.app.playerRig.body.visible,
+    };
+  }), { timeout: 20000 }).toEqual({
+    loaded: 15, lan: true, tung: true, chibiPlayerVisible: true,
+  });
+
+  const locations = [
+    { x: 4.1, z: -27.0, name: 'phase1-nha-an.png' },
+    { x: -24.0, z: -8.6, name: 'phase1-tham-gap.png' },
+    { x: -4, z: 14.8, name: 'phase1-quan-giao-glb.png' },
+    { x: 24.5, z: -14.2, name: 'phase1-xe-y-te.png' },
+    { x: 22.0, z: 16.4, name: 'phase1-xe-pham-nhan.png' },
+  ];
+  for (const site of locations) {
+    await page.evaluate(({ x, z }) => {
+      const d = (window as any).__DITU__;
+      d.teleport(x, z);
+      d.app.input.yaw = .3;
+      d.app.input.pitch = .2;
+      d.app.input.distance = 5.4;
+    }, site);
+    await page.waitForTimeout(350);
+    await page.screenshot({ path: 'screenshots/' + site.name, animations: 'disabled' });
+  }
+
   await page.reload();
   await expect(page.locator('#landing-primary')).toContainText('TIẾP TỤC HỒ SƠ');
   await expect(page.locator('#landing-newgame')).toBeVisible();
