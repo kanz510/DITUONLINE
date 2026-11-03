@@ -196,3 +196,15 @@ Thêm GLB 2.0 tự dựng, không dùng asset trả phí, không Draco/KTX2, kh�
 
 - `watchtower.glb`: tháp canh thép phong cách hoá cho các tháp canh sân nhà tù; giai đoạn tạo tài nguyên, chưa đấu nối vào game - sẽ tích hợp sau.
 Mọi đồ mới đều sử dụng collider `PROPS` hiện có, không thêm đường đi, interaction hay thay save/quest. GLB tích hợp qua `GLTFLoader` cache có fallback nếu trình duyệt không tải được; kiểm thử E2E xác nhận mô hình xuất hiện trong scene chứ không chỉ có file trên ổ đĩa.
+
+## Pack 01 — 5 model GLB nguyên bản (03/11/2026)
+
+Bản nguồn tại `assets/models/original/`, bản copy dùng lúc chạy tại `public/models/original/` (cùng bytes). Danh mục chi tiết trong `assets/models/original/MANIFEST.json`.
+
+- `cell_sanitation_unit.glb` — buồng giam: toilet + bồn rửa
+- `single_prison_locker.glb` — buồng giam: tủ sắt
+- `canteen_meal_tray.glb` — nhà ăn: khay cơm
+- `infirmary_medical_trolley.glb` — phòng y tế: xe đẩy thuốc
+- `guard_desk_radio.glb` — phòng cán bộ: radio bàn
+
+Ghi chú: chưa đấu nối vào game — sẽ tích hợp sau.
