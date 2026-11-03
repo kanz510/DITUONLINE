@@ -38,14 +38,16 @@ test('An Phu cinematic landing, saved progress and upgraded scenery', async ({ b
   await page.screenshot({ path: 'screenshots/workshop-upgraded-iphone.png', animations: 'disabled' });
   const result = await page.evaluate(() => {
     const d = (window as any).__DITU__;
-    let watches = 0, benches = 0, machines = 0;
+    let watches = 0, benches = 0, machines = 0, coils = 0, gate = 0;
     d.app.world.scene.traverse((o: any) => {
       if (o.name === 'watchtower.steel.cabin') watches++;
       if (o.name === 'workshop.assembly-bench') benches++;
       if (o.name === 'hydraulic.press') machines++;
+      if (o.name === 'perimeter.concertina-wire') coils++;
+      if (o.name === 'prison.main-gate.facade') gate++;
     });
     return {
-      watches, benches, machines,
+      watches, benches, machines, coils, gate,
       toneMapping: d.app.renderer.toneMapping,
       collisions: d.app.world.collision.boxes.length,
     };
@@ -53,6 +55,8 @@ test('An Phu cinematic landing, saved progress and upgraded scenery', async ({ b
   expect(result.watches).toBeGreaterThanOrEqual(2);
   expect(result.benches).toBeGreaterThanOrEqual(4);
   expect(result.machines).toBeGreaterThanOrEqual(1);
+  expect(result.coils).toBe(1);
+  expect(result.gate).toBe(1);
   expect(result.toneMapping).toBeGreaterThan(0);
   expect(result.collisions).toBeGreaterThan(25);
   await page.reload();
