@@ -78,7 +78,7 @@ test('An Phu cinematic landing, saved progress and upgraded scenery', async ({ b
     return {
       loaded: count,
       lan: !!d.app.npcs.lan.rig.root.getObjectByName('guard.kenney.j'),
-      tung: !!d.app.npcs.tung.rig.root.getObjectByName('guard.kenney.k'),
+      tung: !!d.app.npcs.tung.rig.root.getObjectByName('guard.kenney.j'),
       chibiPlayerVisible: d.app.playerRig.body.visible,
     };
   }), { timeout: 20000 }).toEqual({
