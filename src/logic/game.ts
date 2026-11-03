@@ -9,7 +9,7 @@ import { generateDailyTasks } from './daily-plan';
 import { addSentence, applyReview, serveDay } from './sentence';
 import { VIOLATIONS } from '../data/violations';
 import { ITEMS, itemName } from '../data/items';
-import { QUESTS } from '../data/quests';
+import { QUESTS, QUEST_ORDER } from '../data/quests';
 
 export type NoticeKind = 'info' | 'good' | 'bad' | 'warn' | 'quest';
 
@@ -403,6 +403,7 @@ export class GameLogic {
     if (memory) r.memories.push({ day: this.s.day, text: memory });
     if (delta !== 0) this.notify(`${NPC_NAMES[id]} ${delta > 0 ? '+' : ''}${delta} quan hệ`, delta > 0 ? 'good' : 'bad');
     this.checkPerkUnlocked(id, prevVal, r.value);
+    this.checkDailyTasks({ category: 'relation', npcId: id as NpcId });
   }
 
   private checkPerkUnlocked(id: string, prev: number, next: number) {
@@ -421,6 +422,7 @@ export class GameLogic {
       r.met = true;
       this.commit();
     }
+    this.checkDailyTasks({ category: 'relation', npcId: id as NpcId });
   }
 
   /** Nói chuyện thường ngày — mỗi NPC một lần/ngày, giảm căng thẳng nhẹ. */
@@ -645,8 +647,14 @@ export class GameLogic {
     const st = this.s.quests[q];
     if (st && st.status !== 'locked') return false;
     this.s.quests[q] = { status: 'active', step: 0, rewarded: false, startedDay: this.s.day, choices: [] };
-    this.notify(`Nhiệm vụ mới: ${QUESTS[q].title}`, 'quest');
-    this.event(`Nhận nhiệm vụ "${QUESTS[q].title}"`);
+    const def = QUESTS[q];
+    if (def?.type === 'side') {
+      this.notify(`🌟 NHIỆM VỤ PHỤ MỚI: ${def.title}! Xem trong Nhật ký hoặc bấm vào Thanh nhiệm vụ.`, 'good');
+      this.emit('sideQuestUnlocked', q);
+    } else {
+      this.notify(`Nhiệm vụ mới: ${def?.title ?? q}`, 'quest');
+    }
+    this.event(`Nhận nhiệm vụ "${def?.title ?? q}"`);
     if (q === 'mi_cho_huy') this.s.flags['mi_cho_huy:deadline'] = this.s.day + 1;
     this.commit();
     return true;
@@ -749,6 +757,25 @@ export class GameLogic {
     }
     this.notify(`${status === 'done' ? 'Hoàn thành' : 'Thất bại'}: ${QUESTS[q].title}${st.outcome ? ' — ' + st.outcome : ''}`, status === 'done' ? 'quest' : 'bad');
     this.event(`${status === 'done' ? 'Hoàn thành' : 'Thất bại'} nhiệm vụ "${QUESTS[q].title}"`);
+    if (status === 'done') {
+      this.checkDailyTasks({ category: 'personal', taskId: 'personal_quest' });
+    } else if (status === 'failed') {
+      const remainingMain = QUEST_ORDER
+        .filter((k) => k !== q && QUESTS[k].type === 'main' && this.qStatus(k) === 'active')
+        .map((k) => `"${QUESTS[k].title}"`);
+      if (remainingMain.length > 0) {
+        this.notify(`👉 Làm tiếp: ${remainingMain.join(', ')}`, 'info');
+      } else {
+        const remainingSide = QUEST_ORDER
+          .filter((k) => QUESTS[k].type === 'side' && this.qStatus(k) === 'active')
+          .map((k) => `"${QUESTS[k].title}"`);
+        if (remainingSide.length > 0) {
+          this.notify(`👉 Làm tiếp nhiệm vụ phụ: ${remainingSide.join(', ')} hoặc hoàn thành Việc hôm nay.`, 'info');
+        } else {
+          this.notify(`👉 Làm tiếp: Mở "Việc hôm nay" để hoàn thành 3 việc trong ngày và duy trì cải tạo tốt.`, 'info');
+        }
+      }
+    }
     this.commit();
   }
 
@@ -1258,8 +1285,10 @@ export class GameLogic {
     }
     if (prev < 690 && now >= 690) this.resolveWork();
     if (now >= CURFEW_CHECK && d.curfew === 'pending') {
-      if (ctx.inCellblock) d.curfew = 'ok';
-      else {
+      if (ctx.inCellblock) {
+        d.curfew = 'ok';
+        this.checkDailyTasks({ category: 'duty', taskId: 'duty_curfew' });
+      } else {
         d.curfew = 'missed';
         this.recordViolation('curfew', `d${this.s.day}`, `Cán bộ Tùng kiểm tra buồng lúc 21:30, bạn đang ở ngoài khu buồng giam.`);
       }
@@ -1359,6 +1388,9 @@ export class GameLogic {
     if (s.minute < DAY_END) this.advanceTo(DAY_END, { ...IDLE_CTX, inCellblock: inBed });
     const d = s.daily;
     if (d.curfew === 'pending') d.curfew = inBed ? 'ok' : 'missed';
+    if (d.curfew === 'ok') {
+      this.checkDailyTasks({ category: 'duty', taskId: 'duty_curfew' });
+    }
 
     // Hạn lời hứa
     if (this.qStatus('mi_cho_huy') === 'active' && (s.flags['mi_cho_huy:deadline'] as number) <= s.day) {

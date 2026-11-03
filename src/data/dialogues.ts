@@ -108,7 +108,16 @@ function bayDialogue(g: GameLogic): DNode {
   }
 
   // Nhiệm vụ: Đôi dép của Chú Bảy
-  if (g.qStatus('dep_bay') === 'locked' && g.qStatus('nhap_trai') === 'done') {
+  if (g.qStatus('dep_bay') === 'active' && !g.has('dep_bay') && !g.qObj('dep_bay', 'nhat_dep')) {
+    choices.push({
+      label: 'Chú tìm gì dưới gầm ghế vậy?',
+      run: () => ({
+        speaker: 'Chú Bảy',
+        text: 'Đôi dép tổ ong màu xanh của chú... sáng ra sân tập thể dục để quên ở đâu mất rồi. Nó nằm quanh mấy cây xà đơn ngoài sân ấy, cháu thấy thì nhặt giùm chú.',
+        choices: [{ label: 'Cháu sẽ để ý tìm giúp chú.', run: () => null }],
+      }),
+    });
+  } else if (g.qStatus('dep_bay') === 'locked' && g.qStatus('nhap_trai') === 'done') {
     choices.push({
       label: 'Chú tìm gì dưới gầm ghế vậy?',
       run: () => ({

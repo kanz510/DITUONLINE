@@ -37,27 +37,112 @@ export function isNpcPresentToday(id: NpcId, _day: number, s?: GameState): boole
   return true;
 }
 
-/** Kiểm tra bước quest chính hiện tại có đang chờ khung giờ mở cửa hay không. */
-export function isQuestWaitingForTime(s: GameState): boolean {
-  if (s.flags?.quest_waiting_for_time) return true;
+/** Thông tin chi tiết khung giờ chờ của nhiệm vụ chính/phụ hiện tại. */
+export interface QuestWaitingDetails {
+  waiting: boolean;
+  timeRange?: string;
+  hint?: string;
+}
 
+export function getQuestWaitingDetails(s: GameState): QuestWaitingDetails {
   if (s.quests.lop_nghe_dau?.status === 'active') {
     // Lớp học nghề mở cửa 14:00–16:30 (840–990)
-    if (s.minute < 840 || s.minute > 990) return true;
+    if (s.minute < 840 || s.minute > 990) {
+      return {
+        waiting: true,
+        timeRange: '14:00–16:30',
+        hint: 'Chờ mở cửa: 14:00–16:30 (Trong lúc chờ: Làm việc ngày / rèn luyện thể lực)',
+      };
+    }
   }
   if (s.quests.phong_tham_gap?.status === 'active') {
     // Thăm gặp mở 08:30–11:00 (510–660) & 14:00–16:30 (840–990)
     const inMorn = s.minute >= 510 && s.minute <= 660;
     const inAft = s.minute >= 840 && s.minute <= 990;
-    if (!inMorn && !inAft) return true;
+    if (!inMorn && !inAft) {
+      return {
+        waiting: true,
+        timeRange: '08:30–11:00 & 14:00–16:30',
+        hint: 'Chờ mở cửa: 08:30–11:00 & 14:00–16:30 (Trong lúc chờ: Làm việc ngày / rèn luyện thể lực)',
+      };
+    }
   }
   if (s.quests.nghi_an_thuoc?.status === 'active') {
     // Phòng y tế mở 07:30–11:30 (450–690) & 13:30–17:00 (810–1020)
     const inMorn = s.minute >= 450 && s.minute <= 690;
     const inAft = s.minute >= 810 && s.minute <= 1020;
-    if (!inMorn && !inAft) return true;
+    if (!inMorn && !inAft) {
+      return {
+        waiting: true,
+        timeRange: '07:30–11:30 & 13:30–17:00',
+        hint: 'Chờ mở cửa: 07:30–11:30 & 13:30–17:00 (Trong lúc chờ: Làm việc ngày / rèn luyện thể lực)',
+      };
+    }
   }
-  return false;
+  return { waiting: false };
+}
+
+/** Quy tắc và mốc cốt truyện mở nhiệm vụ phụ. */
+export const SIDE_QUEST_UNLOCK_RULES: Record<
+  string,
+  { milestone: string; condition: string; isUnlocked: (s: GameState) => boolean }
+> = {
+  dep_bay: {
+    milestone: 'Hoàn thành nhiệm vụ chính "Nhập trại & ổn định chỗ ở" (Chương 1)',
+    condition: 'Đã làm quen Chú Bảy tại buồng giam số 3 hoặc nhà ăn',
+    isUnlocked: (s) => Boolean(s.flags['nhap_trai:gap_bay'] || s.quests.nhap_trai?.status === 'done'),
+  },
+  mi_cho_huy: {
+    milestone: 'Hoàn thành nhiệm vụ chính "Nhập trại & ổn định chỗ ở" (Chương 1)',
+    condition: 'Gặp bạn cùng buồng Huy sau khi ổn định chỗ ở',
+    isUnlocked: (s) => Boolean(s.quests.nhap_trai?.status === 'done'),
+  },
+  lao_dong_phu: {
+    milestone: 'Hoàn thành nhiệm vụ chính "Nhập trại & ổn định chỗ ở" (Chương 1)',
+    condition: 'Sau ca lao động sáng tại xưởng',
+    isUnlocked: (s) => Boolean(s.quests.nhap_trai?.status === 'done'),
+  },
+  phong_tham_gap: {
+    milestone: 'Hoàn thành nhiệm vụ chính "Món nợ đầu tiên" (Bắt đầu Chương 2)',
+    condition: 'Đến phòng thăm gặp trong khung giờ tiếp đón (08:30–11:00 & 14:00–16:30)',
+    isUnlocked: (s) => Boolean(s.quests.mon_no?.status === 'done' || s.quests.mon_no?.status === 'failed' || s.chapter >= 2),
+  },
+  sach_thu_vien: {
+    milestone: 'Hoàn thành nhiệm vụ chính "Bài học nghề đầu tiên" (Chương 2)',
+    condition: 'Đạt chứng chỉ nghề và đến Thư viện lớp học nghề',
+    isUnlocked: (s) => Boolean(s.quests.lop_nghe_dau?.status === 'done' || s.inventory.chung_chi_nghe),
+  },
+  phu_y_te: {
+    milestone: 'Hoàn thành nhiệm vụ chính "Nghi án giấu thuốc" (Chương 2)',
+    condition: 'Đến phòng y tế trong khung giờ làm việc (07:30–11:30 & 13:30–17:00)',
+    isUnlocked: (s) => Boolean(s.quests.nghi_an_thuoc?.status === 'done'),
+  },
+  sua_quat_phong_hoc: {
+    milestone: 'Hoàn thành nhiệm vụ chính "Đối chiếu sổ sách & chứng từ" (Chương 3)',
+    condition: 'Có chứng chỉ nghề hoặc xuất thân Thợ xe, đến Lớp học nghề',
+    isUnlocked: (s) => Boolean(s.quests.doi_chieu_chung_tu?.status === 'done'),
+  },
+  truyen_nghe_cho_huy: {
+    milestone: 'Hoàn thành nhiệm vụ chính "Bẫy vật cấm buồng giam" (Bắt đầu Chương 4)',
+    condition: 'Có chứng chỉ nghề và quan hệ với Huy ≥ 15',
+    isUnlocked: (s) => Boolean(s.quests.bay_vat_cam?.status === 'done' || s.chapter >= 4),
+  },
+  chia_tay_thay_phuc: {
+    milestone: 'Hoàn thành nhiệm vụ chính "Bẫy vật cấm buồng giam" (Bắt đầu Chương 4)',
+    condition: 'Hoàn thành "Bài học nghề đầu tiên" và "Sửa quạt phòng học"',
+    isUnlocked: (s) => Boolean(s.quests.bay_vat_cam?.status === 'done' || s.chapter >= 4),
+  },
+  kiem_tra_suc_khoe: {
+    milestone: 'Hoàn thành nhiệm vụ chính "Bẫy vật cấm buồng giam" (Bắt đầu Chương 4)',
+    condition: 'Đến phòng y tế làm thủ tục kiểm tra sức khỏe xuất trại',
+    isUnlocked: (s) => Boolean(s.quests.bay_vat_cam?.status === 'done' || s.chapter >= 4),
+  },
+};
+
+/** Kiểm tra bước quest chính hiện tại có đang chờ khung giờ mở cửa hay không. */
+export function isQuestWaitingForTime(s: GameState): boolean {
+  if (s.flags?.quest_waiting_for_time) return true;
+  return getQuestWaitingDetails(s).waiting;
 }
 
 /** Sinh đúng 3 mục tiêu ngày theo thứ tự ưu tiên cố định và quy tắc loại trừ khung giờ đã qua. */

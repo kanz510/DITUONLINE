@@ -151,6 +151,26 @@ html, body {
   color: #38bdf8;
   background: rgba(56, 189, 248, 0.2);
 }
+.quest-tag.waiting {
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.25);
+  border: 1px solid rgba(245, 158, 11, 0.5);
+}
+
+@keyframes questBarGlow {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.23);
+    border-color: rgba(245, 158, 11, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.85), 0 0 8px rgba(56, 189, 248, 0.6);
+    border-color: #f59e0b;
+  }
+}
+
+.hud-quest-bar.highlight {
+  animation: questBarGlow 1.5s ease-in-out 4;
+}
 .quest-title-text {
   font-weight: 700;
   color: #f8fafc;
@@ -402,6 +422,12 @@ html, body {
 }
 .btn-accent:hover {
   background: #d97706;
+}
+.btn-sm {
+  min-height: 30px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  border-radius: 6px;
 }
 .btn-danger {
   background: #7f1d1d;

@@ -14,7 +14,7 @@ import { BUILDINGS, DOORS, zoneName } from '../world/layout';
 import type { NpcActor } from '../actors/npc';
 import type { SoundEngine } from '../core/audio';
 import { getReleaseInfo, type AppReleaseInfo } from '../version';
-import { getDailySchedule } from '../logic/daily-plan';
+import { getDailySchedule, getQuestWaitingDetails, SIDE_QUEST_UNLOCK_RULES } from '../logic/daily-plan';
 import { FLASHBACK_CHOICES } from '../core/cutscene';
 
 export interface PromptTarget {
@@ -83,6 +83,7 @@ export class UIManager {
   private lastMinimapDraw = 0;
   private lastClockHTML = '';
   private lastQuestHTML = '';
+  private questBarHighlightTimeout: number | null = null;
   private lastStatsHTML = '';
   paused = false;
   private modalSeq = 0;
@@ -361,6 +362,17 @@ export class UIManager {
     }
   }
 
+  highlightQuestBar() {
+    if (!this.questBarEl) return;
+    this.questBarEl.classList.remove('highlight');
+    void this.questBarEl.offsetWidth;
+    this.questBarEl.classList.add('highlight');
+    if (this.questBarHighlightTimeout) clearTimeout(this.questBarHighlightTimeout);
+    this.questBarHighlightTimeout = window.setTimeout(() => {
+      this.questBarEl?.classList.remove('highlight');
+    }, 6000);
+  }
+
   toast(text: string, kind = 'info') {
     const last = this.toastsEl.lastElementChild as HTMLElement | null;
     if (last && (last.dataset.rawText === text || last.textContent?.startsWith(text))) {
@@ -427,16 +439,42 @@ export class UIManager {
     }
 
     // 3. Bảng mục tiêu chi tiết, hỗ trợ tự đi và thu gọn
-    const qTitle = guideTarget?.questTitle || 'Sinh hoạt trại giam';
-    const qStep = guideTarget?.stepDesc || guideTarget?.label || 'Tham gia các hoạt động theo lịch trình';
+    const waitingDetails = getQuestWaitingDetails(s);
+    const isWaiting = !guideTarget?.isDuty && waitingDetails.waiting;
+
+    let qTitle = guideTarget?.questTitle || 'Sinh hoạt trại giam';
+    let qStep = guideTarget?.stepDesc || guideTarget?.label || 'Tham gia các hoạt động theo lịch trình';
     const qProg = guideTarget?.progress ? ` <span style="color:#86efac;font-weight:700">(${guideTarget.progress})</span>` : '';
-    const qTag = guideTarget?.isDuty ? '🔔 Nghĩa vụ' : '🎯 Mục tiêu';
-    const isDutyCls = guideTarget?.isDuty ? 'duty' : '';
+    let qTag = guideTarget?.isDuty ? '🔔 Nghĩa vụ' : isWaiting ? '⏳ Chờ giờ' : '🎯 Mục tiêu';
+    const isDutyCls = guideTarget?.isDuty ? 'duty' : isWaiting ? 'waiting' : '';
     const destName = guideTarget?.targetName || guideTarget?.label || '';
     const distText = guideTarget ? `${Math.round(guideTarget.dist)}m` : '';
-    const openCond = guideTarget?.openCondition ? `<span class="quest-open-cond ${guideTarget.isLocked ? 'locked' : ''}">⏰ ${guideTarget.openCondition}</span>` : '';
+    let openCond = guideTarget?.openCondition ? `<span class="quest-open-cond ${guideTarget.isLocked ? 'locked' : ''}">⏰ ${guideTarget.openCondition}</span>` : '';
 
-    const shortLabel = destName || qTitle;
+    if (isWaiting && waitingDetails.timeRange) {
+      qStep = `Chờ mở cửa: ${waitingDetails.timeRange} · Gợi ý: Làm việc ngày / rèn luyện trong lúc chờ`;
+      openCond = `<span class="quest-open-cond locked">⏰ Chờ mở cửa: ${waitingDetails.timeRange}</span>`;
+    } else if (!guideTarget) {
+      const activeSide = QUEST_ORDER.filter((q) => QUESTS[q].type === 'side' && this.g.qStatus(q) === 'active');
+      if (activeSide.length > 0) {
+        qTitle = 'Nhiệm vụ tự chọn';
+        qStep = `Đang mở: ${activeSide.map((q) => QUESTS[q].title).join(', ')}. Mở Nhật ký để xem chi tiết.`;
+        qTag = '⭐ Tự chọn';
+      } else {
+        const remainingTasks = (s.daily.tasks || []).filter((t) => !t.done);
+        if (remainingTasks.length > 0) {
+          qTitle = 'Việc hôm nay';
+          qStep = `Còn ${remainingTasks.length} việc chưa hoàn thành. Bấm nút "📋 Lịch" để xem chi tiết.`;
+          qTag = '📋 Việc ngày';
+        } else {
+          qTitle = 'Sinh hoạt trại giam';
+          qStep = 'Đã hoàn thành hết mục tiêu hôm nay. Rèn luyện thể lực hoặc về buồng nghỉ ngơi.';
+          qTag = '🌿 Tự do';
+        }
+      }
+    }
+
+    const shortLabel = isWaiting && waitingDetails.timeRange ? `Chờ mở cửa: ${waitingDetails.timeRange}` : (destName || qTitle);
     const questHTML = this.questCollapsed
       ? `
         <div class="quest-row-header">
@@ -471,7 +509,9 @@ export class UIManager {
 
     if (questHTML !== this.lastQuestHTML) {
       this.lastQuestHTML = questHTML;
+      const isHighlighted = this.questBarEl.classList.contains('highlight');
       this.questBarEl.className = this.questCollapsed ? 'hud-quest-bar collapsed interactive' : 'hud-quest-bar interactive';
+      if (isHighlighted) this.questBarEl.classList.add('highlight');
       this.questBarEl.innerHTML = questHTML;
 
       // Gắn sự kiện thu gọn & tự đi
@@ -499,6 +539,7 @@ export class UIManager {
       });
 
       this.questBarEl.onclick = (e) => {
+        this.questBarEl.classList.remove('highlight');
         if (
           (e.target as HTMLElement).closest('#btn-quest-toggle') ||
           (e.target as HTMLElement).closest('#btn-quest-autowalk') ||
@@ -1464,34 +1505,48 @@ export class UIManager {
     const d = s.daily;
 
     // 1. Việc bắt buộc hôm nay
+    const isRollcallLate = d.rollcall === 'late';
+    const isRollcallDone = d.rollcall === 'ok' || isRollcallLate;
     const mandatoryList = [
       {
         title: 'Điểm danh buổi sáng (06:30–06:45)',
-        status: d.rollcall === 'ok' ? 'Đã hoàn thành đúng giờ' : d.rollcall === 'late' ? 'Trễ giờ' : d.rollcall === 'missed' ? 'Bỏ điểm danh' : 'Đang chờ (có mặt ở ô vàng ngoài sân)',
-        done: d.rollcall === 'ok',
+        status: d.rollcall === 'ok' ? 'Đã hoàn thành đúng giờ' : isRollcallLate ? 'Trễ giờ' : d.rollcall === 'missed' ? 'Bỏ điểm danh' : 'Đang chờ (có mặt ở ô vàng ngoài sân)',
+        done: isRollcallDone,
+        late: isRollcallLate,
       },
       {
         title: 'Lao động ca sáng (08:00–11:30)',
         status: d.work === 'ok' ? `Đã hoàn thành ${d.workUnits}/3 ổ cắm` : d.workClockedIn ? `Đã chấm công (làm ${d.workUnits}/3)` : 'Chưa chấm công (xưởng lao động)',
         done: d.work === 'ok',
+        late: false,
       },
       {
         title: 'Về buồng giam điểm danh tối (21:30)',
         status: d.curfew === 'ok' ? 'Đã có mặt trong buồng' : d.curfew === 'missed' ? 'Vi phạm giới nghiêm' : 'Có mặt tại buồng giam trước 21:30',
         done: d.curfew === 'ok',
+        late: false,
       },
     ];
 
     const mandatoryHtml = mandatoryList.map((m) => `
       <div class="card-row">
         <b>${m.done ? '✔' : '○'} ${m.title}</b>
-        <div class="hud-sub" style="color:${m.done ? '#86efac' : '#cbd5e1'}">${m.status}</div>
+        <div class="hud-sub" style="color:${m.late ? '#fde68a' : m.done ? '#86efac' : '#cbd5e1'}">${m.status}</div>
       </div>
     `).join('');
 
     // 2. Nhiệm vụ cốt truyện đang theo
     const mainActive = QUEST_ORDER.filter((q) => QUESTS[q].type === 'main' && this.g.qStatus(q) === 'active');
-    const mainHtml = mainActive.length ? mainActive.map((qid) => this.renderQuestCard(qid)).join('') : '<div class="hud-sub">Hiện không có nhiệm vụ cốt truyện nào. Hãy chú ý lịch sinh hoạt.</div>';
+    const mainHtml = mainActive.length
+      ? mainActive.map((qid) => this.renderQuestCard(qid)).join('')
+      : `
+        <div class="card-row" style="border-left:3px solid #38bdf8">
+          <b>Chưa có nhiệm vụ cốt truyện tiếp theo</b>
+          <div class="hud-sub" style="margin-top:4px">
+            👉 <b>Bước làm tiếp:</b> Mở <b>"Việc hôm nay"</b> để hoàn thành 3 việc trong ngày hoặc tham gia các <b>Nhiệm vụ tự chọn</b> đang mở để tích lũy điểm cải tạo & chuẩn bị cho bước ngoặt mới.
+          </div>
+        </div>
+      `;
 
     // 3. Việc tự chọn đang làm
     const sideActive = QUEST_ORDER.filter((q) => QUESTS[q].type === 'side' && this.g.qStatus(q) === 'active');
@@ -1501,7 +1556,22 @@ export class UIManager {
     const locked = QUEST_ORDER.filter((q) => this.g.qStatus(q) === 'locked');
     const lockedHtml = locked.length ? locked.map((qid) => {
       const q = QUESTS[qid];
-      return `<div class="card-row"><span class="tag">${q.type === 'main' ? 'Chính' : 'Phụ'}</span><b>${q.title}</b> <span class="hud-sub">(Điều kiện mở: ${q.requirement})</span></div>`;
+      const rule = SIDE_QUEST_UNLOCK_RULES[qid];
+      const canAccept = q.type === 'side' && rule && rule.isUnlocked(s);
+      const conditionText = rule ? rule.condition : q.requirement;
+      const milestoneText = rule?.milestone ? ` · Mốc cốt truyện: ${rule.milestone}` : '';
+      return `
+        <div class="card-row" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <div style="flex:1;min-width:200px">
+            <span class="tag ${q.type === 'main' ? 'good' : ''}">${q.type === 'main' ? 'Chính' : 'Phụ'}</span>
+            <b>${q.title}</b>
+            <div class="hud-sub" style="margin-top:3px">
+              <b>Sẽ tự mở khi:</b> ${conditionText}${milestoneText}
+            </div>
+          </div>
+          ${canAccept ? `<button class="btn btn-sm btn-accent btn-journal-accept" data-accept-quest="${qid}">Nhận</button>` : ''}
+        </div>
+      `;
     }).join('') : '<div class="hud-sub">Đã mở toàn bộ nhiệm vụ.</div>';
 
     // 5. Sổ tay manh mối
@@ -1534,7 +1604,19 @@ export class UIManager {
       <div style="text-align:right;margin-top:14px">
         <button class="btn btn-accent" data-close>Đóng</button>
       </div>
-    `);
+    `, (el) => {
+      el.querySelectorAll<HTMLButtonElement>('.btn-journal-accept').forEach((btn) => {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          this.sfx.click();
+          const qid = btn.dataset.acceptQuest;
+          if (qid) {
+            this.g.startQuest(qid);
+            this.showJournal();
+          }
+        };
+      });
+    });
   }
 
   private renderQuestCard(qid: string): string {

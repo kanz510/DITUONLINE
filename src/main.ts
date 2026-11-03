@@ -305,6 +305,7 @@ class App {
     this.g.on('notice', (t: string, k: string) => this.ui.toast(t, k));
     this.g.on('save', () => this.saves.save(this.g.s));
     this.g.on('violation', (v) => this.ui.showViolationBanner(v));
+    this.g.on('sideQuestUnlocked', () => this.ui.highlightQuestBar());
     this.g.on('block', (b) => {
       this.sfx.bell();
       this.ui.toast(`🔔 ${fmtTime(b.start)} — ${b.label} (${b.where})`, 'info');

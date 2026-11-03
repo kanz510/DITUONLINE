@@ -94,4 +94,111 @@ describe('Hệ thống Việc hôm nay & Lịch sinh hoạt (Daily Tasks)', () =
     expect(relTask?.title).toContain('Chú Bảy');
     expect(relTask?.desc.toLowerCase()).toContain('buồng');
   });
+
+  // Ca 5: FIX 1 — duty_curfew hoàn thành khi ngủ và thưởng cả 3 việc nổ đúng (+1 cải tạo)
+  it('Ca 5: duty_curfew hoàn thành khi ngủ buồng và thưởng cả 3 việc nổ đúng (+1 cải tạo)', () => {
+    const s = createInitialState();
+    s.day = 1;
+    s.minute = 1260; // 21:00 đến giờ ngủ
+    s.stats.reform = 10;
+    s.relations.bay.met = true;
+
+    // Sinh tasks với việc trực là curfew
+    s.daily.rollcall = 'ok';
+    s.daily.workClockedIn = true;
+    s.daily.workUnits = 3;
+    s.daily.tasks = generateDailyTasks(s);
+
+    const curfewTask = s.daily.tasks.find((t) => t.id === 'duty_curfew');
+    expect(curfewTask).toBeDefined();
+    expect(curfewTask?.done).toBe(false);
+
+    // Hoàn thành trước 2 việc (relation & personal)
+    for (const t of s.daily.tasks) {
+      if (t.category !== 'duty') t.done = true;
+    }
+
+    const g = new GameLogic(s);
+    let bonusNotified = false;
+    g.on('notice', (text: string) => {
+      if (text.includes('Hoàn thành cả 3 việc hôm nay')) bonusNotified = true;
+    });
+
+    // Kết thúc ngày khi ở trong buồng (inBed = true)
+    g.endDay(true);
+
+    // Kiểm tra thưởng nổ và +1 điểm cải tạo
+    expect(bonusNotified).toBe(true);
+    expect(g.s.stats.reform).toBeGreaterThanOrEqual(11); // +1 từ 3 tasks bonus + reform ngày
+  });
+
+  // Ca 6: FIX 1 — gặp NPC qua meet() hoàn thành việc ngày relation
+  it('Ca 6: gặp NPC qua meet() hoàn thành việc ngày relation', () => {
+    const s = createInitialState();
+    s.relations.bay.met = true;
+    s.daily.tasks = [
+      {
+        id: 'rel_bay',
+        category: 'relation',
+        title: 'Gặp gỡ Chú Bảy',
+        desc: 'Trò chuyện với Chú Bảy',
+        targetNpc: 'bay',
+        done: false,
+      },
+    ];
+
+    const g = new GameLogic(s);
+    expect(g.s.daily.tasks[0].done).toBe(false);
+
+    g.meet('bay');
+    expect(g.s.daily.tasks[0].done).toBe(true);
+  });
+
+  // Ca 7: FIX 2 — side quest phát sự kiện sideQuestUnlocked khi được mở
+  it('Ca 7: startQuest cho nhiệm vụ phụ phát sự kiện sideQuestUnlocked', () => {
+    const s = createInitialState();
+    const g = new GameLogic(s);
+    let unlockedQuest = '';
+    g.on('sideQuestUnlocked', (q: string) => {
+      unlockedQuest = q;
+    });
+
+    g.startQuest('dep_bay');
+    expect(unlockedQuest).toBe('dep_bay');
+    expect(g.qStatus('dep_bay')).toBe('active');
+  });
+
+  // Ca 8: FIX 3 — getQuestWaitingDetails trả về đúng khung giờ mở cửa
+  it('Ca 8: getQuestWaitingDetails trả về đúng khung giờ mở cửa', async () => {
+    const { getQuestWaitingDetails } = await import('../../src/logic/daily-plan');
+    const s = createInitialState();
+    s.minute = 400; // 06:40 sáng
+
+    // Lớp học nghề mở 14:00–16:30
+    s.quests.lop_nghe_dau = { status: 'active', step: 0, rewarded: false, choices: [] };
+    const waitClass = getQuestWaitingDetails(s);
+    expect(waitClass.waiting).toBe(true);
+    expect(waitClass.timeRange).toBe('14:00–16:30');
+
+    // Buổi chiều 14:30 -> đang mở cửa
+    s.minute = 870;
+    const openClass = getQuestWaitingDetails(s);
+    expect(openClass.waiting).toBe(false);
+  });
+
+  // Ca 9: FIX 3 — khi nhiệm vụ chính thất bại, hiện hướng dẫn "👉 Làm tiếp"
+  it('Ca 9: khi nhiệm vụ chính thất bại, hiện thông báo "👉 Làm tiếp"', () => {
+    const s = createInitialState();
+    const g = new GameLogic(s);
+    g.startQuest('ca_dau');
+    g.startQuest('nhap_trai');
+
+    let nextStepNotice = '';
+    g.on('notice', (text: string) => {
+      if (text.includes('👉 Làm tiếp:')) nextStepNotice = text;
+    });
+
+    g.finishQuest('ca_dau', 'failed');
+    expect(nextStepNotice).toContain('Người mới');
+  });
 });

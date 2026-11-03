@@ -8,6 +8,27 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-03 — Antigravity — Sửa 3 vấn đề gameplay: Việc ngày, Nhiệm vụ phụ & Chỉ dẫn chờ giờ (v0.4.10)
+- **FIX 1 — Việc ngày không bao giờ xong & rà soát hoàn thành:**
+  - Khắc phục triệt để lỗi chết ở `endDay()` và `CURFEW_CHECK`: gọi `checkDailyTasks({ category: 'duty', taskId: 'duty_curfew' })` ngay khi `d.curfew` chốt `'ok'`, trước khi sinh lại `s.daily.tasks` cho ngày mới. Nhờ đó nhiệm vụ điểm danh tối buồng giam hoàn thành và thưởng nổ đủ 3 việc (+1 điểm cải tạo, thông báo chúc mừng) hoạt động chuẩn xác 100%.
+  - Rà soát toàn bộ 8 ID việc ngày (`duty_rollcall`, `duty_clockin`, `duty_work_units`, `duty_curfew`, `relation`, `personal_exercise`, `personal_reading`, `personal_quest`): bảo đảm mỗi ID đều có điểm gọi hoàn thành rõ ràng trong gameplay.
+  - Việc quan hệ: kết nối gọi `checkDailyTasks({ category: 'relation', npcId: id })` trực tiếp từ `meet(id)`, `changeRel(id)`, và `dailyTalk(id)`, gặp đúng NPC là hoàn thành ngay lập tức.
+  - Sửa hiển thị nhật ký: ngày hôm trước điểm danh trễ (`'late'`) hiển thị `✔ Điểm danh buổi sáng (06:30–06:45)` kèm trạng thái `Trễ giờ` màu vàng thay vì ký hiệu `○`.
+- **FIX 2 — Nhiệm vụ phụ tự mở & tiếp cận trực quan:**
+  - Giữ nguyên cơ chế tự mở theo mốc cốt truyện.
+  - Trong nhật ký, mục nhiệm vụ sắp tới (locked) hiển thị chi tiết: `"Sẽ tự mở khi: <điều kiện> · Mốc cốt truyện: <mốc>"`.
+  - Nếu nhiệm vụ phụ đủ điều kiện mở mà vẫn đang ở trạng thái locked, hiển thị nút `[Nhận]` ngay trong nhật ký, người chơi bấm vào kích hoạt `startQuest` và tải lại bảng nhiệm vụ.
+  - Khi một nhiệm vụ phụ tự mở: phát toast thông báo nổi bật `🌟 NHIỆM VỤ PHỤ MỚI: ...` và kích hoạt hiệu ứng phát sáng (glow/pulse animation qua CSS `questBarGlow`) trên thanh nhiệm vụ HUD để người chơi không bị bỏ lỡ.
+  - Rà soát các điểm gọi `startQuest`: bổ sung đối thoại gợi ý cho Chú Bảy khi quest dép đang mở, bảo đảm tính nhất quán.
+- **FIX 3 — Chỉ dẫn chờ giờ & hướng đi liên tục:**
+  - Thanh nhiệm vụ HUD tự động nhận diện bước quest đang chờ giờ mở cửa thông qua `getQuestWaitingDetails(s)`: hiển thị tag `⏳ Chờ giờ`, nhãn `Chờ mở cửa: <khung giờ>` (Lớp 14:00–16:30, Thăm gặp 08:30–11:00 & 14:00–16:30, Y tế 07:30–11:30 & 13:30–17:00) kèm gợi ý rõ ràng: `Gợi ý: Làm việc ngày / rèn luyện trong lúc chờ`.
+  - Khi nhiệm vụ chính thất bại (quá hạn, bị phạt...): phát thông báo `👉 Làm tiếp: <tên nhiệm vụ chính còn mở>`, hoặc chỉ dẫn làm nhiệm vụ phụ / Việc hôm nay thay cho các dòng chung chung.
+  - Khi không còn nhiệm vụ chính nào đang mở trên HUD hoặc trong nhật ký: cung cấp chỉ dẫn bước tiếp theo cụ thể (hướng dẫn mở Việc hôm nay hoặc làm nhiệm vụ tự chọn), bảo đảm không để người chơi gặp ngõ cụt.
+- **Kiểm thử tự động:**
+  - Bổ sung 5 ca kiểm thử chuyên sâu trong `tests/unit/daily-tasks.test.ts` (Ca 5–Ca 9) kiểm tra curfew trigger, quan hệ qua meet, side quest highlight, waiting hours và failed quest next step notice.
+  - Chạy toàn bộ test suite: **70/70 unit test PASS** và **14/14 Playwright E2E test PASS** (100% passed).
+- **Đóng gói & Cache:** Tăng version lên `0.4.10`, chạy `npm run build` tạo gói phân phối sạch trong `dist/`, cập nhật `release.json` và `sw.js`.
+
 ### 2026-11-03 — Antigravity — Tích hợp 5 model GLB nguyên bản vào game (v0.4.9)
 - **Tích hợp 5 asset GLB nguyên bản (`public/models/original/`):**
   1. `cell_sanitation_unit_blendstra.glb`: buồng vệ sinh inox tích hợp (toilet + bồn rửa) đặt sát tường Bắc tại `(cx - 0.75, -31.45)` cho cả 4 buồng giam. Đăng ký `cell-toilet` vào `PROPS` có collider. Tự động căn chỉnh đáy chạm sàn y=0 nhờ công thức bù `min.y` trong Three.js builder.
