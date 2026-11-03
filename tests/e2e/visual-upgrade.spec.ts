@@ -42,7 +42,7 @@ test('An Phu cinematic landing, saved progress and upgraded scenery', async ({ b
     d.app.world.scene.traverse((o: any) => {
       if (o.name === 'watchtower.steel.cabin') watches++;
       if (o.name === 'workshop.assembly-bench') benches++;
-      if (o.name === 'hydraulic.press') machines++;
+      if (o.name === 'hydraulic.press' || (o.userData?.assetLoaded && o.userData?.assetPath === 'special/workshop-drill-press.glb')) machines++;
       if (o.name === 'perimeter.concertina-wire') coils++;
       if (o.name === 'prison.main-gate.facade') gate++;
     });
@@ -97,6 +97,41 @@ test('An Phu cinematic landing, saved progress and upgraded scenery', async ({ b
   expect(await inspectVisuals()).toEqual({
     loaded: 15, officers: expectedOfficers, chibiPlayerVisible: true,
   });
+
+  // Five original phase-2 GLBs must load into real Three.js objects, not merely exist on disk.
+  await expect.poll(() => page.evaluate(() => {
+    const scene = (window as any).__DITU__.app.world.scene;
+    const result = { bus: false, bed: false, drill: false, phones: false, kit: false, phoneCount: 0 };
+    scene.traverse((o: any) => {
+      if (o.userData?.assetLoaded && o.userData?.assetPath === 'special/prison-transfer-bus.glb') result.bus = true;
+      if (o.userData?.assetLoaded && o.userData?.assetPath === 'special/hospital-bed.glb') result.bed = true;
+      if (o.userData?.assetLoaded && o.userData?.assetPath === 'special/workshop-drill-press.glb') result.drill = true;
+      if (o.userData?.phase2PhonesLoaded) result.phones = true;
+      if (o.userData?.phase2MedkitLoaded) result.kit = true;
+      if (o.name === 'phase2.visitation-phone') result.phoneCount++;
+    });
+    return result;
+  }), { timeout: 25000 }).toEqual({
+    bus: true, bed: true, drill: true, phones: true, kit: true, phoneCount: 3,
+  });
+  // Same view size as iPhone 16 Pro Max landscape; screenshots only after assets loaded.
+  const newLocations = [
+    { x: 21.2, z: 16.3, name: 'phase2-prison-transfer-bus.png' },
+    { x: 23.1, z: -25.4, name: 'phase2-hospital-bed.png' },
+    { x: -24.0, z: -8.5, name: 'phase2-visiting-phone.png' },
+    { x: 24.9, z: 3.0, name: 'phase2-workshop-drill.png' },
+  ];
+  for (const site of newLocations) {
+    await page.evaluate(({ x, z }) => {
+      const d = (window as any).__DITU__;
+      d.teleport(x, z);
+      d.app.input.yaw = 0.3;
+      d.app.input.pitch = 0.22;
+      d.app.input.distance = 5.2;
+    }, site);
+    await page.waitForTimeout(220);
+    await page.screenshot({ path: 'screenshots/' + site.name, animations: 'disabled' });
+  }
 
   const locations = [
     { x: 4.1, z: -27.0, name: 'phase1-nha-an.png' },

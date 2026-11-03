@@ -6,7 +6,7 @@ export interface AppReleaseInfo {
   files?: number;
 }
 
-export const APP_VERSION = '0.4.2';
+export const APP_VERSION = '0.4.3';
 export const MILESTONE = 2;
 export let BUILD_HASH = 'f02df49cc594';
 

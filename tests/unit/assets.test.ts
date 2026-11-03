@@ -123,3 +123,37 @@ describe('Đợt 1 dùng GLB Kenney và bảo toàn đường đi', () => {
     }
   });
 });
+
+
+describe('Đợt 2: GLB chuyên biệt được đóng gói độc lập', () => {
+  const models = [
+    'prison-transfer-bus.glb', 'hospital-bed.glb',
+    'workshop-drill-press.glb', 'visitation-phone.glb',
+    'medical-first-aid-kit.glb',
+  ];
+  it('5 model GLB 2.0 hợp lệ và đúng bytes của catalog nguồn', () => {
+    for (const model of models) {
+      const src = 'assets/models/special/' + model;
+      const runtime = 'public/models/special/' + model;
+      expect(validGlb(src), src).toBe(true);
+      expect(validGlb(runtime), runtime).toBe(true);
+      const a = readFileSync(src), b = readFileSync(runtime);
+      expect(a.equals(b), model).toBe(true);
+      expect(b.readUInt32LE(8), model).toBe(b.length);
+      expect(b.toString('ascii', 16, 20), model).toBe('JSON');
+      const jsonBytes = b.readUInt32LE(12);
+      const gltf = JSON.parse(b.subarray(20, 20 + jsonBytes).toString('utf8').trim());
+      expect(gltf.asset.version).toBe('2.0');
+      expect(gltf.buffers).toHaveLength(1);
+      expect(gltf.buffers[0].uri).toBeUndefined();
+      expect(gltf.meshes[0].primitives.length).toBeGreaterThan(0);
+    }
+  });
+  it('không thay PROPS hoặc cắt đường đi của NPC', () => {
+    expect(PROPS.some(p => p.kind === 'park-van' && p.x === 20 && p.z === 18.75)).toBe(true);
+    expect(PROPS.some(p => p.kind === 'bunk' && p.x === 25.5 && p.z === -27.5)).toBe(true);
+    expect(PROPS.some(p => p.kind === 'press' && p.x === 25.5 && p.z === 4.5)).toBe(true);
+    expect(PROPS.some(p => p.kind === 'counter' && p.x === -24 && p.z === -9.5)).toBe(true);
+    expect(isConnected()).toBe(true);
+  });
+});

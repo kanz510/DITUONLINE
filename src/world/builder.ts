@@ -30,7 +30,8 @@ const propAssets: Record<string, string> = {
   'yard-rock': 'nature/rock_largeA.glb',
   'park-ambulance': 'vehicles/ambulance.glb',
   'park-police': 'vehicles/police.glb',
-  'park-van': 'vehicles/van.glb',
+  'park-van': 'special/prison-transfer-bus.glb',
+  press: 'special/workshop-drill-press.glb',
   'park-delivery': 'vehicles/delivery.glb',
 };
 const propCache = new Map<string, Promise<THREE.Group>>();
@@ -426,8 +427,10 @@ export class PrisonWorld {
       obj.add(placeholder);
       // Clone shared CC0 GLBs after a single load, keeping procedural fallback
       // visible until the corresponding file AND its relative texture load.
-      const asset = p.kind === 'bunk' && (p.x > 20 || (p.x > 5 && p.z > 10))
-        ? 'furniture/bedSingle.glb'
+      const asset = p.kind === 'bunk' && p.x > 20 && p.z < -20
+        ? 'special/hospital-bed.glb'
+        : p.kind === 'bunk' && (p.x > 20 || (p.x > 5 && p.z > 10))
+          ? 'furniture/bedSingle.glb'
         : p.kind === 'tree' && Math.floor(Math.abs(p.x * 17 + p.z * 11)) % 2 === 0
           ? 'nature/tree_oak.glb'
           : p.kind === 'yard-flower' && p.x > 0
@@ -453,7 +456,8 @@ export class PrisonWorld {
             : p.kind === 'bunk' ? 2.0
               : p.kind === 'kitchen-fridge' ? 2.25
                 : isVehicle ? 2.4
-                  : p.kind === 'garden-pot' ? 1.3
+                  : p.kind === 'press' ? 2.45
+                    : p.kind === 'garden-pot' ? 1.3
                     : p.kind.startsWith('yard-') ? 0.85 : 1.9;
           const factor = p.kind === 'tree'
             ? 4.5 / height
@@ -474,7 +478,34 @@ export class PrisonWorld {
           obj.add(model);
           obj.userData.assetLoaded = true;
           obj.userData.assetPath = asset;
+          // Kit stays on the existing clinic cabinet: no new obstacle.
+          if (p.kind === 'cabinet' && p.x > 18 && p.z < -18) {
+            void loadProp('special/medical-first-aid-kit.glb').then((kitSrc) => {
+              const kit = kitSrc.clone(true);
+              kit.name = 'phase2.medical-first-aid-kit';
+              kit.position.set(0, 1.52, 0);
+              kit.traverse((child) => {
+                if (child instanceof THREE.Mesh) child.castShadow = true;
+              });
+              obj.add(kit);
+              obj.userData.phase2MedkitLoaded = true;
+            }).catch((error) => console.warn('[Phase 2] Medical kit fallback:', error));
+          }
         }).catch((err) => console.warn('[Prop GLB] Procedural fallback:', asset, err));
+      } else if (p.kind === 'counter' && p.x < -20) {
+        // Mounted on the existing booth; original collider and quest spot stay.
+        void loadProp('special/visitation-phone.glb').then((phoneSrc) => {
+          for (const pos of [-2.05, 0, 2.05]) {
+            const phone = phoneSrc.clone(true);
+            phone.name = 'phase2.visitation-phone';
+            phone.position.set(pos, 1.10, -0.11);
+            phone.traverse((child) => {
+              if (child instanceof THREE.Mesh) child.castShadow = true;
+            });
+            obj.add(phone);
+          }
+          obj.userData.phase2PhonesLoaded = true;
+        }).catch((error) => console.warn('[Phase 2] Visitation phones fallback:', error));
       } else if (p.kind === 'lamp') {
         void upgradePropModel(obj, placeholder, 'models/roads/light-square.glb',
           { width: p.w, depth: p.d }, { height: 3.8 });
