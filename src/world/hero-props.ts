@@ -144,6 +144,24 @@ function serveCounter(p:PropDef):THREE.Group {
       cylinder(g,'canteen.steamer',x,1.005,-d*.09,.18,.035,steel,18);
     }
   }
+  if (p.kind === 'counter' && p.x < -20) {
+    // Visiting booth: transparent glass and steel mullions sit directly ABOVE
+    // the registered counter collision. No new collider / NPC path is needed.
+    g.name = 'visitation.glass-booth';
+    const glassMat = new THREE.MeshStandardMaterial({
+      color: 0x8ebcce, metalness: 0.08, roughness: .12,
+      transparent: true, opacity: .26, depthWrite: false, side: THREE.DoubleSide,
+    });
+    const pane = new THREE.Mesh(new THREE.PlaneGeometry(w * .93, 1.36), glassMat);
+    pane.name = 'visitation.shatterproof-glass';
+    pane.position.set(0, 1.75, 0);
+    g.add(pane);
+    for (const x of [-w * .47, 0, w * .47]) {
+      box(g, 'visitation.window.frame', x, 1.75, 0, .055, 1.50, .065, darkSteel);
+    }
+    box(g, 'visitation.window.top', 0, 2.5, 0, w * .97, .07, .08, darkSteel);
+    box(g, 'visitation.speaker.tray', 0, 1.085, 0, .55, .07, d * .76, brushed);
+  }
   return g;
 }
 function parkBench(p:PropDef):THREE.Group {
