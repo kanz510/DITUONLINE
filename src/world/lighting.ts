@@ -9,16 +9,16 @@ export interface LightingProfile {
 }
 
 const STOPS = [
-  { h: 0, sky: 0x101d2c, sun: 0x9bb9df, sunI: .09, hemi: .28, night: 1 },
-  { h: 5, sky: 0x203348, sun: 0xebaaa1, sunI: .19, hemi: .35, night: .95 },
+  { h: 0, sky: 0x253c53, sun: 0xc1d8f4, sunI: .48, hemi: .58, night: 1 },
+  { h: 5, sky: 0x314a5e, sun: 0xe8b7ae, sunI: .44, hemi: .56, night: .95 },
   { h: 6.5, sky: 0xe7a57f, sun: 0xffd0a3, sunI: .85, hemi: .69, night: .45 },
   { h: 8, sky: 0x94b9d3, sun: 0xffefcd, sunI: 1.6, hemi: .84, night: 0 },
   { h: 12, sky: 0x83b9e5, sun: 0xfff7e1, sunI: 1.9, hemi: .92, night: 0 },
   { h: 16, sky: 0xa6c5dc, sun: 0xffe9c1, sunI: 1.45, hemi: .82, night: 0 },
   { h: 18, sky: 0xd18b73, sun: 0xffb17e, sunI: .74, hemi: .59, night: .5 },
-  { h: 19.5, sky: 0x293c52, sun: 0xbacbed, sunI: .15, hemi: .36, night: .96 },
-  { h: 22, sky: 0x101d2c, sun: 0x9bb9df, sunI: .09, hemi: .28, night: 1 },
-  { h: 24, sky: 0x101d2c, sun: 0x9bb9df, sunI: .09, hemi: .28, night: 1 },
+  { h: 19.5, sky: 0x31485e, sun: 0xbdd5f4, sunI: .46, hemi: .56, night: .96 },
+  { h: 22, sky: 0x253c53, sun: 0xc1d8f4, sunI: .48, hemi: .58, night: 1 },
+  { h: 24, sky: 0x253c53, sun: 0xc1d8f4, sunI: .48, hemi: .58, night: 1 },
 ] as const;
 
 const COLORS = STOPS.map((stop) => ({
