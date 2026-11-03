@@ -1,0 +1,28 @@
+name: Verify chibi officers - npm test
+on:
+  push:
+    branches: [verify/chibi-officers-20261103]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: officer-chibi-validation
+          path: |
+            screenshots/
+            test-results/
+          if-no-files-found: warn

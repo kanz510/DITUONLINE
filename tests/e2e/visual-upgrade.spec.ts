@@ -59,10 +59,9 @@ test('An Phu cinematic landing, saved progress and upgraded scenery', async ({ b
   expect(result.gate).toBe(1);
   expect(result.toneMapping).toBeGreaterThan(0);
   expect(result.collisions).toBeGreaterThan(25);
-  // New batch-1 GLBs must actually load, not just exist under public/.
-  // Also verify that the two named wardens use the original Kenney models,
-  // while the playable inmate remains the custom chibi rig.
-  await expect.poll(() => page.evaluate(() => {
+  // Retain checks for the batch-1 scenery GLBs, but officers must NEVER
+  // load Kenney Blocky. Check both immediately and after asynchronous loads.
+  const inspectVisuals = () => page.evaluate(() => {
     const d = (window as any).__DITU__;
     const kinds = new Set([
       'kitchen-fridge', 'kitchen-sink', 'kitchen-stove',
@@ -70,25 +69,39 @@ test('An Phu cinematic landing, saved progress and upgraded scenery', async ({ b
       'yard-bush', 'yard-flower', 'yard-rock',
       'park-ambulance', 'park-police', 'park-van', 'park-delivery',
     ]);
-    let count = 0;
+    let loaded = 0;
     d.app.world.scene.traverse((o: any) => {
       if (o.name.startsWith('prop.') &&
-          kinds.has(o.name.slice(5)) && o.userData.assetLoaded) count++;
+          kinds.has(o.name.slice(5)) && o.userData.assetLoaded) loaded++;
     });
-    return {
-      loaded: count,
-      lan: !!d.app.npcs.lan.rig.root.getObjectByName('guard.kenney.j'),
-      tung: !!d.app.npcs.tung.rig.root.getObjectByName('guard.kenney.j'),
-      chibiPlayerVisible: d.app.playerRig.body.visible,
-    };
-  }), { timeout: 20000 }).toEqual({
-    loaded: 15, lan: true, tung: true, chibiPlayerVisible: true,
+    const officers = (['lan', 'tung', 'phuc'] as const).map((id) => {
+      const rig = d.app.npcs[id].rig;
+      const skull = rig.head.children.find((o: any) => o.isMesh &&
+        o.geometry?.type === 'SphereGeometry' &&
+        Math.abs(o.geometry.parameters.radius - 0.275) < 0.001);
+      return {
+        id, roundHead: Boolean(skull), chibiVisible: rig.body.visible,
+        nameHeight: rig.labelSprite?.position.y ?? 0,
+        blocky: Boolean(rig.root.getObjectByName('guard.kenney.j')),
+      };
+    });
+    return { loaded, officers, chibiPlayerVisible: d.app.playerRig.body.visible };
+  });
+  const expectedOfficers = (['lan', 'tung', 'phuc'] as const).map(id => ({
+    id, roundHead: true, chibiVisible: true, nameHeight: 2.05, blocky: false,
+  }));
+  await expect.poll(inspectVisuals, { timeout: 20000 }).toEqual({
+    loaded: 15, officers: expectedOfficers, chibiPlayerVisible: true,
+  });
+  await page.waitForTimeout(1500);
+  expect(await inspectVisuals()).toEqual({
+    loaded: 15, officers: expectedOfficers, chibiPlayerVisible: true,
   });
 
   const locations = [
     { x: 4.1, z: -27.0, name: 'phase1-nha-an.png' },
     { x: -24.0, z: -8.6, name: 'phase1-tham-gap.png' },
-    { x: -4, z: 14.8, name: 'phase1-quan-giao-glb.png' },
+    { x: -4, z: 14.8, name: 'phase1-quan-giao-chibi.png' },
     { x: 24.5, z: -14.2, name: 'phase1-xe-y-te.png' },
     { x: 22.0, z: 16.4, name: 'phase1-xe-pham-nhan.png' },
   ];
