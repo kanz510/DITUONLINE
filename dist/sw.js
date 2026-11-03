@@ -1,5 +1,5 @@
-// Service Worker - Game DI TU ONLINE v0.4.1 (5daae8955190)
-const CACHE_NAME = 'di-tu-online-5daae8955190';
+// Service Worker - Game DI TU ONLINE v0.4.1 (285d7347d522)
+const CACHE_NAME = 'di-tu-online-285d7347d522';
 const CORE_ASSETS = [
   './',
   './index.html',
