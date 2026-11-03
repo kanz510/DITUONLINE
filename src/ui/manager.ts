@@ -1951,6 +1951,11 @@ export class UIManager {
           const err = this.g.useItem(k);
           if (err) this.toast(err, 'warn');
           else {
+            if (['mi_goi', 'banh_ngot', 'nuoc_ngot', 'thuoc_bo', 'luong_kho'].includes(k)) {
+              this.sfx.eat();
+            } else {
+              this.sfx.good();
+            }
             this.toast(`Đã sử dụng ${ITEMS[k]?.name ?? k}.`, 'good');
             this.closeModal();
           }
@@ -2041,6 +2046,12 @@ export class UIManager {
        </div>
        <div class="card-row">
          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+           <input type="checkbox" id="chk-bgm" ${st.bgm !== false ? 'checked' : ''}/>
+           <span>Nhạc nền sinh hoạt trại</span>
+         </label>
+       </div>
+       <div class="card-row">
+         <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
            <input type="checkbox" id="chk-npc-voice" ${st.npcVoice !== false ? 'checked' : ''}/>
            <span>Thoại NPC (Đọc bóng chat)</span>
          </label>
@@ -2069,6 +2080,12 @@ export class UIManager {
         });
         el.querySelector('#rng-vol')?.addEventListener('input', (e) => {
           this.g.s.settings.volume = Number((e.target as HTMLInputElement).value);
+          this.hooks.onSettingChange();
+          this.g.commit();
+        });
+        el.querySelector('#chk-bgm')?.addEventListener('change', (e) => {
+          this.g.s.settings.bgm = (e.target as HTMLInputElement).checked;
+          this.sfx.setBgmEnabled(this.g.s.settings.bgm);
           this.hooks.onSettingChange();
           this.g.commit();
         });
@@ -2309,6 +2326,7 @@ export class UIManager {
     `, (el) => {
       el.querySelector('#exercise-rep')?.addEventListener('click', () => {
         reps++;
+        this.sfx.workout();
         const status = el.querySelector('#exercise-progress');
         if (status) status.textContent = `Hiệp ${reps}/3`;
         if (reps >= 3) {

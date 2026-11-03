@@ -14,6 +14,7 @@ import { buildDialogue } from './data/dialogues';
 import { DOORS, NODES, SPOTS, ZONES, inBox, zonesAt, type Box } from './world/layout';
 import { findPath, nearestNode } from './world/nav';
 import { PrisonWorld } from './world/builder';
+import { weatherForDay } from './world/atmosphere';
 import { HumanoidRig } from './actors/humanoid';
 import { NpcActor } from './actors/npc';
 import { InputController, ThirdPersonCamera } from './core/controls';
@@ -96,6 +97,7 @@ class App {
   private wasInStorage = false;
   private currentPrompt: PromptTarget | null = null;
   private trackedQuestId: string | null = null;
+  private lastInsideState?: boolean;
 
   init() {
     const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
@@ -116,6 +118,16 @@ class App {
     this.world = new PrisonWorld();
     this.world.setQuality(this.g.s.settings.quality, this.renderer);
     this.sfx.volume = this.g.s.settings.volume;
+    this.sfx.setBgmEnabled(this.g.s.settings.bgm !== false);
+    if (typeof window !== 'undefined') {
+      const unlockAudio = () => {
+        if (this.g.s.settings.bgm !== false) this.sfx.startBgm();
+        window.removeEventListener('pointerdown', unlockAudio);
+        window.removeEventListener('keydown', unlockAudio);
+      };
+      window.addEventListener('pointerdown', unlockAudio, { once: true });
+      window.addEventListener('keydown', unlockAudio, { once: true });
+    }
     this.cutscene = new CutsceneController(this.tpCam.cam, this.sfx);
 
     // Nhân vật người chơi theo profile khởi tạo
@@ -162,6 +174,8 @@ class App {
       onSettingChange: () => {
         this.world.setQuality(this.g.s.settings.quality, this.renderer);
         this.sfx.volume = this.g.s.settings.volume;
+        this.sfx.setBgmEnabled(this.g.s.settings.bgm !== false);
+        this.sfx.updateBgmVolume();
         this.updateCameraMode();
       },
       onUpdateAppearance: (p) => {
@@ -329,12 +343,21 @@ class App {
   }
 
   private bindEvents() {
-    this.g.on('notice', (t: string, k: string) => this.ui.toast(t, k));
+    this.g.on('notice', (t: string, k: string) => {
+      this.ui.toast(t, k);
+      if (k === 'quest') this.sfx.questComplete();
+    });
     this.g.on('save', () => this.saves.save(this.g.s));
     this.g.on('violation', (v) => this.ui.showViolationBanner(v));
     this.g.on('sideQuestUnlocked', () => this.ui.highlightQuestBar());
-    this.g.on('block', (b) => {
-      this.sfx.bell();
+    this.g.on('levelUp', () => this.sfx.levelUp());
+    this.g.on('workUnit', () => this.sfx.hammer());
+    this.g.on('block', (b: { id: string; label: string; start: number; where: string }) => {
+      if (b.id === 'rollcall' || b.label.includes('Điểm danh')) {
+        this.sfx.officerWhistle();
+      } else {
+        this.sfx.bell();
+      }
       this.ui.toast(`🔔 ${fmtTime(b.start)} — ${b.label} (${b.where})`, 'info');
     });
     this.g.on('hearing', (h) => this.ui.showHearing(h));
@@ -350,6 +373,7 @@ class App {
   }
 
   private sleepAndEndDay(inBed: boolean) {
+    this.sfx.sleepBell();
     const sum = this.g.endDay(inBed);
     for (const id of Object.keys(this.npcs) as NpcId[]) this.npcs[id].snapToSchedule(this.g.s.minute);
     this.saves.save(this.g.s);
@@ -673,6 +697,13 @@ class App {
         this.playerRig.update(dt, speed);
         this.playerRig.root.position.set(p.x, 0, p.z);
         this.playerRig.root.rotation.y = p.rot;
+
+        // 9b: Tiếng cửa mở/đóng khi ra vào phòng
+        const curInside = zonesAt(p.x, p.z).some((z) => z !== 'rollcall' && z !== 'lamcorner');
+        if (this.lastInsideState !== undefined && this.lastInsideState !== curInside) {
+          this.sfx.door();
+        }
+        this.lastInsideState = curInside;
       }
 
       for (const id of Object.keys(this.npcs) as NpcId[]) {
@@ -848,6 +879,9 @@ class App {
       p.z,
     );
 
+    const weather = weatherForDay(this.g.s.day, this.g.s.minute);
+    this.sfx.setRain(weather === 'rain');
+
     const camMode = this.g.s.settings.cameraMode ?? 'third';
     this.updateCameraMode();
 
@@ -994,7 +1028,7 @@ class App {
           run: () => {
             const err = g.eatMeal();
             if (err) this.ui.toast(err, 'warn');
-            else this.sfx.good();
+            else this.sfx.eat();
           },
         };
       case 'canteen':

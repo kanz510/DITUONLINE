@@ -1173,6 +1173,7 @@ export class GameLogic {
       if (d.workUnits >= WORK_QUOTA) return;
       d.workUnits++;
       d.workQuality += q;
+      this.emit('workUnit');
       this.event(`Lắp xong ổ cắm #${d.workUnits} (chất lượng ${q}%)`);
 
       // Huy phụ làm thêm 1 sản phẩm nếu quan hệ >= 20 (1 lần mỗi ca sáng)
@@ -1189,6 +1190,7 @@ export class GameLogic {
     } else {
       if (d.extraShiftUnits >= EXTRA_SHIFT_MAX) return;
       d.extraShiftUnits++;
+      this.emit('workUnit');
       this.addStat('money', 4);
       this.notify(`Ca chiều: +${fmtMoney(4)} (${d.extraShiftUnits}/${EXTRA_SHIFT_MAX})`, 'good');
       if (d.extraShiftUnits % 2 === 0) this.addReform(1, 'Lao động tự nguyện', true);

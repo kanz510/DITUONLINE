@@ -8,6 +8,29 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-04 — Antigravity — VIỆC 9: Nhạc nền & âm thanh sinh động (Tổng hợp hoàn toàn bằng WebAudio)
+- **Vấn đề đã xử lý:** `SoundEngine` ban đầu chỉ có 5 âm thanh cơ bản (bell, click, good, bad, step) và chưa có nhạc nền. Không gian sinh hoạt trại giam thiếu âm thanh thực tế theo các hành động (cửa mở/đóng, ăn uống, gõ búa xưởng, tập thể lực, chuông ngủ, lên cấp, còi quản giáo, nhạc hiệu hoàn thành nhiệm vụ, mưa).
+- **Giải pháp:**
+  - 9a: Nhạc nền (BGM) WebAudio:
+    - Triển khai vòng hợp âm 4 bước chậm rãi, êm dịu (`Dm7 -> Bbmaj7 -> Fmaj7 -> C7`) thời lượng 16s/vòng bằng các dao động sóng `sine` và `triangle` mềm mại, kèm các nốt chuông giai điệu thanh thoát.
+    - Bắt đầu phát sau lần tương tác đầu tiên của người chơi (chạm/click) tuân thủ chính sách autoplay của trình duyệt/iOS Safari.
+    - Âm lượng BGM cố định ở mức `volume * 0.4` để không lấn át tiếng hiệu ứng và giọng đọc thoại NPC.
+    - Thêm tùy chọn `#chk-bgm` "Nhạc nền sinh hoạt trại" trong modal Cài đặt (`src/ui/manager.ts`), mặc định BẬT; âm lượng tổng về 0 thì nhạc tự tắt.
+    - Tự động tạm dừng khi ẩn tab (`document.hidden` qua sự kiện `visibilitychange`) và phát tiếp khi hiện tab lại.
+  - 9b: Thêm hiệu ứng âm thanh tổng hợp WebAudio mới gắn vào các sự kiện sẵn có:
+    - `door()`: Tiếng mở/đóng cửa khi người chơi bước qua cửa giữa trong nhà và ngoài sân (`zonesAt`).
+    - `eat()`: Tiếng ăn cơm trại hoặc nhai quà vặt căn tin (`eatMeal()`, `useItem()`).
+    - `hammer()`: Tiếng búa gõ kim loại sắc nét khi hoàn thành một đơn vị sản phẩm lắp ráp ở xưởng lao động (`finishWorkUnit()`).
+    - `workout()`: Tiếng trầm đục và nhịp thở khi hoàn thành một hiệp thể lực tại bãi tập xà (`showExerciseMinigame()`).
+    - `sleepBell()`: Tiếng chuông đôi trầm bổng (G4 392Hz, C5 523Hz) ngân dài 1.4s khi đi ngủ kết thúc ngày (`sleepAndEndDay()`, khác tiếng bell điểm danh).
+    - `levelUp()`: Nhạc hiệu 4 nốt rực rỡ (`A4 -> C#5 -> E5 -> A5`) khi người chơi thăng cấp (`gainXp()`).
+    - `officerWhistle()`: Tiếng còi quản giáo đôi tần số cao (2600Hz + 2800Hz) rít lên khi bắt đầu khung giờ điểm danh (`block: rollcall`).
+    - `questComplete()`: Hợp âm ngân vang dài hơn (`C5 -> E5 -> G5 -> C6`) thay thế `good()` khi hoàn thành nhiệm vụ (`notice: quest`).
+    - `setRain(isRaining)`: Tiếng mưa rì rào chạy nền qua bộ đệm tiếng ồn trắng (noise buffer) có lọc tần số thấp (`lowpass` 650Hz), tự động kích hoạt khi thời tiết mưa (`weatherForDay() === 'rain'`) và êm dịu tắt khi hết mưa.
+- **Kiểm thử:**
+  - Thêm `tests/unit/audio-synthesis.test.ts` (4 bài test): kiểm tra bật/tắt BGM, gọi an toàn toàn bộ các hiệu ứng âm thanh mới trên môi trường kiểm thử không có WebAudio/DOM, âm lượng 0 an toàn không crash, và `GameLogic` phát các sự kiện `workUnit`, `levelUp`.
+  - Toàn bộ 137 unit tests PASS 100%.
+
 ### 2026-11-04 — Antigravity — VIỆC 8: Kẹt phòng khi hết giờ (1 chiều), Bóng chat Web Speech API, Quản giáo tương tác ngẫu nhiên
 - **Vấn đề đã xử lý:**
   - 8a: `updateDoors` trước đây đóng cửa là chặn cả 2 chiều (cửa hiện + collider chặn cả vào lẫn ra), khiến người chơi hoặc NPC bên trong phòng khi hết giờ bị kẹt lại. Thiếu cảnh báo đóng cửa trước 15 phút cho các khu vực có giờ quy định.
