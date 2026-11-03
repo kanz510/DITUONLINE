@@ -1,0 +1,32 @@
+name: Verify public Pages HTTP v0.4.2
+on:
+  push:
+    branches: [verify/chibi-officers-20261103]
+    paths: [.github/workflows/pages-live-verify.yml]
+permissions:
+  contents: read
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Confirm publicly served HTML and release.json (no GitHub API shortcut)
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="https://kanz510.github.io/DITUONLINE"
+          for i in $(seq 1 14); do
+            T="$(date +%s)-${i}"
+            JSON="$(curl -fsSL --connect-timeout 10 --max-time 20 -H 'Cache-Control: no-cache' "${BASE}/release.json?verify=${T}" || true)"
+            HTML="$(curl -fsSL --connect-timeout 10 --max-time 20 -H 'Cache-Control: no-cache' "${BASE}/?verify=${T}" || true)"
+            echo "Attempt ${i}: release body ${JSON:0:240}"
+            if printf '%s' "$JSON" | grep -Eq '"version"[[:space:]]*:[[:space:]]*"0[.]4[.]2"' &&
+               printf '%s' "$JSON" | grep -q '5c344ee09d30' &&
+               printf '%s' "$HTML" | grep -q '5c344ee09d30'; then
+              echo "PASS: public GitHub Pages serves v0.4.2 with build 5c344ee09d30"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo 'FAIL: public pages never showed the expected 0.4.2 build'
+          exit 1
