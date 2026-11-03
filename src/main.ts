@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import './ui/styles.css';
+import './ui/landing.css';
+import { showLandingPage } from './ui/landing';
 import { ACCESS, blockAt, fmtTime } from './logic/constants';
 import { GameLogic } from './logic/game';
 import { SaveManager } from './logic/save';
@@ -219,18 +221,38 @@ class App {
     window.visualViewport?.addEventListener('resize', onResize);
     onResize();
 
-    // Mở màn tạo nhân vật & xem đoạn phim mở đầu nếu là lượt chơi mới
-    if (!this.g.s.profile.introSeen) {
-      this.ui.showCharacterCreation((createdProfile) => {
-        this.g.applyProfile(createdProfile);
-        this.rebuildPlayerRig(createdProfile);
-        this.cutscene.play(createdProfile.name, createdProfile.background, (choice) => {
-          this.g.applyFlashbackChoice(choice);
-          this.g.s.profile.introSeen = true;
-          this.saves.save(this.g.s);
+    // Cinematic entry menu is a UI gate, not a new save mechanic.
+    // Never reset an existing save without a separate explicit confirmation.
+    this.ui.paused = true;
+    showLandingPage({
+      canContinue: Boolean(loaded?.profile?.introSeen),
+      name: this.g.s.profile.name,
+      day: this.g.s.day,
+      remainingDays: this.g.s.sentence.remaining,
+      onStart: () => {
+        this.ui.showCharacterCreation((createdProfile) => {
+          this.g.applyProfile(createdProfile);
+          this.rebuildPlayerRig(createdProfile);
+          this.cutscene.play(createdProfile.name, createdProfile.background, (choice) => {
+            this.g.applyFlashbackChoice(choice);
+            this.g.s.profile.introSeen = true;
+            this.saves.save(this.g.s);
+          });
         });
-      });
-    }
+      },
+      onContinue: () => {
+        this.ui.paused = false;
+        this.ui.checkOrientation();
+      },
+      onReset: () => {
+        this.saves.clear();
+        // The beforeunload save handler must not rewrite the old progress.
+        this.g = new GameLogic(createInitialState());
+        this.g.startQuest('nhap_trai');
+        this.saves.save(this.g.s);
+        window.location.reload();
+      },
+    });
 
     // Lưu định kỳ & khi đóng tab
     window.addEventListener('beforeunload', () => this.saves.save(this.g.s));
