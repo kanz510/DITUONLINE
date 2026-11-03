@@ -1,0 +1,34 @@
+name: Verify public GitHub Pages phase 3 build
+on:
+  push:
+    branches: [verify/phase3-all-20261103]
+    paths: [.github/workflows/phase3-live.yml]
+permissions:
+  contents: read
+jobs:
+  check-pages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Assert live release via independent HTTP GET
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://kanz510.github.io/DITUONLINE'
+          for i in $(seq 1 18); do
+            TOKEN="$(date +%s)-${i}"
+            for URL in "$BASE" "$BASE/dist"; do
+              JSON="$(curl -fsSL --connect-timeout 10 --max-time 24 -H 'Cache-Control: no-cache' "$URL/release.json?verify=$TOKEN" || true)"
+              HTML="$(curl -fsSL --connect-timeout 10 --max-time 24 -H 'Cache-Control: no-cache' "$URL/?verify=$TOKEN" || true)"
+              echo "HTTP attempt $i at $URL release=${JSON:0:170}"
+              if printf '%s' "$JSON" | grep -q '"version": "0.4.4"' &&
+                 printf '%s' "$JSON" | grep -q '566cfaf87720' &&
+                 printf '%s' "$HTML" | grep -q '566cfaf87720'; then
+                echo "PASS live v0.4.4 build 566cfaf87720 $URL/"
+                exit 0
+              fi
+            done
+            sleep 8
+          done
+          echo 'FAIL live release unavailable'
+          exit 1
