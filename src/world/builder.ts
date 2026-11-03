@@ -104,6 +104,7 @@ export class PrisonWorld {
   private readonly lightingTarget = makeLightingProfile();
   private readonly yardDry = new THREE.Color(0xd1d5db);
   private readonly yardWet = new THREE.Color(0x667580);
+  private readonly overcastSky = new THREE.Color(0x6b899a);
   private yardMaterial!: THREE.MeshStandardMaterial;
   private visualQuality: 'low' | 'medium' | 'high' = 'medium';
 
@@ -809,6 +810,11 @@ export class PrisonWorld {
 
     this.atmosphere.update(dt, day, minute, playerX, playerZ);
     const weather = weatherForDay(day, minute);
+    if (weather === 'rain') {
+      // Overcast, not sunset-pink: overcast sky and fog stay consistent with wet asphalt.
+      (this.scene.background as THREE.Color).lerp(this.overcastSky, .46 * this.atmosphere.wetness);
+      fog.color.lerp(this.overcastSky, .34 * this.atmosphere.wetness);
+    }
     const morning = weather === 'haze' ? .006 : 0;
     const rainFog = weather === 'rain' ? .0035 : 0;
     const targetDensity = this.visualQuality === 'low' ? .008
