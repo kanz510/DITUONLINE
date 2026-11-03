@@ -6,6 +6,7 @@ import {
 import { Collision } from './collision';
 import { surfaceMaterial, upgradePropModel } from '../graphics/assets';
 import { makeDetailedProp } from './hero-props';
+import { makeBlanketParcel, makeDrillKit, makeSandals, makeAsthmaInhaler, makeSecurityCameraHousing } from './quest-props';
 
 // Keep the original PROPS footprints, collisions and NPC navigation unchanged.
 // GLBs replace visuals only. This guarantees no new path blockers without nav review.
@@ -366,40 +367,20 @@ export class PrisonWorld {
       this.scene.add(obj);
     }
 
-    // Chăn màn trên giường của Minh (Buồng 3, giường trái)
-    this.bedsheetMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(0.65, 0.14, 0.55),
-      new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.8 }),
-    );
+    // Quest props only change geometry: exact world positions and visibility are unchanged.
+    this.bedsheetMesh = makeBlanketParcel();
     this.bedsheetMesh.position.set(-15.9, 0.52, -29.2);
     this.scene.add(this.bedsheetMesh);
 
-    // Hộp mũi khoan trong kho
-    this.drillMesh = new THREE.Mesh(
-      new THREE.BoxGeometry(0.38, 0.22, 0.28),
-      new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.5 }),
-    );
+    this.drillMesh = makeDrillKit();
     this.drillMesh.position.set(27.1, 1.05, -5.2);
     this.scene.add(this.drillMesh);
 
-    // Đôi dép tổ ong của Chú Bảy ở bụi cỏ
-    const sg = new THREE.Group();
-    const sm = new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.8 });
-    const s1 = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.04, 0.28), sm);
-    const s2 = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.04, 0.28), sm);
-    s1.position.set(-0.09, 0.03, 0);
-    s2.position.set(0.09, 0.03, 0.04);
-    s2.rotation.y = 0.25;
-    sg.add(s1, s2);
-    sg.position.set(-25.6, 0, 8.6);
-    this.sandalsMesh = sg;
-    this.scene.add(sg);
+    this.sandalsMesh = makeSandals();
+    this.sandalsMesh.position.set(-25.6, 0, 8.6);
+    this.scene.add(this.sandalsMesh);
 
-    // Lọ thuốc hen suyễn rơi sau xưởng (manh mối nhiệm vụ)
-    this.asthmaBottleMesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.06, 0.06, 0.22, 8),
-      new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.5 }),
-    );
+    this.asthmaBottleMesh = makeAsthmaInhaler();
     this.asthmaBottleMesh.position.set(22.5, 0.11, 13);
     this.asthmaBottleMesh.rotation.z = Math.PI / 3;
     this.scene.add(this.asthmaBottleMesh);
@@ -582,7 +563,7 @@ export class PrisonWorld {
 
   private buildSecurityCam() {
     // Camera gắn ở góc kho (22.3, -4.3), quét qua cửa kho và kệ mũi khoan
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.18, 0.35), new THREE.MeshStandardMaterial({ color: 0x111827 }));
+    const body = makeSecurityCameraHousing();
     body.position.set(22.4, 2.9, -4.3);
     this.scene.add(body);
 
