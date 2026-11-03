@@ -205,8 +205,9 @@ class App {
     const onResize = () => {
       const w = Math.max(window.innerWidth, document.documentElement.clientWidth || 0);
       const h = Math.max(window.innerHeight, document.documentElement.clientHeight || 0);
-      const pr = Math.min(window.devicePixelRatio || 1, 2);
-      this.renderer.setPixelRatio(pr);
+      // Preserve the selected low/medium/high DPR even after Safari rotates
+      // or its browser chrome changes viewport height.
+      this.world.setQuality(this.g.s.settings.quality, this.renderer);
       this.renderer.setSize(w, h, false);
       canvas.style.removeProperty('width');
       canvas.style.removeProperty('height');
@@ -632,6 +633,9 @@ class App {
       this.g.has('hop_mui_khoan') || !!this.g.s.flags.stole_for_lam,
       this.g.has('dep_bay') || this.g.qStatus('dep_bay') === 'done',
       this.g.has('chai_thuoc_hen') || this.g.qStatus('nghi_an_thuoc') === 'done',
+      this.g.s.day,
+      p.x,
+      p.z,
     );
 
     this.tpCam.update(p.x, p.z, this.input.yaw, this.input.pitch, this.input.distance, this.world.cameraObstacles);

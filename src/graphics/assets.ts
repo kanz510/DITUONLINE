@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { applyPBRMicroDetail } from './pbr';
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js';
 
 /**
@@ -36,14 +37,17 @@ export function surfaceMaterial(
   repeatX = 1,
   repeatY = 1,
 ): THREE.MeshStandardMaterial {
-  const material = new THREE.MeshStandardMaterial({ color: tint, roughness: 0.86 });
+  const material = new THREE.MeshStandardMaterial({ color: tint, roughness: 0.88 });
+  // 128px shared microdetail supplies PBR roughness/bump while the original
+  // color JPEG remains the source of truth and keeps its relative asset URL.
+  applyPBRMicroDetail(material, image, repeatX, repeatY);
   textureLoader.load(
     assetUrl(`textures/${image}`),
     (texture) => {
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
       texture.repeat.set(repeatX, repeatY);
-      texture.anisotropy = 4;
+      texture.anisotropy = 2; // save bandwidth on mobile while retaining mipmapping
       material.map = texture;
       material.needsUpdate = true;
     },
