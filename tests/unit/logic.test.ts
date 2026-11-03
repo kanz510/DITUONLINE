@@ -393,27 +393,31 @@ describe('Hệ thống Cấp độ, Điểm kỹ năng & Xuất thân', () => {
   });
 });
 
-describe('Lượt chơi trọn vẹn', () => {
-  it('cải tạo tốt → ra tù sớm hơn 30 ngày và nhận kết thúc', () => {
+describe('Lượt chơi trọn vẹn (VIỆC 5: chỉ kết thúc qua ky_xet_cuoi_cung)', () => {
+  it('ngày trôi qua không bao giờ tự kết thúc game, chỉ kết thúc khi hoàn thành ky_xet_cuoi_cung', () => {
     const g = new GameLogic();
     g.s.quests.ho_so_giai_trinh = { id: 'ho_so_giai_trinh', status: 'done', objectives: {} };
-    let guard = 0;
-    while (!g.s.ending && guard++ < 40) g.simulateGoodDay();
+    for (let i = 0; i < 40; i++) g.simulateGoodDay();
+    expect(g.s.ending).toBeNull();
+    expect(g.s.day).toBeGreaterThan(30);
+
+    // Kích hoạt và hoàn thành ky_xet_cuoi_cung → nhận kết thúc
+    g.startQuest('ky_xet_cuoi_cung');
+    g.completeObjective('ky_xet_cuoi_cung', 'den_hoi_truong');
+    g.completeObjective('ky_xet_cuoi_cung', 'nhan_quyet_dinh');
     expect(g.s.ending).not.toBeNull();
-    expect(g.s.sentence.remaining).toBe(0);
-    expect(g.s.day).toBeLessThan(30);
   });
 
-  it('ngày nhiều vi phạm vẫn có đường ra tù (án không tăng vô hạn)', () => {
+  it('ngày nhiều vi phạm không tự kết thúc và án không tăng vô hạn', () => {
     const g = new GameLogic();
-    g.s.quests.ho_so_giai_trinh = { id: 'ho_so_giai_trinh', status: 'done', objectives: {} };
-    let guard = 0;
-    while (!g.s.ending && guard++ < 80) {
+    for (let i = 0; i < 40; i++) {
       if (g.s.day % 3 === 0) g.recordViolation('fight', `f${g.s.day}`, 'x');
       if (g.s.day % 3 === 0) addSentence(g.s, 3, 'test', g.s.day);
       g.endDay(false);
     }
-    expect(g.s.ending).not.toBeNull();
+    expect(g.s.ending).toBeNull();
+    const total = g.s.sentence.additions.reduce((a, x) => a + x.amount, 0);
+    expect(total).toBeLessThanOrEqual(MAX_TOTAL_ADDITION);
   });
 
   it('ngất xỉu khi hết sức khỏe vẫn tiếp tục được', () => {

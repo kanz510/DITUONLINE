@@ -167,7 +167,7 @@ export class UIManager {
         </div>
         <div class="hud-right">
           <div class="hud-action-row interactive">
-            <div class="sentence-tag" id="hud-sentence">Án: 24n</div>
+            <div class="sentence-tag" id="hud-sentence">Ngày 1</div>
             <button class="btn icon-btn" id="btn-fullscreen" title="Toàn màn hình" aria-label="Toàn màn hình">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
@@ -429,8 +429,8 @@ export class UIManager {
       this.clockEl.innerHTML = clockHTML;
     }
 
-    // 2. Góc trên phải: Án còn lại
-    this.sentenceEl.textContent = `Án: ${s.sentence.remaining}n`;
+    // 2. Góc trên phải: Ngày chơi (VIỆC 5: bỏ đếm ngược án trên HUD)
+    this.sentenceEl.textContent = `Ngày ${s.day}`;
 
     // Cập nhật Cấp độ & Thanh XP
     const lvlEl = this.root.querySelector('#hud-level');

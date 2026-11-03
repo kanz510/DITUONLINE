@@ -8,6 +8,18 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-04 — Antigravity — VIỆC 5: Xóa cơ chế mãn hạn tù theo ngày (Chỉ kết thúc qua nhiệm vụ "Kỳ xét đặc xá & Ngày tự do")
+- **Vấn đề đã xử lý:** Trước đây game tự kết thúc khi số ngày án còn lại về 0 trong `endDay()`. Các kỳ xét giảm án tự động trừ ngày làm quá trình khó lường và có thể ép game kết thúc khi người chơi chưa hoàn thành hết các nhiệm vụ Chương 4 (`loi_hua_chu_bay`, `truyen_nghe_cho_huy`, `chia_tay_thay_phuc`, `kiem_tra_suc_khoe`).
+- **Giải pháp:**
+  - Xóa bỏ hoàn toàn cơ chế kết thúc game theo ngày trong `endDay()` (`src/logic/game.ts`): số ngày án còn lại về 0 cũng không đặt `s.ending`, không ép ra tù. Ngày vẫn trôi bình thường (là số ngày người chơi đã trải nghiệm).
+  - Xóa các sự kiện kỳ xét giảm án trừ ngày (`Kỳ xét giảm án: −X ngày`) trong `endDay()`.
+  - HUD trên thanh trạng thái góc phải: thay đổi từ `"Án: Xn"` đếm ngược thành `"Ngày X"` (`src/ui/manager.ts`).
+  - Đường duy nhất để hoàn thành cốt truyện và kết thúc game: Hoàn thành nhiệm vụ `"Kỳ xét đặc xá & Ngày tự do"` (`ky_xet_cuoi_cung`) ở Chương 4 do chính người chơi chủ động nhận quyết định và bước ra cổng trại.
+  - Tương thích save cũ: Khi load save cũ, nếu save có `s.ending` nhưng chưa xong `ky_xet_cuoi_cung` thì tự động xóa `s.ending` và cờ tạm để người chơi tiếp tục chơi bình thường.
+- **Kiểm thử:**
+  - Thêm `tests/unit/sentence-rework.test.ts` (5 bài test): kiểm tra `endDay` không kết thúc khi `remaining <= 0`, không phát sự kiện trừ ngày, xóa `s.ending` khi load save cũ chưa xong nhiệm vụ cuối, và chỉ có `ky_xet_cuoi_cung` mới kết thúc game.
+  - Cập nhật `tests/unit/logic.test.ts` khớp cơ chế mới. Toàn bộ 121 unit tests PASS 100%.
+
 ### 2026-11-04 — Antigravity — VIỆC 4: Nút "Tự đi" và bộ phân giải đích đến theo dữ liệu cho mọi nhiệm vụ (24/24 quests)
 - **Vấn đề đã xử lý:** Trước đây nút "Tự đi" chỉ hỗ trợ 5 nhiệm vụ đầu do hardcode trong `main.ts`, 19 nhiệm vụ còn lại không có đích tự đi. Khi chọn theo dõi nhiệm vụ trong Nhật ký, thanh HUD không đổi mục tiêu theo nhiệm vụ được chọn.
 - **Giải pháp:**

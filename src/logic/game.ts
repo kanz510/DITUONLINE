@@ -6,7 +6,7 @@ import {
   clampStat, createInitialState, makeDaily, xpForNextLevel, type CharacterProfile, type DailyTaskCategory, type DaySummary, type GameState, type Hearing, type NpcId, type Stats, type Violation,
 } from './state';
 import { generateDailyTasks, getQuestOverdueStatus } from './daily-plan';
-import { addSentence, applyReview, serveDay } from './sentence';
+import { addSentence, serveDay } from './sentence';
 import { healStuckQuests } from './save';
 import { VIOLATIONS } from '../data/violations';
 import { ITEMS, itemName } from '../data/items';
@@ -55,6 +55,11 @@ export class GameLogic {
   constructor(state?: GameState) {
     this.s = state ?? createInitialState();
     healStuckQuests(this.s);
+    // VIỆC 5: Khi load save cũ, không save nào được kết thúc vì hết ngày án
+    if (this.s.ending && this.s.quests?.ky_xet_cuoi_cung?.status !== 'done') {
+      this.s.ending = null as any;
+    }
+    delete this.s.flags.release_pending_chapter4;
     if (!this.s.daily.tasks || this.s.daily.tasks.length === 0) {
       this.s.daily.tasks = generateDailyTasks(this.s);
     }
@@ -1489,8 +1494,8 @@ export class GameLogic {
     if (todays.length === 0) this.addReform(1, 'Một ngày không vi phạm', true);
 
     const served = serveDay(s, s.day);
-    const review = applyReview(s, s.day) ?? undefined;
-    if (review) this.event(`Kỳ xét giảm án: −${review.reduction} ngày`);
+    // VIỆC 5: Xóa sự kiện kỳ xét giảm án trừ ngày. Ngày trôi bình thường, không kết thúc game theo ngày.
+    const review = undefined;
 
     const relationChanges = Object.keys(s.relations)
       .map((k) => ({ npc: NPC_NAMES[k], delta: s.relations[k].value - (d.startRelations[k] ?? 0) }))
@@ -1512,12 +1517,6 @@ export class GameLogic {
       events: [...d.events],
     };
     s.history.push(summary);
-
-    if (s.sentence.remaining <= 0) {
-      s.ending = this.computeEnding();
-      this.commit();
-      return summary;
-    }
 
     // Qua đêm
     this.addStat('stamina', 100);
