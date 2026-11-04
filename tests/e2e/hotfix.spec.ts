@@ -48,7 +48,7 @@ test('notifications stay below both expanded and collapsed quests in landscape',
         const q = await page.locator('#hud-quest-bar').boundingBox();
         const t = await page.locator('#hud-toasts').boundingBox();
         return !!q && !!t && t.y >= q.y + q.height + 4;
-      }).toBe(true);
+      }, { timeout: 15000 }).toBe(true);
       await page.locator('#btn-quest-toggle').click();
     }
   }

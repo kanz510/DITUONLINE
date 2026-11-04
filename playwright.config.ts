@@ -5,7 +5,7 @@ export default defineConfig({
   // SwiftShader WebGL is significantly slower on shared GitHub runners and CPU.
   // Keep local tests fast and stable with isolated workers.
   timeout: 240_000,
-  workers: process.env.CI ? 1 : 2,
+  workers: 1,
   retries: 0,
   reporter: [['list']],
   outputDir: 'test-results',

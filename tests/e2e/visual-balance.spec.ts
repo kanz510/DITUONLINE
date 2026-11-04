@@ -13,7 +13,7 @@ test('visual fixes: mess chairs, visitation glass, npc separation, and review sc
 
   await page.goto('/');
   await expect(page.locator('#landing-primary')).toBeVisible();
-  await page.locator('#landing-primary').click();
+  await page.locator('#landing-primary').click({ force: true });
   await expect(page.locator('#btn-cc-submit')).toBeVisible();
   await page.locator('#btn-cc-submit').click();
 

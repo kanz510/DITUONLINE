@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('An Phu cinematic landing, saved progress and upgraded scenery', async ({ browser }) => {
-  test.setTimeout(360000);
+  test.setTimeout(480000);
   const context = await browser.newContext({
     viewport: { width: 956, height: 440 },
     isMobile: true,

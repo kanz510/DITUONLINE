@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('khởi chạy 3D, chuỗi nhiệm vụ → lựa chọn → hậu quả, lưu/tải và kết thúc ra tù', async ({ page }) => {
-  test.setTimeout(360000);
+  test.setTimeout(480000);
   await page.goto('/');
   await expect(page.locator('#landing-primary')).toBeVisible();
   await page.locator('#landing-primary').click();

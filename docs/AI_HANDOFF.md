@@ -8,6 +8,23 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-04 — Antigravity — Tối ưu và tích hợp Ghế nhà tù Stylized 3D (InstancedMesh) — v0.4.15
+- **Nhiệm vụ & Mục tiêu:**
+  - Tối ưu hóa triệt để asset `prison_chair_stylized.glb` từ Three.ws Studio cho game ĐI TÙ ONLINE theo phong cách stylized low-poly chibi đồng bộ nhân vật.
+  - Giảm dung lượng từ 6.01 MB xuống dưới 1 MB (đạt 387.3 KB, giảm 92.6%), số triangles từ 29.546 xuống đúng 3.500 triangles.
+  - Chuyển đổi toàn bộ textures sang WebP 1024x1024 (natively supported bởi Three.js `EXT_texture_webp`, không cần decoder ngoài).
+  - Tích hợp vào khu vực buồng giam phạm nhân (4 buồng giam) và các vị trí phù hợp trong trại.
+  - Sử dụng `THREE.InstancedMesh` để gom toàn bộ 6 ghế giống nhau vào **1 draw call duy nhất**, tối ưu hóa hiệu năng tối đa cho thiết bị di động.
+  - Đảm bảo giữ nguyên 100% gameplay, nhiệm vụ, NPC, hệ thống save và điều khiển.
+- **Giải pháp & Triển khai:**
+  - `public/models/furniture/prison_chair_stylized.glb`: File GLB tối ưu 387.3 KB (396.584 bytes), 3.500 triangles, vật liệu PBR kim loại mờ (roughness: 0.82, metalness: 0.35, baseColorFactor sáng nhẹ [0.94, 0.92, 0.90, 1.0]).
+  - `src/world/layout.ts`: Thêm ghế stylized vào 4 buồng giam phạm nhân tại `CELL_CENTERS` (`cx`, `z = -30.8`), kết hợp 2 ghế sẵn có tại bàn quản giáo buồng giam và phòng y tế -> tổng 6 ghế.
+  - `src/world/builder.ts`: Gom các ghế `prison_chair_stylized.glb` vào `instancedChairsList`, khởi tạo một `THREE.InstancedMesh` duy nhất gắn vào scene, bật bóng đổ (`castShadow = true`, `receiveShadow = true`). Sửa giới hạn phạm vi phòng thăm gặp (`z > -16 && z < -3`) để không bị gán nhầm ghế buồng giam số 1.
+- **Kiểm thử:**
+  - Thêm `tests/e2e/chair-instanced.spec.ts`: Kiểm tra mô phỏng Safari iPhone 16 Pro Max landscape (956x440, ratio 2x, touch), kiểm tra `isInstancedMesh = true`, `count = 6`, `castShadow = true`, `receiveShadow = true`, `hasTexture = true`, thời gian vẽ mượt mà, 0 lỗi runtime.
+  - Lưu ảnh chụp minh chứng in-game: `screenshots/chair_in_gameplay_iphone.png`.
+  - Chạy `npm test` đầy đủ: 156/156 unit tests PASS và 20/20 Playwright E2E tests PASS 100%.
+
 ### 2026-11-04 — Antigravity — VIỆC 1 & 2: Bảng chọn nhân vật 3D trực quan & Khắc phục dứt điểm di chuyển, né nhau của NPC
 - **Vấn đề đã xử lý:**
   - VIỆC 1: Bảng chọn nhân vật cũ dạng cuộn dọc 1 cột dài, 3 mẫu chỉ có chữ không có hình, thiếu preview trực tiếp; văn bản thời hạn tù cũ ("24 ngày", "Kỳ xét giảm: 4 ngày/lần") sai lệch với thiết kế hiện tại (`START_SENTENCE = 30`).

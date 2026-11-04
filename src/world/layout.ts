@@ -187,6 +187,7 @@ for (const cx of CELL_CENTERS) {
   P.push({ kind: 'bunk', x: cx + 1.65, z: -29.6, w: 0.95, d: 2.0, collide: true });
   P.push({ kind: 'cell-toilet', x: cx - 0.75, z: -31.45, w: 0.65, d: 0.75, collide: true, label: 'Toilet buồng giam' });
   P.push({ kind: 'cell-locker', x: cx + 0.75, z: -31.5, w: 0.60, d: 0.65, rot: Math.PI, collide: true, label: 'Tủ sắt cá nhân' });
+  P.push({ kind: 'chair', x: cx, z: -30.8, w: 0.5, d: 0.5, rot: 0, label: 'Ghế buồng giam' });
 }
 P.push(
   { kind: 'board', x: -27.81, z: -21.5, w: 1.4, d: 0.05, rot: Math.PI / 2, label: 'NỘI QUY' },

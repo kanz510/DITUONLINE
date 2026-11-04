@@ -17,7 +17,7 @@ const propLoader = new GLTFLoader();
 const propAssets: Record<string, string> = {
   bunk: 'furniture/bedBunk.glb',
   desk: 'furniture/desk.glb',
-  chair: 'furniture/chair.glb',
+  chair: 'furniture/prison_chair_stylized.glb',
   table: 'furniture/table.glb',
   tree: 'nature/tree_detailed.glb',
   cabinet: 'furniture/cabinetBed.glb',
@@ -478,6 +478,7 @@ export class PrisonWorld {
   }
 
   private buildProps() {
+    const instancedChairsList: { p: PropDef; obj: THREE.Group }[] = [];
     for (const p of PROPS) {
       if (p.collide) this.collision.boxes.push(propBox(p));
       const placeholder = this.makePropMesh(p);
@@ -509,10 +510,10 @@ export class PrisonWorld {
       } else if (p.kind === 'chair' && p.x > -12 && p.x < 4 && p.z > 10) {
         // Phòng cán bộ: ghế xoay cán bộ
         asset = 'original/guard_office_chair.glb';
-      } else if ((p.kind === 'table' || p.kind === 'visit-side-table') && p.x < -20 && p.z < 0) {
+      } else if ((p.kind === 'table' || p.kind === 'visit-side-table') && p.x < -20 && p.z > -16 && p.z < -3) {
         // Phòng thăm gặp: bàn thăm gặp
         asset = 'original/visitation_table.glb';
-      } else if (p.kind === 'chair' && p.x < -20 && p.z < 0) {
+      } else if (p.kind === 'chair' && p.x < -20 && p.z > -16 && p.z < -3) {
         // Phòng thăm gặp: ghế thăm gặp
         asset = 'original/visitation_chair.glb';
       } else if (p.kind === 'yard-concrete-stool' || (p.kind === 'chair' && Math.hypot(p.x - (-10), p.z - 4.6) < 2.0)) {
@@ -521,7 +522,9 @@ export class PrisonWorld {
       } else {
         asset = propAssets[p.kind];
       }
-      if (asset) {
+      if (asset === 'furniture/prison_chair_stylized.glb') {
+        instancedChairsList.push({ p, obj });
+      } else if (asset) {
         void loadProp(asset).then((template) => {
           const model = template.clone(true);
           model.name = 'asset.' + asset;
@@ -679,6 +682,40 @@ export class PrisonWorld {
       obj.position.set(p.x, 0, p.z);
       if (p.rot) obj.rotation.y = p.rot;
       this.scene.add(obj);
+    }
+
+    // InstancedMesh cho các ghế nhà tù stylized dùng chung model & material
+    if (instancedChairsList.length > 0) {
+      void loadProp('furniture/prison_chair_stylized.glb').then((template) => {
+        let foundMesh: THREE.Mesh | undefined;
+        template.traverse((child) => {
+          if (child instanceof THREE.Mesh && !foundMesh) foundMesh = child;
+        });
+        const targetMesh = foundMesh;
+        if (!targetMesh) return;
+
+        const count = instancedChairsList.length;
+        const instancedMesh = new THREE.InstancedMesh(targetMesh.geometry, targetMesh.material, count);
+        instancedMesh.name = 'instanced.prison_chair_stylized';
+        instancedMesh.castShadow = true;
+        instancedMesh.receiveShadow = true;
+
+        const dummy = new THREE.Object3D();
+        for (let i = 0; i < count; i++) {
+          const { p, obj } = instancedChairsList[i];
+          dummy.position.set(p.x, 0, p.z);
+          dummy.rotation.set(0, p.rot || 0, 0);
+          dummy.scale.set(1, 1, 1);
+          dummy.updateMatrix();
+          instancedMesh.setMatrixAt(i, dummy.matrix);
+
+          obj.clear();
+          obj.userData.assetLoaded = true;
+          obj.userData.assetPath = 'furniture/prison_chair_stylized.glb';
+        }
+        instancedMesh.instanceMatrix.needsUpdate = true;
+        this.scene.add(instancedMesh);
+      }).catch((err) => console.warn('[PrisonWorld] Instanced chairs fallback:', err));
     }
 
     // Quest props only change geometry: exact world positions and visibility are unchanged.
