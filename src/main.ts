@@ -17,6 +17,7 @@ import { PrisonWorld } from './world/builder';
 import { weatherForDay } from './world/atmosphere';
 import { HumanoidRig, playerModelSkin } from './actors/humanoid';
 import { NpcActor } from './actors/npc';
+import { getDynamicNpcBark, getGuardWarningForPlayer } from './actors/npc-barks';
 import { InputController, ThirdPersonCamera } from './core/controls';
 import { SoundEngine } from './core/audio';
 import { speechEngine } from './core/speech';
@@ -91,6 +92,9 @@ class App {
   private currentPrompt: PromptTarget | null = null;
   private trackedQuestId: string | null = null;
   private lastInsideState?: boolean;
+  private globalBarkCooldown = 0;
+  private guardSprintWarnCooldown = 0;
+  private guardLoiterWarnCooldown = 0;
 
   init() {
     const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
@@ -659,6 +663,7 @@ class App {
     if (!this.ui.paused) {
       const mv = this.input.moveVector();
       const moving = Math.hypot(mv.fwd, mv.right) > 0.05;
+      let isPlayerSprinting = false;
       if (moving) {
         this.resting = false;
         if (this.autoWalking) this.cancelAutoWalk(false);
@@ -670,6 +675,7 @@ class App {
         this.updateAutoWalk(dt);
       } else {
         const canSprint = mv.sprint && this.g.s.stats.stamina > 5;
+        isPlayerSprinting = moving && canSprint;
         const speed = moving ? (canSprint ? 5.8 : 3.7) : 0;
 
         const camMode = this.g.s.settings.cameraMode ?? 'third';
@@ -716,26 +722,101 @@ class App {
           a.rig.labelSprite.visible = d < 8.0;
         }
 
-        // 8b: NPC idle chatter
-        const dPlayer = Math.hypot(a.x - p.x, a.z - p.z);
-        if (dPlayer <= 12.0 && a.state !== 'talk' && !this.cutscene.isActive() && !this.ui.hasOpenModal() && (this.g.s.minute < 390 || this.g.s.minute >= 420)) {
-          a.barkTimer -= dt;
-          if (a.barkTimer <= 0) {
-            a.barkTimer = 25 + Math.random() * 20;
-            let barks = a.def.barks ?? [];
-            if (a.def.id === 'lam' && this.g.qStatus('mon_no') === 'active') {
-              barks = [
-                'Bảo thằng Huy lo liệu cho sớm, kiên nhẫn của tao có hạn.',
-                'Tiền bạc sòng phẳng thì mới dễ sống ở đây.',
-                'Hẹn ngày nào thì trả ngày đó, đừng để tao nhắc lại.',
-                'Món nợ nào rồi cũng có lúc phải thanh toán.',
-              ];
+      }
+
+      // Giảm các bộ đếm cooldown thoại toàn cục
+      this.globalBarkCooldown -= dt;
+      this.guardSprintWarnCooldown -= dt;
+      this.guardLoiterWarnCooldown -= dt;
+
+      // 8b-1: Guard observation & reminders on Player (Priority 3 - Cán bộ nhắc nhở người chơi)
+      if (!this.cutscene.isActive() && !this.ui.hasOpenModal()) {
+        const inCellblockCorridor = p.x >= -28 && p.x <= -6 && p.z >= -25 && p.z <= -18;
+        if (isPlayerSprinting && inCellblockCorridor && this.guardSprintWarnCooldown <= 0) {
+          const guardLan = this.npcs.lan;
+          const guardTung = this.npcs.tung;
+          const guard = (guardLan && guardLan.state !== 'talk' && guardLan.canSee(p.x, p.z, this.world.collision))
+            ? guardLan
+            : (guardTung && guardTung.state !== 'talk' && guardTung.canSee(p.x, p.z, this.world.collision))
+              ? guardTung
+              : null;
+          if (guard) {
+            const line = getGuardWarningForPlayer(guard.def.id as 'lan' | 'tung', 'sprint_corridor');
+            guard.sayBark(line, 4.0);
+            guard.faceToward(p.x, p.z);
+            this.guardSprintWarnCooldown = 25.0;
+            this.globalBarkCooldown = 5.0;
+            if (this.g.s.settings.npcVoice !== false && (this.g.s.settings.volume ?? 1) > 0) {
+              speechEngine.speak(line, this.g.s.settings.volume ?? 0.7);
             }
-            if (barks.length > 0) {
-              const line = barks[Math.floor(Math.random() * barks.length)];
-              a.sayBark(line, 4.0);
+          }
+        } else if (!isPlayerSprinting && this.guardLoiterWarnCooldown <= 0) {
+          const closedDoor = DOORS.find(
+            (d) => d.area !== 'cellblock' && !this.g.isOpen(d.area) && Math.hypot(d.ix - p.x, d.iz - p.z) <= 3.2
+          );
+          if (closedDoor) {
+            const guardLan = this.npcs.lan;
+            const guardTung = this.npcs.tung;
+            const guard = (guardLan && guardLan.state !== 'talk' && guardLan.canSee(p.x, p.z, this.world.collision))
+              ? guardLan
+              : (guardTung && guardTung.state !== 'talk' && guardTung.canSee(p.x, p.z, this.world.collision))
+                ? guardTung
+                : null;
+            if (guard) {
+              const line = getGuardWarningForPlayer(guard.def.id as 'lan' | 'tung', 'loitering_closed_door', closedDoor.name);
+              guard.sayBark(line, 4.0);
+              guard.faceToward(p.x, p.z);
+              this.guardLoiterWarnCooldown = 30.0;
+              this.globalBarkCooldown = 5.0;
               if (this.g.s.settings.npcVoice !== false && (this.g.s.settings.volume ?? 1) > 0) {
                 speechEngine.speak(line, this.g.s.settings.volume ?? 0.7);
+              }
+            }
+          }
+        }
+      }
+
+      // 8b-2: Dynamic NPC chatter with priority & no-overlap (Không nói đè, ưu tiên lời thoại quan trọng)
+      const allNpcList = Object.values(this.npcs);
+      const anyBubbleActive = allNpcList.some((npc) => npc.bubbleTimer > 0);
+
+      for (const a of allNpcList) {
+        const dPlayer = Math.hypot(a.x - p.x, a.z - p.z);
+        if (dPlayer <= 10.0 && a.state !== 'talk') {
+          a.barkTimer -= dt;
+        }
+      }
+
+      if (!this.cutscene.isActive() && !this.ui.hasOpenModal() && (this.g.s.minute < 390 || this.g.s.minute >= 420)) {
+        if (this.globalBarkCooldown <= 0 && !anyBubbleActive) {
+          const readyNpcs = allNpcList.filter((a) => {
+            const dPlayer = Math.hypot(a.x - p.x, a.z - p.z);
+            return dPlayer <= 10.0 && a.state !== 'talk' && a.barkTimer <= 0;
+          });
+
+          if (readyNpcs.length > 0) {
+            let bestCandidate: { npc: NpcActor; bark: { text: string; priority: number } } | null = null;
+            for (const a of readyNpcs) {
+              const bark = getDynamicNpcBark(a.def.id, this.g);
+              if (!bestCandidate || bark.priority > bestCandidate.bark.priority) {
+                bestCandidate = { npc: a, bark };
+              }
+            }
+
+            if (bestCandidate) {
+              const speaker = bestCandidate.npc;
+              speaker.sayBark(bestCandidate.bark.text, 4.0);
+              speaker.barkTimer = 35 + Math.random() * 25;
+              this.globalBarkCooldown = 6.0;
+
+              for (const other of allNpcList) {
+                if (other !== speaker && Math.hypot(other.x - speaker.x, other.z - speaker.z) <= 10.0) {
+                  other.barkTimer = Math.max(other.barkTimer, 8.0);
+                }
+              }
+
+              if (this.g.s.settings.npcVoice !== false && (this.g.s.settings.volume ?? 1) > 0) {
+                speechEngine.speak(bestCandidate.bark.text, this.g.s.settings.volume ?? 0.7);
               }
             }
           }

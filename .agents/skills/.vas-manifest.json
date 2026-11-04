@@ -1,0 +1,44 @@
+{
+  "agency-game-designer": {
+    "installed_at": 1793789828.96343,
+    "mode": "copy",
+    "source": "C:\\Users\\Admin\\AppData\\Local\\Temp\\vie-agentic-skills\\skills\\agency-game-designer",
+    "target_name": "agency-game-designer",
+    "category": "game-development"
+  },
+  "game-ai": {
+    "installed_at": 1793789835.337799,
+    "mode": "copy",
+    "source": "C:\\Users\\Admin\\AppData\\Local\\Temp\\vie-agentic-skills\\skills\\game-ai",
+    "target_name": "game-ai",
+    "category": "game-development"
+  },
+  "dialogue-systems": {
+    "installed_at": 1793789831.2321,
+    "mode": "copy",
+    "source": "C:\\Users\\Admin\\AppData\\Local\\Temp\\vie-agentic-skills\\skills\\dialogue-systems",
+    "target_name": "dialogue-systems",
+    "category": "game-development"
+  },
+  "ai-behavior-trees-utility-ai": {
+    "installed_at": 1793789829.238416,
+    "mode": "copy",
+    "source": "C:\\Users\\Admin\\AppData\\Local\\Temp\\vie-agentic-skills\\skills\\ai-behavior-trees-utility-ai",
+    "target_name": "ai-behavior-trees-utility-ai",
+    "category": "game-development"
+  },
+  "rpg": {
+    "installed_at": 1793789838.223501,
+    "mode": "copy",
+    "source": "C:\\Users\\Admin\\AppData\\Local\\Temp\\vie-agentic-skills\\skills\\rpg",
+    "target_name": "rpg",
+    "category": "game-development"
+  },
+  "playtest-report": {
+    "installed_at": 1793789837.4942849,
+    "mode": "copy",
+    "source": "C:\\Users\\Admin\\AppData\\Local\\Temp\\vie-agentic-skills\\skills\\playtest-report",
+    "target_name": "playtest-report",
+    "category": "game-development"
+  }
+}
