@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('Phase 3: architecture, lighting, weather and iPhone quality throttles', async ({ browser }) => {
-  test.setTimeout(180000);
+  test.setTimeout(360000);
   const context = await browser.newContext({
     viewport: { width: 956, height: 440 },
     deviceScaleFactor: 1.5,

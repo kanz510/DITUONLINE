@@ -1032,14 +1032,68 @@ html, body {
 .modal.modal-cc {
   display: flex;
   flex-direction: column;
-  max-width: 680px;
-  width: min(680px, 96vw);
+  max-width: 860px;
+  width: min(860px, 96vw);
   max-height: min(94vh, 94dvh);
   height: min(94vh, 94dvh);
   padding: 0;
   overflow: hidden; /* Chỉ có vùng .cc-body được cuộn, popup không bị cuộn lồng */
   position: relative;
   border-radius: 14px;
+}
+
+.cc-layout {
+  display: flex;
+  flex-direction: row;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.cc-preview-col {
+  flex: 0 0 210px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 10px;
+  background: radial-gradient(circle at 50% 60%, rgba(30, 58, 138, 0.28) 0%, rgba(15, 23, 42, 0.95) 80%);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  box-sizing: border-box;
+}
+
+.cc-preview-box {
+  width: 190px;
+  height: 230px;
+  position: relative;
+  border-radius: 12px;
+  background: rgba(10, 19, 37, 0.6);
+  border: 1px solid rgba(147, 197, 253, 0.25);
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5), 0 4px 14px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+#cc-preview-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.cc-preview-badge {
+  position: absolute;
+  bottom: 8px;
+  padding: 3px 8px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fde68a;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
 }
 
 .cc-header {
@@ -1111,32 +1165,148 @@ html, body {
   cursor: pointer;
 }
 
+.cc-presets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.cc-preset-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.cc-preset-thumb-wrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cc-preset-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.cc-preset-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.cc-two-col {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.cc-diff-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.cc-chip {
+  min-height: 32px;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+  border-radius: 8px;
+}
+
 @media (max-height: 460px) {
+  .modal-shell:has(.modal-cc) {
+    width: min(920px, 98vw);
+  }
   .modal.modal-cc {
+    max-width: 920px;
+    width: min(920px, 98vw);
     max-height: 98vh;
     height: 98vh;
     max-height: 98dvh;
     height: 98dvh;
   }
   .cc-header {
-    padding: 8px 14px 6px;
+    padding: 6px 14px 4px;
   }
   .cc-header h2 {
-    font-size: 14px;
+    font-size: 13.5px;
+  }
+  .cc-preview-col {
+    flex: 0 0 175px;
+    padding: 6px 8px;
+  }
+  .cc-preview-box {
+    width: 160px;
+    height: 190px;
   }
   .cc-body {
-    padding: 8px 14px;
-    gap: 10px;
+    padding: 6px 12px;
+    gap: 8px;
+  }
+  .card-row {
+    margin-bottom: 2px;
+  }
+  .cc-two-col {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+  .cc-bg-card {
+    padding: 6px 8px;
+  }
+  .cc-preset-card {
+    padding: 4px 8px;
+  }
+  .cc-preset-thumb-wrap {
+    width: 40px;
+    height: 40px;
   }
   .cc-footer {
-    padding: 6px 14px;
-    padding-bottom: max(6px, env(safe-area-inset-bottom));
+    padding: 4px 14px;
+    padding-bottom: max(4px, env(safe-area-inset-bottom));
   }
   .btn-cc-submit {
     min-height: 48px;
     height: 48px;
     font-size: 13.5px;
     padding: 0 18px;
+  }
+}
+
+@media (orientation: portrait), (max-width: 640px) {
+  .cc-layout {
+    flex-direction: column;
+  }
+  .cc-preview-col {
+    flex: 0 0 auto;
+    width: 100%;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 8px 14px;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .cc-preview-box {
+    width: 110px;
+    height: 120px;
+    flex-shrink: 0;
+  }
+  .cc-two-col {
+    grid-template-columns: 1fr;
+  }
+  .cc-diff-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1248,7 +1418,7 @@ html, body {
   width: min(720px, 100%);
   max-height: 94dvh;
 }
-.modal-shell:has(.modal-cc) { width: min(680px, 100%); }
+.modal-shell:has(.modal-cc) { width: min(860px, 100%); }
 .modal-shell > .modal {
   width: 100%;
   max-width: none;

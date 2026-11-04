@@ -15,7 +15,7 @@ import { DOORS, NODES, SPOTS, ZONES, inBox, zonesAt, type Box } from './world/la
 import { findPath, nearestNode } from './world/nav';
 import { PrisonWorld } from './world/builder';
 import { weatherForDay } from './world/atmosphere';
-import { HumanoidRig } from './actors/humanoid';
+import { HumanoidRig, playerModelSkin } from './actors/humanoid';
 import { NpcActor } from './actors/npc';
 import { InputController, ThirdPersonCamera } from './core/controls';
 import { SoundEngine } from './core/audio';
@@ -23,13 +23,6 @@ import { speechEngine } from './core/speech';
 import { CutsceneController } from './core/cutscene';
 import { UIManager, type PromptTarget, type GuideTarget } from './ui/manager';
 import { fetchLiveRelease } from './version';
-
-/** Keep the player model tied to the saved appearance preset across reloads. */
-function playerModelSkin(preset?: number): string {
-  const skins = ['g', 'f', 'd', 'e'];
-  const index = Number.isFinite(preset) ? Math.abs(Math.trunc(preset!)) % skins.length : 0;
-  return skins[index];
-}
 
 const AREA_EXIT_MAP: Record<string, { doorId: string; name: string; safeNode: [number, number]; insideBox: Box }> = {
   workshop: {
@@ -814,19 +807,26 @@ class App {
             const m1 = n1.isMoving();
             const m2 = n2.isMoving();
             if (m1 && m2) {
-              // Cả hai đang di chuyển: bên xa đích hơn dừng chờ tối đa 3 giây cho bên kia qua
+              // Cả hai đang di chuyển: chỉ MỘT bên nhường (bên còn xa đích hơn, hoặc ưu tiên thấp hơn)
               const d1 = n1.distToTarget();
               const d2 = n2.distToTarget();
-              if (d1 >= d2) {
-                n1.yield(3.0);
-                n1.noteBlocked(dt, this.world.collision);
-              } else {
-                n2.yield(3.0);
-                n2.noteBlocked(dt, this.world.collision);
+              const yielder = (d1 > d2 || (d1 === d2 && n1.def.id > n2.def.id)) ? n1 : n2;
+
+              if (yielder.yieldTimer <= 0 && yielder.yieldCooldown <= 0) {
+                // Bên nhường bước sang chỗ trống gần nhất (canPlace) rồi mới đứng chờ
+                yielder.sidestep(this.world.collision);
+                yielder.yield(2.5);
               }
+              yielder.noteBlocked(dt, this.world.collision);
             } else if (m1 && !m2) {
+              if (n1.yieldTimer <= 0 && n1.yieldCooldown <= 0) {
+                n1.sidestep(this.world.collision);
+              }
               n1.noteBlocked(dt, this.world.collision);
             } else if (!m1 && m2) {
+              if (n2.yieldTimer <= 0 && n2.yieldCooldown <= 0) {
+                n2.sidestep(this.world.collision);
+              }
               n2.noteBlocked(dt, this.world.collision);
             }
 
@@ -849,7 +849,10 @@ class App {
           const nzNew = n.z - dz * push;
 
           // Người chơi luôn được ưu tiên: NPC nhường người chơi
-          n.yield(3.0);
+          if (n.yieldTimer <= 0 && n.yieldCooldown <= 0) {
+            n.sidestep(this.world.collision);
+            n.yield(2.5);
+          }
           n.noteBlocked(dt, this.world.collision);
 
           if (this.world.collision.canPlace(nxNew, nzNew, 0.25)) {

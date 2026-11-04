@@ -93,6 +93,12 @@ test('chế độ FPS (góc nhìn thứ nhất) và góc nhìn thứ ba trên iP
   // Nhấn nút tương tác #btn-interact
   await page.locator('#btn-interact').click();
   await page.waitForTimeout(250);
+  // Đóng modal nếu việc tương tác mở popup (ví dụ: nghỉ ngơi) để di chuyển tự do
+  const modalClose = page.locator('.modal [data-close]').first();
+  if (await modalClose.isVisible().catch(() => false)) {
+    await modalClose.click();
+    await page.waitForTimeout(100);
+  }
 
   // Kiểm tra di chuyển bằng phím trong FPS
   const posBefore = await page.evaluate(() => {

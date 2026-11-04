@@ -62,7 +62,7 @@ describe('VIỆC 1: NPC tránh kẹt, nhường đường và né cản', () => 
     expect(npc.rig.pose).toBe('stand');
   });
 
-  it('NPC có đích mà 4 giây không tiến được quá 0.1m thì kích hoạt né vuông góc 0.6m', () => {
+  it('NPC có đích mà 2 giây không tiến được quá 0.2m thì kích hoạt né vuông góc 0.6m', () => {
     const col = new Collision();
     const npc = new NpcActor('tu');
     npc.x = 5; npc.z = 5;
@@ -72,8 +72,8 @@ describe('VIỆC 1: NPC tránh kẹt, nhường đường và né cản', () => 
 
     const initPathLen = (npc as any).path.length;
 
-    // Giả lập 4 giây bị kẹt tại chỗ (ví dụ vật cản chặn lại khiến moveTo không tiến)
-    for (let i = 0; i < 40; i++) {
+    // Giả lập 2 giây bị kẹt tại chỗ (ví dụ vật cản chặn lại khiến moveTo không tiến)
+    for (let i = 0; i < 20; i++) {
       // NPC bị giữ nguyên tại [5, 5]
       npc.x = 5; npc.z = 5;
       npc.update(0.1, 500, col);

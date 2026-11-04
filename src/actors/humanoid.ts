@@ -38,6 +38,12 @@ function numberTexture(number: number): THREE.CanvasTexture {
   return texture;
 }
 
+export function playerModelSkin(preset?: number): string {
+  const skins = ['g', 'f', 'd', 'e'];
+  const index = Number.isFinite(preset) ? Math.abs(Math.trunc(preset!)) % skins.length : 0;
+  return skins[index];
+}
+
 let inmateStripe: THREE.CanvasTexture | null = null;
 
 export class HumanoidRig {

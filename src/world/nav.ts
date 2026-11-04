@@ -27,8 +27,13 @@ export function nearestNode(x: number, z: number, filter?: (id: string) => boole
   return best;
 }
 
-/** A* trên đồ thị điểm mốc. */
-export function findPath(from: string, to: string): string[] {
+export interface PathOptions {
+  avoidEdges?: Set<string>;
+  avoidNodes?: Set<string>;
+}
+
+/** A* trên đồ thị điểm mốc, hỗ trợ tránh các cạnh/node đang tắc. */
+export function findPath(from: string, to: string, options?: PathOptions): string[] {
   if (from === to) return [to];
   const open = new Set([from]);
   const came: Record<string, string> = {};
@@ -45,6 +50,11 @@ export function findPath(from: string, to: string): string[] {
     }
     open.delete(cur);
     for (const nb of adj[cur] ?? []) {
+      if (options?.avoidNodes?.has(nb) && nb !== to) continue;
+      const edgeKey1 = `${cur}:${nb}`;
+      const edgeKey2 = `${nb}:${cur}`;
+      if (options?.avoidEdges && (options.avoidEdges.has(edgeKey1) || options.avoidEdges.has(edgeKey2))) continue;
+
       const tg = g[cur] + dist(cur, nb);
       if (tg < (g[nb] ?? Infinity)) {
         came[nb] = cur;
@@ -53,6 +63,10 @@ export function findPath(from: string, to: string): string[] {
         open.add(nb);
       }
     }
+  }
+  // Nếu có options mà không tìm thấy đường, thử lại không có options để tránh kẹt
+  if (options && ((options.avoidEdges && options.avoidEdges.size > 0) || (options.avoidNodes && options.avoidNodes.size > 0))) {
+    return findPath(from, to);
   }
   return [to];
 }

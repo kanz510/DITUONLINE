@@ -1,5 +1,6 @@
+import * as THREE from 'three';
 import {
-  ACCESS, BACKGROUNDS, DIFFICULTIES, blockAt, fmtMoney, fmtTime, nextBlock,
+  ACCESS, BACKGROUNDS, DIFFICULTIES, START_SENTENCE, blockAt, fmtMoney, fmtTime, nextBlock,
   type AttributeId, type BackgroundId, type Difficulty,
 } from '../logic/constants';
 import { GameLogic, NPC_NAMES } from '../logic/game';
@@ -13,6 +14,7 @@ import type { DNode } from '../data/dialogues';
 import { BUILDINGS, DOORS, zoneName } from '../world/layout';
 import type { NpcActor } from '../actors/npc';
 import type { SoundEngine } from '../core/audio';
+import { HumanoidRig, playerModelSkin } from '../actors/humanoid';
 import { getReleaseInfo, type AppReleaseInfo } from '../version';
 import { getDailySchedule, getQuestWaitingDetails, getQuestOverdueStatus, getActiveQuestOverdue, SIDE_QUEST_UNLOCK_RULES } from '../logic/daily-plan';
 import { FLASHBACK_CHOICES } from '../core/cutscene';
@@ -846,113 +848,133 @@ export class UIManager {
       <div class="cc-header">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <h2>TẠO NHÂN VẬT & KHỞI ĐẦU</h2>
-          <span class="tag good">Mốc 3 · 24 ngày</span>
+          <span class="tag good">Mốc 3 · ${START_SENTENCE} ngày</span>
         </div>
         <div class="hud-sub">Thiết lập hồ sơ trước khi bước vào Trại giam An Phú</div>
       </div>
 
-      <div class="cc-body" id="cc-scroll-body">
-        <div class="card-row">
-          <label style="font-weight:700;display:block;margin-bottom:6px">1. Tên nhân vật (2–20 ký tự):</label>
-          <input type="text" id="cc-input-name" class="text-input" value="${name}" maxlength="20" placeholder="Nhập tên nhân vật..." autocomplete="off" autocapitalize="words" spellcheck="false"/>
+      <div class="cc-layout">
+        <!-- Khung xem trước nhân vật 3D trực tiếp (cố định bên trái khi màn hình ngang, trên cùng khi dọc) -->
+        <div class="cc-preview-col" id="cc-preview-col">
+          <div class="cc-preview-box">
+            <canvas id="cc-preview-canvas" width="220" height="240"></canvas>
+            <div class="cc-preview-badge" id="cc-preview-tag">${presets[preset].name}</div>
+          </div>
+          <div class="hud-sub cc-preview-hint" style="font-size:11px;text-align:center;margin-top:6px">
+            Xoay 360° trực tiếp · Xem trước ngoại hình
+          </div>
         </div>
 
-        <div class="card-row">
-          <label style="font-weight:700;display:block;margin-bottom:6px">2. Mẫu ngoại hình cơ sở:</label>
-          <div class="cc-grid" id="cc-presets-grid">
-            ${presets.map((p, idx) => `
-              <div class="cc-card ${preset === idx ? 'selected' : ''}" data-preset="${idx}">
-                <b>${p.name}</b>
-                <div class="hud-sub" style="margin-top:4px">${p.desc}</div>
-              </div>
-            `).join('')}
+        <!-- Cột các nhóm tùy chọn cuộn độc lập -->
+        <div class="cc-body" id="cc-scroll-body">
+          <div class="card-row">
+            <label style="font-weight:700;display:block;margin-bottom:5px">1. Tên nhân vật (2–20 ký tự):</label>
+            <input type="text" id="cc-input-name" class="text-input" value="${name}" maxlength="20" placeholder="Nhập tên nhân vật..." autocomplete="off" autocapitalize="words" spellcheck="false"/>
           </div>
-          <div style="display:flex;gap:12px;margin-top:10px;flex-wrap:wrap">
-            <div>
-              <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Kiểu tóc:</label>
-              <div style="display:flex;gap:6px" id="cc-hair-btns">
-                <button class="btn btn-sm ${hairStyle === 'short' ? 'btn-accent' : ''}" data-hair="short">Ngắn</button>
-                <button class="btn btn-sm ${hairStyle === 'buzz' ? 'btn-accent' : ''}" data-hair="buzz">Húi cua</button>
-                <button class="btn btn-sm ${hairStyle === 'bald' ? 'btn-accent' : ''}" data-hair="bald">Đầu trọc</button>
+
+          <div class="card-row">
+            <label style="font-weight:700;display:block;margin-bottom:5px">2. Mẫu ngoại hình cơ sở:</label>
+            <div class="cc-grid cc-presets-grid" id="cc-presets-grid">
+              ${presets.map((p, idx) => `
+                <div class="cc-card cc-preset-card ${preset === idx ? 'selected' : ''}" data-preset="${idx}">
+                  <div class="cc-preset-thumb-wrap">
+                    <img id="cc-preset-thumb-${idx}" class="cc-preset-thumb" alt="${p.name}" />
+                  </div>
+                  <div class="cc-preset-meta">
+                    <b>${p.name}</b>
+                    <div class="hud-sub" style="font-size:11.5px;margin-top:2px">${p.desc}</div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+
+            <div class="cc-chips-row" style="display:flex;gap:14px;margin-top:8px;flex-wrap:wrap">
+              <div>
+                <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:3px">Kiểu tóc:</label>
+                <div style="display:flex;gap:6px" id="cc-hair-btns">
+                  <button class="btn btn-sm cc-chip ${hairStyle === 'short' ? 'btn-accent' : ''}" data-hair="short">Ngắn</button>
+                  <button class="btn btn-sm cc-chip ${hairStyle === 'buzz' ? 'btn-accent' : ''}" data-hair="buzz">Húi cua</button>
+                  <button class="btn btn-sm cc-chip ${hairStyle === 'bald' ? 'btn-accent' : ''}" data-hair="bald">Đầu trọc</button>
+                </div>
+              </div>
+              <div>
+                <label style="font-size:11.5px;color:var(--muted);display:block;margin-bottom:3px">Tông da:</label>
+                <div style="display:flex;gap:6px" id="cc-skin-btns">
+                  <button class="btn btn-sm cc-chip ${skin === 0xf5d0b0 ? 'btn-accent' : ''}" data-skin="light">Sáng</button>
+                  <button class="btn btn-sm cc-chip ${skin === 0xe2b48d ? 'btn-accent' : ''}" data-skin="med">Bánh mật</button>
+                  <button class="btn btn-sm cc-chip ${skin === 0xba8c63 ? 'btn-accent' : ''}" data-skin="dark">Ngăm</button>
+                </div>
               </div>
             </div>
-            <div>
-              <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Tông da:</label>
-              <div style="display:flex;gap:6px" id="cc-skin-btns">
-                <button class="btn btn-sm ${skin === 0xf5d0b0 ? 'btn-accent' : ''}" data-skin="light">Sáng</button>
-                <button class="btn btn-sm ${skin === 0xe2b48d ? 'btn-accent' : ''}" data-skin="med">Bánh mật</button>
-                <button class="btn btn-sm ${skin === 0xba8c63 ? 'btn-accent' : ''}" data-skin="dark">Ngăm</button>
-              </div>
+          </div>
+
+          <div class="card-row">
+            <label style="font-weight:700;display:block;margin-bottom:5px">3. Chọn xuất thân (Quá khứ vụ án Kho số 7):</label>
+            <div class="cc-grid cc-two-col" id="cc-bg-grid">
+              ${(Object.keys(BACKGROUNDS) as BackgroundId[]).map((bId) => {
+                const b = BACKGROUNDS[bId];
+                const isSel = background === bId;
+                return `
+                  <div class="cc-card cc-bg-card ${isSel ? 'selected' : ''}" data-bg="${bId}">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                      <b style="font-size:13.5px;color:#fde68a">${b.name}</b>
+                      <span class="hud-sub" style="font-size:11px">${b.tagline}</span>
+                    </div>
+                    <div style="font-size:12px;color:#cbd5e1;margin:3px 0">${b.desc}</div>
+                    <div class="cc-attr-row">
+                      <span class="cc-attr-tag">Ưu: ${b.pros}</span>
+                      <span class="cc-attr-tag" style="color:#f87171">Hạn chế: ${b.cons}</span>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
             </div>
           </div>
-        </div>
 
-        <div class="card-row">
-          <label style="font-weight:700;display:block;margin-bottom:6px">3. Chọn xuất thân (Quá khứ vụ án Kho số 7):</label>
-          <div class="cc-grid" style="grid-template-columns:1fr" id="cc-bg-grid">
-            ${(Object.keys(BACKGROUNDS) as BackgroundId[]).map((bId) => {
-              const b = BACKGROUNDS[bId];
-              const isSel = background === bId;
-              return `
-                <div class="cc-card cc-bg-card ${isSel ? 'selected' : ''}" data-bg="${bId}">
-                  <div style="display:flex;justify-content:space-between;align-items:center">
-                    <b style="font-size:14px;color:#fde68a">${b.name}</b>
-                    <span class="hud-sub">${b.tagline}</span>
+          <div class="card-row">
+            <label style="font-weight:700;display:block;margin-bottom:5px">4. Quyết định trong biến cố Kho số 7:</label>
+            <div class="hud-sub" style="margin-bottom:6px">Hành động của bạn trong đêm hỏa hoạn quyết định manh mối và lợi thế khởi đầu</div>
+            <div class="cc-grid cc-two-col" id="cc-fb-grid">
+              ${FLASHBACK_CHOICES.map((c) => {
+                const isSel = flashbackChoice === c.id;
+                return `
+                  <div class="cc-card cc-bg-card ${isSel ? 'selected' : ''}" data-fb="${c.id}">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                      <b style="font-size:13px;color:#93c5fd">${c.label}</b>
+                    </div>
+                    <div style="font-size:11.5px;color:#cbd5e1;margin:3px 0">${c.desc}</div>
+                    <div class="cc-attr-row">
+                      <span class="cc-attr-tag" style="color:#86efac">Khởi đầu: ${c.gain}</span>
+                    </div>
                   </div>
-                  <div style="font-size:12.5px;color:#cbd5e1;margin:5px 0">${b.desc}</div>
-                  <div class="cc-attr-row">
-                    <span class="cc-attr-tag">Ưu điểm: ${b.pros}</span>
-                    <span class="cc-attr-tag" style="color:#f87171">Hạn chế: ${b.cons}</span>
-                  </div>
-                </div>
-              `;
-            }).join('')}
+                `;
+              }).join('')}
+            </div>
           </div>
-        </div>
 
-        <div class="card-row">
-          <label style="font-weight:700;display:block;margin-bottom:6px">4. Quyết định trong biến cố Kho số 7:</label>
-          <div class="hud-sub" style="margin-bottom:8px">Hành động của bạn trong đêm hỏa hoạn quyết định manh mối và lợi thế khởi đầu</div>
-          <div class="cc-grid" style="grid-template-columns:1fr" id="cc-fb-grid">
-            ${FLASHBACK_CHOICES.map((c) => {
-              const isSel = flashbackChoice === c.id;
-              return `
-                <div class="cc-card cc-bg-card ${isSel ? 'selected' : ''}" data-fb="${c.id}">
-                  <div style="display:flex;justify-content:space-between;align-items:center">
-                    <b style="font-size:13.5px;color:#93c5fd">${c.label}</b>
+          <div class="card-row">
+            <label style="font-weight:700;display:block;margin-bottom:5px">5. Mức độ thử thách:</label>
+            <div class="cc-grid cc-diff-grid" id="cc-diff-grid">
+              ${(Object.keys(DIFFICULTIES) as Difficulty[]).map((dId) => {
+                const d = DIFFICULTIES[dId];
+                return `
+                  <div class="cc-card ${difficulty === dId ? 'selected' : ''}" data-diff="${dId}">
+                    <b>${d.name}</b>
+                    <div class="hud-sub" style="margin-top:2px;font-size:11.5px">${d.desc}</div>
                   </div>
-                  <div style="font-size:12px;color:#cbd5e1;margin:4px 0">${c.desc}</div>
-                  <div class="cc-attr-row">
-                    <span class="cc-attr-tag" style="color:#86efac">Khởi đầu: ${c.gain}</span>
-                  </div>
-                </div>
-              `;
-            }).join('')}
+                `;
+              }).join('')}
+            </div>
           </div>
-        </div>
 
-        <div class="card-row">
-          <label style="font-weight:700;display:block;margin-bottom:6px">5. Mức độ thử thách:</label>
-          <div class="cc-grid" id="cc-diff-grid">
-            ${(Object.keys(DIFFICULTIES) as Difficulty[]).map((dId) => {
-              const d = DIFFICULTIES[dId];
-              return `
-                <div class="cc-card ${difficulty === dId ? 'selected' : ''}" data-diff="${dId}">
-                  <b>${d.name}</b>
-                  <div class="hud-sub" style="margin-top:4px">${d.desc}</div>
-                </div>
-              `;
-            }).join('')}
-          </div>
+          <div class="cc-bottom-spacer"></div>
         </div>
-
-        <div class="cc-bottom-spacer"></div>
       </div>
 
       <div class="cc-footer">
         <div class="cc-footer-info">
-          <div>Bản án: <b>24 ngày</b></div>
-          <div class="hud-sub" style="font-size:11px">Kỳ xét giảm: 4 ngày/lần (0–2 ngày)</div>
+          <div>Bản án: <b>${START_SENTENCE} ngày</b></div>
+          <div class="hud-sub" style="font-size:11px">Đặc xá qua nhiệm vụ "Kỳ xét cuối cùng"</div>
         </div>
         <button class="btn btn-accent btn-cc-submit" id="btn-cc-submit">
           BẮT ĐẦU HÀNH TRÌNH ⏭
@@ -970,6 +992,140 @@ export class UIManager {
           inputName.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }, 120);
       });
+
+      // ───────────── Khởi tạo Three.js Preview trực tiếp ─────────────
+      let previewAnimId: number | null = null;
+      let previewRenderer: THREE.WebGLRenderer | null = null;
+      let previewScene: THREE.Scene | null = null;
+      let previewCamera: THREE.PerspectiveCamera | null = null;
+      let previewRig: HumanoidRig | null = null;
+
+      const previewCanvas = el.querySelector('#cc-preview-canvas') as HTMLCanvasElement;
+      const previewTag = el.querySelector('#cc-preview-tag');
+
+      const updatePreviewModel = (sk: number, hr: number, hs: 'short' | 'buzz' | 'bald', pr: number) => {
+        if (previewTag && presets[pr]) {
+          previewTag.textContent = presets[pr].name;
+        }
+        if (!previewScene) return;
+        if (previewRig) {
+          previewScene.remove(previewRig.root);
+          previewRig.dispose();
+          previewRig = null;
+        }
+        try {
+          previewRig = new HumanoidRig({
+            uniform: 'inmate',
+            skin: sk,
+            hair: hr,
+            hairStyle: hs,
+            accent: 0x22c55e,
+            height: 1.0,
+            build: 1.0,
+          }, undefined, playerModelSkin(pr));
+          previewRig.root.position.set(0, -0.65, 0);
+          previewRig.pose = 'stand';
+          previewScene.add(previewRig.root);
+        } catch (err) {
+          console.warn('[CC] Lỗi dựng preview rig:', err);
+        }
+      };
+
+      if (previewCanvas && typeof window !== 'undefined') {
+        try {
+          const width = previewCanvas.clientWidth || 220;
+          const height = previewCanvas.clientHeight || 240;
+          previewCanvas.width = width;
+          previewCanvas.height = height;
+
+          previewRenderer = new THREE.WebGLRenderer({
+            canvas: previewCanvas,
+            alpha: true,
+            antialias: true,
+            preserveDrawingBuffer: true,
+          });
+          previewRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+          previewRenderer.setSize(width, height, false);
+
+          previewScene = new THREE.Scene();
+          previewCamera = new THREE.PerspectiveCamera(38, width / height, 0.1, 20);
+          previewCamera.position.set(0, 0.45, 2.3);
+          previewCamera.lookAt(0, 0.38, 0);
+
+          const ambLight = new THREE.AmbientLight(0xffffff, 1.4);
+          previewScene.add(ambLight);
+          const dirLight = new THREE.DirectionalLight(0xfff7ed, 2.2);
+          dirLight.position.set(2, 3, 3);
+          previewScene.add(dirLight);
+          const rimLight = new THREE.DirectionalLight(0x93c5fd, 1.0);
+          rimLight.position.set(-2, 2, -2);
+          previewScene.add(rimLight);
+
+          // Chụp thumbnail cho 3 mẫu từ cùng renderer (không tạo nhiều renderer chạy cùng lúc)
+          presets.forEach((p, idx) => {
+            try {
+              const snapRig = new HumanoidRig({
+                uniform: 'inmate',
+                skin: p.skin,
+                hair: 0x18181b,
+                hairStyle: p.hairStyle,
+                accent: 0x22c55e,
+                height: 1.0,
+                build: 1.0,
+              }, undefined, playerModelSkin(idx));
+              snapRig.root.position.set(0, -0.65, 0);
+              snapRig.root.rotation.y = 0.25;
+              previewScene!.add(snapRig.root);
+              snapRig.update(0.01, 0);
+              previewRenderer!.render(previewScene!, previewCamera!);
+
+              const url = previewCanvas.toDataURL('image/png');
+              const thumbImg = el.querySelector(`#cc-preset-thumb-${idx}`) as HTMLImageElement;
+              if (thumbImg) thumbImg.src = url;
+
+              previewScene!.remove(snapRig.root);
+              snapRig.dispose();
+            } catch {
+              // Môi trường không hỗ trợ WebGL toDataURL an toàn
+            }
+          });
+
+          // Khởi tạo model đang chọn
+          updatePreviewModel(skin, hair, hairStyle, preset);
+
+          let lastTime = performance.now();
+          const animLoop = (now: number) => {
+            const dt = Math.min(0.08, (now - lastTime) / 1000);
+            lastTime = now;
+            if (previewRig) {
+              previewRig.root.rotation.y += dt * 0.75;
+              previewRig.update(dt, 0);
+            }
+            if (previewRenderer && previewScene && previewCamera) {
+              previewRenderer.render(previewScene, previewCamera);
+            }
+            previewAnimId = requestAnimationFrame(animLoop);
+          };
+          previewAnimId = requestAnimationFrame(animLoop);
+        } catch (err) {
+          console.warn('[CC] Không thể khởi tạo WebGL preview canvas:', err);
+        }
+      }
+
+      const cleanupPreview = () => {
+        if (previewAnimId !== null) {
+          cancelAnimationFrame(previewAnimId);
+          previewAnimId = null;
+        }
+        if (previewRig) {
+          previewRig.dispose();
+          previewRig = null;
+        }
+        if (previewRenderer) {
+          previewRenderer.dispose();
+          previewRenderer = null;
+        }
+      };
 
       // Đổi mẫu ngoại hình cơ sở in-place (không re-render làm mất tên hay nhảy cuộn)
       el.querySelectorAll('[data-preset]').forEach((btn) => {
@@ -991,6 +1147,7 @@ export class UIManager {
             b.classList.toggle('btn-accent', skVal === skin);
           });
 
+          updatePreviewModel(skin, hair, hairStyle, preset);
           this.hooks.onUpdateAppearance?.({ skin, hair, hairStyle, preset });
         });
       });
@@ -1001,6 +1158,7 @@ export class UIManager {
           hairStyle = (btn as HTMLElement).dataset.hair as any;
           el.querySelectorAll('[data-hair]').forEach((b) => b.classList.remove('btn-accent'));
           btn.classList.add('btn-accent');
+          updatePreviewModel(skin, hair, hairStyle, preset);
           this.hooks.onUpdateAppearance?.({ skin, hair, hairStyle, preset });
         });
       });
@@ -1012,6 +1170,7 @@ export class UIManager {
           skin = sk === 'light' ? 0xf5d0b0 : sk === 'med' ? 0xe2b48d : 0xba8c63;
           el.querySelectorAll('[data-skin]').forEach((b) => b.classList.remove('btn-accent'));
           btn.classList.add('btn-accent');
+          updatePreviewModel(skin, hair, hairStyle, preset);
           this.hooks.onUpdateAppearance?.({ skin, hair, hairStyle, preset });
         });
       });
@@ -1062,6 +1221,7 @@ export class UIManager {
         btnSubmit.disabled = true;
         btnSubmit.textContent = 'ĐANG VÀO TRẠI...';
 
+        cleanupPreview();
         this.closeModal();
         onDone({
           name: finalName,

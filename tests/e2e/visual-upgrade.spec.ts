@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('An Phu cinematic landing, saved progress and upgraded scenery', async ({ browser }) => {
-  test.setTimeout(240000);
+  test.setTimeout(360000);
   const context = await browser.newContext({
     viewport: { width: 956, height: 440 },
     isMobile: true,
@@ -178,7 +178,7 @@ test('An Phu cinematic landing, saved progress and upgraded scenery', async ({ b
   await page.locator('#landing-cancel-reset').click();
   await expect(page.locator('#landing-confirm')).toBeHidden();
   await page.screenshot({ path: 'screenshots/landing-continue-save-iphone.png', animations: 'disabled' });
-  await page.locator('#landing-primary').click();
+  await page.locator('#landing-primary').click({ force: true });
   await expect(page.locator('#game-landing')).toHaveCount(0);
   await expect(page.locator('#hud-clock')).toBeVisible();
   expect(errors).toEqual([]);

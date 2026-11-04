@@ -8,6 +8,30 @@
 
 ## Lịch sử thay đổi
 
+### 2026-11-04 — Antigravity — VIỆC 1 & 2: Bảng chọn nhân vật 3D trực quan & Khắc phục dứt điểm di chuyển, né nhau của NPC
+- **Vấn đề đã xử lý:**
+  - VIỆC 1: Bảng chọn nhân vật cũ dạng cuộn dọc 1 cột dài, 3 mẫu chỉ có chữ không có hình, thiếu preview trực tiếp; văn bản thời hạn tù cũ ("24 ngày", "Kỳ xét giảm: 4 ngày/lần") sai lệch với thiết kế hiện tại (`START_SENTENCE = 30`).
+  - VIỆC 2: NPC khi đối đầu trên hành lang hẹp hoặc cửa ra vào liên tục kích hoạt `yield(2.0)` cả hai phía dẫn đến tê liệt tại chỗ; cơ chế phát hiện kẹt cũ chỉ đếm vị trí tĩnh nên NPC lắc qua lại không bị tính là kẹt; khi bị cản đường NPC không ghi nhớ cạnh tắc mà đi lang thang hoặc đâm xuyên tường.
+- **Giải pháp:**
+  - **VIỆC 1 — Bảng chọn nhân vật mới (Preview 3D trực tiếp & bố cục 2 cột):**
+    - Cấu trúc layout 2 cột trên iPhone landscape (`.cc-layout`, `.cc-preview-col`, `.cc-body`): cột trái hiển thị preview 3D trực tiếp quay nhẹ cố định, cột phải cuộn độc lập chứa các nhóm tùy chọn. Màn hình dọc tự động xếp preview lên trên.
+    - Preview 3D trực tiếp với Three.js WebGL canvas (`#cc-preview-canvas`) tích hợp `HumanoidRig` chibi tự xoay chậm mượt mà.
+    - Chụp thumbnail cho 3 preset từ chính canvas renderer duy nhất qua `toDataURL('image/png')` gắn vào `#cc-preset-thumb-0/1/2`, không tạo nhiều WebGL renderer song song.
+    - Nhấp chọn mẫu, tông da hoặc kiểu tóc cập nhật model 3D preview tức thì mà không giật modal hay nhảy vị trí cuộn.
+    - Bố cục gọn: thẻ xuất thân, biến cố và độ khó xếp lưới 2 cột; tóc và da dạng compact chip tiết kiệm diện tích tối đa cho màn hình iPhone (956x440 & 844x390).
+    - Cập nhật text chính xác: thời hạn án hiển thị theo `START_SENTENCE` (30 ngày), bỏ text kỳ xét giảm cũ.
+  - **VIỆC 2 — Khắc phục dứt điểm NPC né nhau & điều hướng:**
+    - Cơ chế nhường đường 1 chiều với cooldown: Khi 2 NPC đối mặt, chỉ 1 NPC nhường đường (NPC ở xa mục tiêu hơn), NPC kia đi tiếp. NPC nhường né sang vị trí trống an toàn (`col.canPlace`) trước khi dừng chờ. Cooldown `yieldCooldown` bảo vệ không bị refresh liên tục mỗi frame.
+    - Phát hiện kẹt dựa trên tiến độ (progress-based): Kiểm tra khoảng cách tới mục tiêu mỗi 2s (`progressTimer`); nếu tiến độ < 0.2m thì tính là kẹt ngay cả khi NPC lắc qua lại tại chỗ.
+    - Ghi nhớ cạnh tắc & tìm đường tránh (`rerouteViaAlternate`): Ghi nhớ cạnh nghẽn trong 30 giây (`blockedEdges`) và gọi `findPath(..., { avoidEdges })` để tìm đường vòng hợp lý; nếu không có đường vòng thì chờ tại chỗ rộng, không đi lung tung.
+    - Định tuyến lại khi chệch khỏi đường: Nếu bị đẩy chệch hoặc tia tới nút tiếp theo bị cản bởi tường/prop, tự động định tuyến về nút an toàn nhìn thấy gần nhất; kiểm tra va chạm (`canPlace`, `move`) trong từng bước chân, không xuyên tường, không dịch chuyển tức thời. Người chơi luôn có quyền ưu tiên cao nhất.
+- **Kiểm thử:**
+  - Thêm `tests/unit/character-creation.test.ts` (4 bài test): kiểm tra hiển thị `START_SENTENCE`, canvas 3D và thumbnail thẻ mẫu, phản hồi `onUpdateAppearance` tức thì, gửi profile hoàn chỉnh.
+  - Thêm `tests/unit/npc-navigation-fix.test.ts` (5 bài test): kiểm tra 1 NPC nhường + né sang bên, phát hiện kẹt sau 2s không tiến triển, ghi nhớ cạnh tắc 30s + tìm đường vòng, quay lại nút an toàn khi chệch đường, ưu tiên người chơi.
+  - Thêm `tests/e2e/npc-navigation-and-character.spec.ts` (2 bài test E2E): xác minh bảng chọn nhân vật responsive và 4 tình huống NPC (hành lang hẹp, cửa có người chơi, bàn ghế cản, đổi lịch trình); chụp đủ 5 ảnh landscape: `character-creation-new.png`, `npc-corridor-pass.png`, `npc-door-player.png`, `npc-obstacle.png`, `npc-schedule-change.png`.
+  - Chạy `npm test` đầy đủ: 156/156 unit tests PASS 100% (23 files) và 19/19 Playwright tests PASS 100%.
+
+
 ### 2026-11-04 — Antigravity — VIỆC 11: Nâng cấp nhiệm vụ — Thử thách phụ, lựa chọn đánh đổi, hiện rõ ngưỡng chỉ số
 - **Vấn đề đã xử lý:**
   - 11a: Cần thêm thử thách phụ (optional challenge) cho 12 nhiệm vụ chính tuyến để người chơi có mục tiêu nâng cao, thử sức nếu muốn thêm thưởng mà không ép buộc người chơi cơ bản phải làm.
