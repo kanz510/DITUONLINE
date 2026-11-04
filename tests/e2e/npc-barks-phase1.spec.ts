@@ -63,6 +63,7 @@ test.describe('ĐỢT 1: NPC phản ứng tự nhiên với người chơi, quan
     expect(reminderResult.barkText).toMatch(/hành lang|chạy|buồng giam|đi bộ/i);
     expect(reminderResult.vioDelta).toBe(0); // Tuyệt đối không tự tạo hình phạt mới
     expect(reminderResult.guardCooldown).toBeGreaterThan(0);
+    await ctx.close();
   });
 
   test('Cán bộ nhắc nhở khi Minh lảng vảng gần cửa xưởng đang đóng (không ghi vi phạm)', async ({ browser }) => {
@@ -119,6 +120,7 @@ test.describe('ĐỢT 1: NPC phản ứng tự nhiên với người chơi, quan
     expect(loiterResult.barkText).toMatch(/đóng|mở|sân|lảng vảng/i);
     expect(loiterResult.vioDelta).toBe(0); // Không tạo hình phạt mới
     expect(loiterResult.guardLoiterCooldown).toBeGreaterThan(0);
+    await ctx.close();
   });
 
   test('Cơ chế chống nói đè và ưu tiên lời thoại: NPC không bật bong bóng đồng thời', async ({ browser }) => {
@@ -169,5 +171,6 @@ test.describe('ĐỢT 1: NPC phản ứng tự nhiên với người chơi, quan
 
     expect(overlapResult.bothSpeaking).toBe(false); // Không bao giờ nói đè cùng lúc
     expect(overlapResult.globalCooldown).toBeGreaterThan(0);
+    await ctx.close();
   });
 });

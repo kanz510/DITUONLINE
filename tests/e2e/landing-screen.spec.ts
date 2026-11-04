@@ -142,6 +142,10 @@ test.describe('Màn hình bắt đầu 3D điện ảnh (Landing Screen)', () =>
     await expect(landing).toHaveCount(0);
     await expect(page.locator('#hud-clock')).toBeVisible();
 
+    await page.evaluate(() => {
+      try { localStorage.clear(); sessionStorage.clear(); } catch {}
+    });
+
     expect(errors).toEqual([]);
     await context.close();
   });

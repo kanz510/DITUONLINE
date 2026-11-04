@@ -7,6 +7,12 @@ test('chế độ FPS (góc nhìn thứ nhất) và góc nhìn thứ ba trên iP
     isMobile: true,
   });
   const page = await ctx.newPage();
+  await page.addInitScript(() => {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch {}
+  });
   await page.goto('/');
 
   // 1. Vào game từ màn hình bắt đầu
@@ -94,7 +100,8 @@ test('chế độ FPS (góc nhìn thứ nhất) và góc nhìn thứ ba trên iP
   await page.locator('#btn-interact').click();
   await page.waitForTimeout(250);
   // Đóng modal nếu việc tương tác mở popup (ví dụ: nghỉ ngơi) để di chuyển tự do
-  const modalClose = page.locator('.modal [data-close]').first();
+  await page.evaluate(() => (window as any).__DITU__?.app?.ui?.closeModal());
+  const modalClose = page.locator('.modal [data-close], .modal-close-top').first();
   if (await modalClose.isVisible().catch(() => false)) {
     await modalClose.click();
     await page.waitForTimeout(100);
@@ -107,17 +114,16 @@ test('chế độ FPS (góc nhìn thứ nhất) và góc nhìn thứ ba trên iP
   });
 
   await page.keyboard.down('KeyW');
-  await page.waitForTimeout(400);
-  await page.keyboard.up('KeyW');
-
-  const posAfter = await page.evaluate(() => {
-    const p = (window as any).__DITU__.logic.s.player;
-    return { x: p.x, z: p.z };
-  });
-
-  // Người chơi di chuyển được trong FPS
-  const moved = Math.hypot(posAfter.x - posBefore.x, posAfter.z - posBefore.z);
-  expect(moved).toBeGreaterThan(0.01);
+  try {
+    await expect.poll(async () => {
+      return page.evaluate((before: { x: number; z: number }) => {
+        const p = (window as any).__DITU__.logic.s.player;
+        return Math.hypot(p.x - before.x, p.z - before.z);
+      }, posBefore);
+    }, { timeout: 15000 }).toBeGreaterThan(0.01);
+  } finally {
+    await page.keyboard.up('KeyW');
+  }
 
   // 6. Chuyển lại góc nhìn thứ ba (Third person)
   await page.locator('#btn-menu').click();

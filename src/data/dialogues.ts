@@ -26,6 +26,7 @@ export function buildDialogue(npc: string, g: GameLogic, openAppeal: () => void,
     case 'phuc': return phucDialogue(g, openVocational);
     case 'an': return anDialogue(g);
     case 'mai': return maiDialogue(g);
+    case 'khai': return khaiDialogue(g);
     default: return ambientDialogue(npc, g);
   }
 }
@@ -46,6 +47,96 @@ function npcTitle(id: string) {
     bay: 'Chú Bảy', huy: 'Huy', lam: 'Lâm', lan: 'Quản giáo Lan', tung: 'Cán bộ Tùng',
     phuc: 'Thầy Phúc', an: 'Y sĩ An', mai: 'Chị Mai',
   } as Record<string, string>)[id] ?? id;
+}
+
+// ───────────────────── CÁC PHƯƠNG ÁN NGHI ÁN THUỐC (ĐỢT 2) ─────────────────────
+function getNghiAnThuocBranchChoices(g: GameLogic, _pName: string): DChoice[] {
+  const attrs = g.s.progression?.attrs || { agility: 1, charisma: 1, perception: 1, endurance: 1 };
+  const choices: DChoice[] = [];
+
+  // 1. Lén lút (Agility >= 2)
+  choices.push({
+    label: (attrs.agility ?? 1) >= 2
+      ? '[Khéo léo ≥ 2] Lén lút: Canh thời điểm an toàn lẻn vào thu hồi thuốc'
+      : `[Cần Khéo léo ≥ 2] Lén lút (Hiện tại: ${attrs.agility ?? 1}/5 — cần nâng kỹ năng)`,
+    important: (attrs.agility ?? 1) >= 2,
+    run: () => {
+      if ((attrs.agility ?? 1) < 2) {
+        return {
+          speaker: 'Chú Bảy',
+          text: `Chỉ số Khéo léo của cháu hiện tại (${attrs.agility ?? 1}/5) chưa đủ 2 để luồn lách qua tầm nhìn cán bộ và camera. Cháu có thể hoàn thành việc ngày để lên cấp nâng kỹ năng trong hồ sơ, hoặc chọn phương án khác.`,
+          choices: [{ label: 'Để cháu tính toán lại.', run: () => null }],
+        };
+      }
+      g.chooseBranch('nghi_an_thuoc', 'stealth', 'Lén lút thu hồi thuốc khi an toàn');
+      return {
+        speaker: 'Chú Bảy',
+        text: 'Khéo léo đấy cháu! Cẩn thận Cán bộ Tùng và Quản giáo Lan tuần tra, camera kho xưởng cũng quét qua khu vực đó. Phải đợi lúc họ quay đi hoặc rời khỏi tầm nhìn thì mới nhặt nghen!',
+        choices: [{ label: 'Cháu sẽ canh chừng thật cẩn thận.', run: () => null }],
+      };
+    },
+  });
+
+  // 2. Thuyết phục (Charisma >= 2)
+  choices.push({
+    label: (attrs.charisma ?? 1) >= 2
+      ? '[Giao tiếp ≥ 2] Thuyết phục: Đối thoại với Khải để lấy lại thuốc'
+      : `[Cần Giao tiếp ≥ 2] Thuyết phục (Hiện tại: ${attrs.charisma ?? 1}/5 — cần nâng kỹ năng)`,
+    important: (attrs.charisma ?? 1) >= 2,
+    run: () => {
+      if ((attrs.charisma ?? 1) < 2) {
+        return {
+          speaker: 'Chú Bảy',
+          text: `Chỉ số Giao tiếp của cháu hiện tại (${attrs.charisma ?? 1}/5) chưa đủ 2 để thuyết phục đàn em thằng Lâm. Cháu có thể lên cấp nâng kỹ năng hoặc chọn phương án khác.`,
+          choices: [{ label: 'Để cháu tính toán lại.', run: () => null }],
+        };
+      }
+      g.chooseBranch('nghi_an_thuoc', 'persuade', 'Thuyết phục Khải giao lại lọ thuốc');
+      return {
+        speaker: 'Chú Bảy',
+        text: 'Thằng Khải buồng 4 hay lảng vảng ngoài sân hoặc sau xưởng giờ nghỉ. Cháu ăn nói khéo léo thì thử giải thích rủi ro pháp lý cho nó hiểu, đừng để xảy ra xô xát.',
+        choices: [{ label: 'Cháu sẽ đi tìm gặp Khải.', run: () => null }],
+      };
+    },
+  });
+
+  // 3. Quan sát (Perception >= 2)
+  choices.push({
+    label: (attrs.perception ?? 1) >= 2
+      ? '[Quan sát ≥ 2] Quan sát: Lần theo dấu vết và manh mối tại xưởng'
+      : `[Cần Quan sát ≥ 2] Quan sát (Hiện tại: ${attrs.perception ?? 1}/5 — cần nâng kỹ năng)`,
+    important: (attrs.perception ?? 1) >= 2,
+    run: () => {
+      if ((attrs.perception ?? 1) < 2) {
+        return {
+          speaker: 'Chú Bảy',
+          text: `Chỉ số Quan sát của cháu hiện tại (${attrs.perception ?? 1}/5) chưa đủ 2 để giải mã dấu vết hiện trường. Cháu có thể lên cấp nâng kỹ năng hoặc chọn phương án khác.`,
+          choices: [{ label: 'Để cháu tính toán lại.', run: () => null }],
+        };
+      }
+      g.chooseBranch('nghi_an_thuoc', 'observe', 'Lần theo dấu vết và manh mối giấu thuốc');
+      return {
+        speaker: 'Chú Bảy',
+        text: 'Đúng rồi! Hôm trước chú thấy có vết cào và bột than lạ ở góc bàn xưởng dẫn ra khe thông gió sau tường. Cháu mắt sáng ra kiểm tra bàn xưởng xem.',
+        choices: [{ label: 'Cháu sẽ ra bàn xưởng kiểm tra dấu vết ngay.', run: () => null }],
+      };
+    },
+  });
+
+  // 4. Cơ bản (Fallback - không yêu cầu chỉ số)
+  choices.push({
+    label: 'Tìm kiếm cơ bản: Trực tiếp ra góc tường sau xưởng tìm kỹ',
+    run: () => {
+      g.chooseBranch('nghi_an_thuoc', 'basic', 'Tìm kiếm cơ bản tại góc sau xưởng');
+      return {
+        speaker: 'Chú Bảy',
+        text: 'Vậy cháu cẩn thận nhé, chịu khó tìm kỹ quanh đống gạch vỡ sau xưởng.',
+        choices: [{ label: 'Dạ, cháu sẽ đi tìm.', run: () => null }],
+      };
+    },
+  });
+
+  return choices;
 }
 
 // ───────────────────── CHÚ BẢY ─────────────────────
@@ -173,7 +264,7 @@ function bayDialogue(g: GameLogic): DNode {
     });
   }
 
-  // Theo thứ tự: hỏi Y sĩ An trước, rồi hỏi Chú Bảy để biết chỗ tìm thuốc.
+  // Theo thứ tự: hỏi Y sĩ An trước, rồi hỏi Chú Bảy để biết chỗ tìm thuốc & chọn phương án.
   if (g.qStatus('nghi_an_thuoc') === 'active' &&
       g.qObj('nghi_an_thuoc', 'hoi_an') && !g.qObj('nghi_an_thuoc', 'hoi_bay')) {
     choices.push({
@@ -183,10 +274,21 @@ function bayDialogue(g: GameLogic): DNode {
         g.completeObjective('nghi_an_thuoc', 'hoi_bay');
         return {
           speaker: 'Chú Bảy',
-          text: 'Chú có mang lọ thuốc ra sân phía sau xưởng, khi đi về không thấy nữa. Cậu xem ở góc tường xem sao.',
-          choices: [{ label: 'Cháu sẽ đi tìm.', run: () => null }],
+          text: 'Chú có mang lọ thuốc ra sân phía sau xưởng lúc lao động, khi quay về thì rơi mất, nghe thấy tiếng đám thằng Khải buồng 4 thì thầm chia nhau cái gì đó. Cháu tính lấy lại thuốc bằng cách nào?',
+          choices: getNghiAnThuocBranchChoices(g, pName),
         };
       },
+    });
+  } else if (g.qStatus('nghi_an_thuoc') === 'active' &&
+      g.qObj('nghi_an_thuoc', 'hoi_bay') && !g.qBranch('nghi_an_thuoc')) {
+    choices.push({
+      label: 'Về phương án thu hồi lọ thuốc hen cho chú...',
+      important: true,
+      run: () => ({
+        speaker: 'Chú Bảy',
+        text: 'Cháu đã tính được cách lấy lại lọ thuốc hen chưa? Chú thấy có mấy cách này, cháu xem thế mạnh của mình hợp cách nào:',
+        choices: getNghiAnThuocBranchChoices(g, pName),
+      }),
     });
   }
 
@@ -1037,35 +1139,50 @@ function anDialogue(g: GameLogic): DNode {
     });
   }
 
-  // Trả thuốc hen cho Chú Bảy
-  if (g.qStatus('nghi_an_thuoc') === 'active' && g.has('chai_thuoc_hen') && g.qObj('nghi_an_thuoc', 'nhat_thuoc')) {
+  // Trả thuốc hen cho Chú Bảy (hỗ trợ cả 3 phương án và cơ bản)
+  const hasRetrievedMedicine = g.has('chai_thuoc_hen') && Boolean(
+    g.qObj('nghi_an_thuoc', 'len_lut') ||
+    g.qObj('nghi_an_thuoc', 'thuyet_phuc_khai') ||
+    g.qObj('nghi_an_thuoc', 'thu_hoi_hoc_tuong') ||
+    g.qObj('nghi_an_thuoc', 'nhat_thuoc')
+  );
+  if (g.qStatus('nghi_an_thuoc') === 'active' && hasRetrievedMedicine && !g.qObj('nghi_an_thuoc', 'tra_thuoc')) {
     choices.push({
-      label: 'Cháu tìm thấy lọ thuốc hen suyễn ở sau xưởng rồi!',
+      label: 'Cháu đã thu hồi được lọ thuốc hen suyễn của Chú Bảy rồi!',
       important: true,
       run: () => {
         if (!g.completeObjective('nghi_an_thuoc', 'tra_thuoc')) return {
-          speaker: 'Y sĩ An', text: 'Hãy tìm hiểu nguồn gốc lọ thuốc trước khi bàn giao.',
+          speaker: 'Y sĩ An', text: 'Hãy hoàn tất bước tìm kiếm trước khi bàn giao thuốc.',
           choices: [{ label: 'Dạ.', run: () => null }],
         };
         g.takeItem('chai_thuoc_hen');
+        const branch = g.qBranch('nghi_an_thuoc');
+        let detailPrompt = 'May quá! Đúng là thuốc đặc trị của Chú Bảy rồi. Tôi sẽ cho chú thở khí dung ngay. Cậu thu hồi thuốc bằng cách nào vậy?';
+        if (branch === 'stealth') {
+          detailPrompt = 'May quá! Đúng là thuốc đặc trị của Chú Bảy rồi. Cậu đã lén thu hồi an toàn qua mắt bảo vệ và camera, thao tác rất khéo!';
+        } else if (branch === 'persuade') {
+          detailPrompt = 'May quá! Đúng là thuốc đặc trị của Chú Bảy rồi. Cậu đã thuyết phục được Khải tự giác giao nộp, giải quyết bằng lời lẽ nhân văn rất đáng khen!';
+        } else if (branch === 'observe') {
+          detailPrompt = 'May quá! Đúng là thuốc đặc trị của Chú Bảy rồi. Khả năng quan sát và lần theo manh mối hiện trường của cậu rất sắc bén!';
+        }
         return {
           speaker: 'Y sĩ An',
-          text: 'May quá! Đúng là thuốc đặc trị của Chú Bảy rồi. Tôi sẽ cho chú thở khí dung ngay. Cậu tìm thấy thuốc trong hoàn cảnh nào?',
+          text: detailPrompt,
           choices: [
             {
-              label: 'Cháu tìm thấy ở góc tường sau xưởng, có dấu hiệu bị ai đó cố tình giấu.',
+              label: 'Cháu chỉ mong Chú Bảy sớm qua cơn nguy kịch, người già trong trại cần được quan tâm.',
               run: () => {
-                g.changeRel('an', 15, 'Minh báo cáo trung thực, chi tiết tình trạng giấu thuốc');
-                g.addReform(3, 'Tố giác hành vi giấu thuốc bệnh');
-                g.addStat('suspicion', 5);
+                g.changeRel('an', 15, 'Minh báo cáo trung thực, tận tâm cứu người');
+                g.changeRel('bay', 15, 'Chú Bảy biết ơn');
+                g.addReform(3, 'Tương thân tương ái');
                 return null;
               },
             },
             {
-              label: 'Cháu chỉ tình cờ nhặt được rơi ngoài sân thôi ạ, miễn cứu người là được.',
+              label: 'Cháu xin bàn giao nguyên vẹn vật chứng y tế để cán bộ lập hồ sơ quản lý thuốc.',
               run: () => {
-                g.gainXp(30, 'Giữ kín chuyện tế nhị để tránh xáo trộn');
-                g.changeRel('an', 10, 'Y sĩ An cảm kích');
+                g.gainXp(30, 'Ý thức trách nhiệm y tế');
+                g.changeRel('an', 12, 'Y sĩ An cảm kích');
                 g.changeRel('bay', 15, 'Chú Bảy biết ơn');
                 return null;
               },
@@ -1214,6 +1331,60 @@ function tungDialogue(g: GameLogic): DNode {
     speaker: 'Cán bộ Tùng',
     role: 'Cán bộ trật tự & xưởng',
     text: 'Lao động trật tự, đi lại đúng giờ. Tuyệt đối không tự ý bước qua vạch đỏ vào kho xưởng hoặc đem vật cấm vào buồng giam.',
+    choices,
+  };
+}
+
+function khaiDialogue(g: GameLogic): DNode {
+  const pName = g.s.profile.name || 'Minh';
+  const choices: DChoice[] = [];
+  const attrs = g.s.progression?.attrs || { agility: 1, charisma: 1, perception: 1, endurance: 1 };
+
+  if (g.qStatus('nghi_an_thuoc') === 'active' &&
+      g.qBranch('nghi_an_thuoc') === 'persuade' &&
+      !g.qObj('nghi_an_thuoc', 'thuyet_phuc_khai')) {
+    choices.push({
+      label: 'Khải, tôi muốn nói chuyện về lọ thuốc hen của Chú Bảy.',
+      important: true,
+      run: () => {
+        if ((attrs.charisma ?? 1) >= 2) {
+          return {
+            speaker: 'Khải',
+            text: 'Mày nói gì thế? Lọ thuốc nào? Tao chẳng biết gì hết!',
+            choices: [
+              {
+                label: '[Giao tiếp ≥ 2] Chú Bảy đang khó thở cấp cứu ở phòng y tế. Nếu chú ấy có chuyện gì, cán bộ sẽ lập chuyên án ngộ sát. Cậu đưa thuốc đây, tôi bảo đảm việc này dừng lại ở đây.',
+                important: true,
+                run: () => {
+                  g.completeObjective('nghi_an_thuoc', 'thuyet_phuc_khai');
+                  g.giveItem('chai_thuoc_hen');
+                  g.changeRel('khai', 10, 'Khải nể phục sự thấu tình đạt lý');
+                  return {
+                    speaker: 'Khải',
+                    text: 'Cái gì... ngộ sát á?! Tao... tao chỉ tưởng lọ dầu xoa ai đánh rơi nên nhặt về tính đổi gói mì thôi! Nè, cầm lấy mang đi ngay đi, đừng có lôi tên tao vào với quản giáo đấy!',
+                    choices: [{ label: 'Được, tôi sẽ mang về phòng y tế ngay.', run: () => null }],
+                  };
+                },
+              },
+              { label: 'Để tôi quay lại sau.', run: () => null },
+            ],
+          };
+        } else {
+          return {
+            speaker: 'Khải',
+            text: `(Yêu cầu Giao tiếp ≥ 2 — Khải nhìn bạn đầy dò xét và từ chối nói chuyện) "Biến đi chỗ khác, đừng có làm phiền tao!"`,
+            choices: [{ label: 'Tôi sẽ quay lại sau.', run: () => null }],
+          };
+        }
+      },
+    });
+  }
+
+  choices.push({ label: 'Đóng', run: () => null });
+  const line = g.rel('lam') < 0 ? 'Anh Lâm đang để ý mày đấy, đi đứng cẩn thận.' : 'Có chuyện gì muốn bàn thì tìm anh Lâm ở góc sau xưởng giờ nghỉ chiều.';
+  return {
+    speaker: 'Khải (Buồng 4)',
+    text: choices.length > 1 ? `Mày tìm tao có việc gì thế ${pName}?` : line,
     choices,
   };
 }

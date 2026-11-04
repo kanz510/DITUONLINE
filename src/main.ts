@@ -1137,6 +1137,20 @@ class App {
           },
         };
       case 'workbench':
+        if (g.qStatus('nghi_an_thuoc') === 'active' &&
+            g.qBranch('nghi_an_thuoc') === 'observe' &&
+            !g.qObj('nghi_an_thuoc', 'quan_sat_dau_vet')) {
+          return {
+            id,
+            label: `${label}: Quan sát dấu vết bụi than và vết cào lạ`,
+            run: () => {
+              const reason = g.objectiveBlockReason('nghi_an_thuoc', 'quan_sat_dau_vet');
+              if (reason) { this.ui.toast(reason, 'warn'); return; }
+              g.completeObjective('nghi_an_thuoc', 'quan_sat_dau_vet');
+              this.ui.toast('Phát hiện dấu vết kéo lê và bột than! Thuốc đã được nhét vào hốc gạch thông gió phía sau xưởng.', 'good');
+            },
+          };
+        }
         if (g.qStatus('loi_hua_chu_bay') === 'active' &&
             g.qObj('loi_hua_chu_bay', 'nghe_loi_hua') &&
             !g.qObj('loi_hua_chu_bay', 'danh_bong_hop')) {
@@ -1308,6 +1322,76 @@ class App {
         };
       case 'asthma_spot': {
         if (this.g.has('chai_thuoc_hen') || this.g.qStatus('nghi_an_thuoc') === 'done') return null;
+        const branch = this.g.qBranch('nghi_an_thuoc');
+
+        // Nhánh 1: Lén lút (Agility >= 2) - có kiểm tra tầm nhìn guard / camera
+        if (branch === 'stealth') {
+          if (this.g.qObj('nghi_an_thuoc', 'len_lut')) return null;
+          return {
+            id,
+            label: `${label}: Lén lút thu hồi lọ thuốc hen (Khéo léo ≥ 2)`,
+            risk: 'Rủi ro: Bị cán bộ hoặc camera phát hiện',
+            run: () => {
+              const reason = this.g.objectiveBlockReason('nghi_an_thuoc', 'len_lut');
+              if (reason) { this.ui.toast(reason, 'warn'); return; }
+              const p = this.g.s.player;
+              const seen = (this.npcs.tung && this.npcs.tung.canSee(p.x, p.z, this.world.collision)) ||
+                           (this.npcs.lan && this.npcs.lan.canSee(p.x, p.z, this.world.collision)) ||
+                           this.world.seenByStorageCam(p.x, p.z);
+              if (seen) {
+                this.g.addStat('suspicion', 15);
+                this.ui.toast('Cán bộ/Camera đang quan sát khu vực này! Hãy chờ lúc an toàn khi cán bộ quay đi để lẻn vào.', 'warn');
+                const guard = (this.npcs.tung && this.npcs.tung.canSee(p.x, p.z, this.world.collision)) ? this.npcs.tung : this.npcs.lan;
+                if (guard) {
+                  guard.faceToward(p.x, p.z);
+                  guard.sayBark('Này phạm nhân, đi đứng nghiêm túc, không lén lút ở góc tường!', 4.0);
+                }
+                return;
+              }
+              this.g.completeObjective('nghi_an_thuoc', 'len_lut');
+              this.g.giveItem('chai_thuoc_hen');
+              this.ui.toast('Khéo léo thu hồi lọ thuốc hen trong góc khuất an toàn mà không bị phát hiện!', 'good');
+            },
+          };
+        }
+
+        // Nhánh 3: Quan sát (Perception >= 2)
+        if (branch === 'observe') {
+          if (!this.g.qObj('nghi_an_thuoc', 'quan_sat_dau_vet')) {
+            return {
+              id,
+              label: `${label}: Kiểm tra góc tường sau xưởng`,
+              run: () => {
+                this.ui.toast('Khu vực này khá bừa bộn. Hãy kiểm tra dấu vết tại bàn xưởng trước để xác định chính xác vị trí giấu thuốc.', 'info');
+              },
+            };
+          }
+          if (this.g.qObj('nghi_an_thuoc', 'thu_hoi_hoc_tuong')) return null;
+          return {
+            id,
+            label: `${label}: Thu hồi lọ thuốc từ hốc gạch thông gió`,
+            run: () => {
+              const reason = this.g.objectiveBlockReason('nghi_an_thuoc', 'thu_hoi_hoc_tuong');
+              if (reason) { this.ui.toast(reason, 'warn'); return; }
+              this.g.completeObjective('nghi_an_thuoc', 'thu_hoi_hoc_tuong');
+              this.g.giveItem('chai_thuoc_hen');
+              this.ui.toast('Đã lấy được lọ thuốc hen từ đúng vị trí hốc gạch thông gió!', 'good');
+            },
+          };
+        }
+
+        // Nhánh 2: Thuyết phục - thuốc lấy qua Khải
+        if (branch === 'persuade') {
+          return {
+            id,
+            label: `${label}: Kiểm tra góc tường sau xưởng`,
+            run: () => {
+              this.ui.toast('Không thấy lọ thuốc ở đây. Khải buồng 4 đang giữ nó, hãy tìm Khải để nói chuyện.', 'info');
+            },
+          };
+        }
+
+        // Nhánh cơ bản (Fallback hoặc save cũ)
         return {
           id,
           label: `${label}: Nhặt lọ thuốc hen suyễn`,

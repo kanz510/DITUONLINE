@@ -458,7 +458,7 @@ export class UIManager {
     }
 
     // 3. Bảng mục tiêu chi tiết, hỗ trợ tự đi và thu gọn
-    const waitingDetails = getQuestWaitingDetails(s);
+    const waitingDetails = getQuestWaitingDetails(s, guideTarget?.questId);
     const overdue = guideTarget?.questId ? getQuestOverdueStatus(guideTarget.questId, s) : getActiveQuestOverdue(s);
     const isWaiting = !guideTarget?.isDuty && waitingDetails.waiting && !overdue.overdue;
 

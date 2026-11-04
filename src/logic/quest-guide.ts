@@ -91,6 +91,11 @@ export const QUEST_DESTINATIONS: Record<string, Record<string, QuestStepTargetCo
   nghi_an_thuoc: {
     hoi_an: { npc: 'an', spot: 'med_table', label: 'Y sĩ An (Phòng y tế)', targetName: 'Y sĩ An', zone: 'medical' },
     hoi_bay: { npc: 'bay', label: 'Chú Bảy (Hỏi cơn hen)', targetName: 'Chú Bảy' },
+    quyet_dinh: { npc: 'bay', label: 'Chú Bảy (Chọn phương án thu hồi thuốc)', targetName: 'Chú Bảy' },
+    len_lut: { spot: 'asthma_spot', label: 'Góc tường sau xưởng (Lén lút nhặt thuốc)', targetName: 'Góc tường sau xưởng' },
+    thuyet_phuc_khai: { npc: 'khai', label: 'Khải (Thuyết phục lấy lại thuốc)', targetName: 'Khải' },
+    quan_sat_dau_vet: { spot: 'workbench', label: 'Bàn xưởng (Tìm manh mối giấu thuốc)', targetName: 'Bàn xưởng', zone: 'workshop' },
+    thu_hoi_hoc_tuong: { spot: 'asthma_spot', label: 'Hốc tường sau xưởng (Thu hồi thuốc)', targetName: 'Hốc tường sau xưởng' },
     nhat_thuoc: { spot: 'asthma_spot', label: 'Góc tường sau xưởng (Nhặt lọ thuốc hen)', targetName: 'Lọ thuốc hen' },
     tra_thuoc: { npc: 'an', spot: 'med_table', label: 'Y sĩ An (Giao thuốc cấp cứu)', targetName: 'Y sĩ An', zone: 'medical' },
   },
@@ -130,9 +135,9 @@ export const QUEST_DESTINATIONS: Record<string, Record<string, QuestStepTargetCo
   },
 
   bay_vat_cam: {
-    phat_hien_bay: { spot: 'bed', label: 'Giường của bạn (Kiểm tra buồng 3)', targetName: 'Giường của bạn' },
+    phat_hien_bay: { npc: 'tung', label: 'Cán bộ Tùng (Kiểm tra đột xuất)', targetName: 'Cán bộ Tùng' },
     trinh_bay: { npc: 'lan', spot: 'lan_desk', label: 'Quản giáo Lan (Giải trình)', targetName: 'Quản giáo Lan', zone: 'office' },
-    cung_cap_bang_chung: { npc: 'tung', label: 'Cán bộ Tùng (Xác minh lời khai)', targetName: 'Cán bộ Tùng' },
+    cung_cap_bang_chung: { npc: 'lan', spot: 'lan_desk', label: 'Quản giáo Lan (Trích xuất camera minh oan)', targetName: 'Quản giáo Lan', zone: 'office' },
   },
 
   la_thu_que_nha: {

@@ -163,4 +163,5 @@ test('Furniture Pack v1: Bàn ghế 3D PBR mới trên iPhone landscape 956x440 
   expect(extraCheck.workshopBenchFound).toBe(true);
 
   expect(errors.filter((e) => !e.includes('favicon'))).toHaveLength(0);
+  await context.close();
 });

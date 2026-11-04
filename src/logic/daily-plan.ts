@@ -44,7 +44,54 @@ export interface QuestWaitingDetails {
   hint?: string;
 }
 
-export function getQuestWaitingDetails(s: GameState): QuestWaitingDetails {
+export function getQuestWaitingDetails(s: GameState, targetQuestId?: string): QuestWaitingDetails {
+  if (targetQuestId) {
+    if (targetQuestId === 'lop_nghe_dau' && s.quests.lop_nghe_dau?.status === 'active') {
+      // Lớp học nghề mở cửa 14:00–16:30 (840–990)
+      if (s.minute < 840 || s.minute > 990) {
+        return {
+          waiting: true,
+          timeRange: '14:00–16:30',
+          hint: 'Chờ mở cửa: 14:00–16:30 (Trong lúc chờ: Làm việc ngày / rèn luyện thể lực)',
+        };
+      }
+    }
+    if (targetQuestId === 'phong_tham_gap' && s.quests.phong_tham_gap?.status === 'active') {
+      // Thăm gặp mở 08:30–11:00 (510–660) & 14:00–16:30 (840–990)
+      const inMorn = s.minute >= 510 && s.minute <= 660;
+      const inAft = s.minute >= 840 && s.minute <= 990;
+      if (!inMorn && !inAft) {
+        return {
+          waiting: true,
+          timeRange: '08:30–11:00 & 14:00–16:30',
+          hint: 'Chờ mở cửa: 08:30–11:00 & 14:00–16:30 (Trong lúc chờ: Làm việc ngày / rèn luyện thể lực)',
+        };
+      }
+    }
+    if (targetQuestId === 'nghi_an_thuoc' && s.quests.nghi_an_thuoc?.status === 'active') {
+      // Chỉ chờ khi bước hiện tại cần gặp Y sĩ An tại Phòng y tế (hoi_an hoặc tra_thuoc)
+      const needsMed = !s.flags['nghi_an_thuoc:hoi_an'] || Boolean(
+        s.flags['nghi_an_thuoc:len_lut'] ||
+        s.flags['nghi_an_thuoc:thuyet_phuc_khai'] ||
+        s.flags['nghi_an_thuoc:thu_hoi_hoc_tuong'] ||
+        s.flags['nghi_an_thuoc:nhat_thuoc']
+      );
+      if (needsMed) {
+        const inMorn = s.minute >= 450 && s.minute <= 690;
+        const inAft = s.minute >= 810 && s.minute <= 1020;
+        if (!inMorn && !inAft) {
+          return {
+            waiting: true,
+            timeRange: '07:30–11:30 & 13:30–17:00',
+            hint: 'Chờ mở cửa: 07:30–11:30 & 13:30–17:00 (Trong lúc chờ: Làm việc ngày / rèn luyện thể lực)',
+          };
+        }
+      }
+    }
+    return { waiting: false };
+  }
+
+  // Fallback khi không chỉ định quest đang theo dõi
   if (s.quests.lop_nghe_dau?.status === 'active') {
     // Lớp học nghề mở cửa 14:00–16:30 (840–990)
     if (s.minute < 840 || s.minute > 990) {

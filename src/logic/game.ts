@@ -712,7 +712,24 @@ export class GameLogic {
     if (targetIndex < 0) return 'Bước nhiệm vụ không tồn tại.';
     const target = def.objectives[targetIndex];
     if (target.optional) return null;
-    const branch = this.qBranch(q);
+    let branch = this.qBranch(q);
+    if (q === 'nghi_an_thuoc' && !branch && this.s.flags['nghi_an_thuoc:hoi_bay']) {
+      if (obj === 'nhat_thuoc' || obj === 'tra_thuoc') {
+        this.s.flags['nghi_an_thuoc:branch'] = 'basic';
+        this.s.flags['nghi_an_thuoc:quyet_dinh'] = true;
+        branch = 'basic';
+      }
+    }
+    if (q === 'nghi_an_thuoc' && obj === 'tra_thuoc') {
+      const gotMedicine = this.has('chai_thuoc_hen') ||
+        Boolean(this.s.flags['nghi_an_thuoc:len_lut'] ||
+                this.s.flags['nghi_an_thuoc:thuyet_phuc_khai'] ||
+                this.s.flags['nghi_an_thuoc:thu_hoi_hoc_tuong'] ||
+                this.s.flags['nghi_an_thuoc:nhat_thuoc']);
+      if (!gotMedicine) {
+        return 'Cần thu hồi lọ thuốc hen trước khi giao cho Y sĩ An.';
+      }
+    }
     if (target.branch && target.branch !== branch) {
       return branch
         ? 'Bước này không thuộc phương án bạn đã chọn.'
@@ -777,6 +794,24 @@ export class GameLogic {
 
   chooseBranch(q: string, branch: string, outcome?: string) {
     if (this.qStatus(q) !== 'active' || this.qBranch(q) || !QUESTS[q]?.branches?.[branch]) return false;
+
+    // Kiểm tra điều kiện chỉ số cho các phương án nghi_an_thuoc
+    if (q === 'nghi_an_thuoc') {
+      const attrs = this.s.progression?.attrs || { agility: 1, charisma: 1, perception: 1, endurance: 1 };
+      if (branch === 'stealth' && (attrs.agility ?? 1) < 2) {
+        this.notify('Cần chỉ số Khéo léo (Agility) ≥ 2 để chọn phương án Lén lút.', 'warn');
+        return false;
+      }
+      if (branch === 'persuade' && (attrs.charisma ?? 1) < 2) {
+        this.notify('Cần chỉ số Giao tiếp (Charisma) ≥ 2 để chọn phương án Thuyết phục.', 'warn');
+        return false;
+      }
+      if (branch === 'observe' && (attrs.perception ?? 1) < 2) {
+        this.notify('Cần chỉ số Quan sát (Perception) ≥ 2 để chọn phương án Quan sát.', 'warn');
+        return false;
+      }
+    }
+
     const def = QUESTS[q];
     const decisionObj = def.objectives.find((o) =>
       o.id === 'quyet_dinh' || o.id === 'quyet_dinh_im_lang' || o.id.startsWith('quyet_dinh')
@@ -960,10 +995,33 @@ export class GameLogic {
 
       case 'nghi_an_thuoc':
         if (status === 'done') {
-          this.addReform(6, 'Tìm lại thuốc hen cứu Chú Bảy');
-          this.changeRel('bay', 15, 'Minh tìm lại lọ thuốc hen cứu mạng chú');
-          this.changeRel('an', 12, 'Minh hỗ trợ tìm ra vật chứng y tế');
-          this.addClue('thuoc_hen_sau_xuong', 'Lọ thuốc hen của Chú Bảy rơi gần góc sau xưởng nơi đàn em Lâm tụ tập.');
+          const branch = this.qBranch('nghi_an_thuoc');
+          if (branch === 'stealth') {
+            this.addReform(6, 'Lén lút thu hồi thuốc hen an toàn');
+            this.changeRel('bay', 15, 'Minh tìm lại lọ thuốc hen cứu mạng chú');
+            this.changeRel('an', 12, 'Minh hỗ trợ tìm ra vật chứng y tế');
+            this.gainXp(15, 'Thao tác lén lút chuẩn xác');
+            this.addClue('thuoc_hen_sau_xuong', 'Lọ thuốc hen của Chú Bảy rơi gần góc sau xưởng nơi đàn em Lâm tụ tập.');
+          } else if (branch === 'persuade') {
+            this.addReform(7, 'Thuyết phục giao nộp lại thuốc cứu người');
+            this.changeRel('bay', 18, 'Minh dùng lời lẽ khuyên can để lấy lại thuốc');
+            this.changeRel('an', 12, 'Minh bàn giao thuốc kịp thời');
+            this.changeRel('khai', 10, 'Khải nể phục cách nói chuyện thấu tình đạt lý của Minh');
+            this.gainXp(20, 'Thuyết phục thành công');
+            this.addClue('thuoc_hen_sau_xuong', 'Khải thừa nhận nhặt được lọ thuốc gần xưởng và đã giao lại vì sợ liên lụy.');
+          } else if (branch === 'observe') {
+            this.addReform(6, 'Quan sát hiện trường và thu hồi thuốc');
+            this.changeRel('bay', 15, 'Minh tìm lại lọ thuốc hen cứu mạng chú');
+            this.changeRel('an', 15, 'Y sĩ An ấn tượng với khả năng điều tra tỉ mỉ');
+            this.gainXp(15, 'Lần theo manh mối hiện trường');
+            this.addClue('dau_vet_khe_gach', 'Vết kéo lê và bụi than cho thấy kẻ giấu thuốc thường lui tới kho vật tư.');
+            this.addClue('thuoc_hen_sau_xuong', 'Lọ thuốc hen được giấu kín trong hốc gạch thông gió sau xưởng.');
+          } else {
+            this.addReform(6, 'Tìm lại thuốc hen cứu Chú Bảy');
+            this.changeRel('bay', 15, 'Minh tìm lại lọ thuốc hen cứu mạng chú');
+            this.changeRel('an', 12, 'Minh hỗ trợ tìm ra vật chứng y tế');
+            this.addClue('thuoc_hen_sau_xuong', 'Lọ thuốc hen của Chú Bảy rơi gần góc sau xưởng nơi đàn em Lâm tụ tập.');
+          }
         }
         this.startQuest('manh_moi_kho_7');
         this.startQuest('phu_y_te');

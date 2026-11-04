@@ -223,6 +223,31 @@ export function healStuckQuests(s: GameState): boolean {
     }
   }
 
+  // Tương thích ngược & bảo vệ tiến trình cho nghi_an_thuoc (Đợt 2)
+  const nghiAn = s.quests.nghi_an_thuoc;
+  if (nghiAn && nghiAn.status === 'active') {
+    const flags = s.flags || (s.flags = {});
+    if (flags['nghi_an_thuoc:hoi_bay'] && !flags['nghi_an_thuoc:branch']) {
+      if (flags['nghi_an_thuoc:nhat_thuoc']) {
+        flags['nghi_an_thuoc:branch'] = 'basic';
+        flags['nghi_an_thuoc:quyet_dinh'] = true;
+        healed = true;
+      }
+    }
+  }
+  if (s.quests.nghi_an_thuoc?.status === 'done') {
+    if (!s.quests.manh_moi_kho_7 || s.quests.manh_moi_kho_7.status === 'locked') {
+      s.quests.manh_moi_kho_7 = {
+        status: 'active',
+        step: 0,
+        choices: [],
+        rewarded: false,
+        startedDay: s.day || 1,
+      };
+      healed = true;
+    }
+  }
+
   return healed;
 }
 

@@ -8,6 +8,12 @@ test.describe('VIỆC 1 & 2: Bảng tạo nhân vật & Khắc phục dứt đi�
       isMobile: true,
     });
     const page = await ctx.newPage();
+    await page.addInitScript(() => {
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch {}
+    });
     await page.goto('/');
 
     await expect(page.locator('#landing-primary')).toBeVisible();
@@ -45,6 +51,7 @@ test.describe('VIỆC 1 & 2: Bảng tạo nhân vật & Khắc phục dứt đi�
     // Hoàn tất tạo nhân vật
     await btnSubmit.click();
     await page.waitForFunction(() => Boolean((window as any).__DITU__?.app));
+    await ctx.close();
   });
 
   test('2 NPC qua hành lang hẹp, NPC qua cửa có người chơi, NPC bị bàn ghế chặn, NPC đổi lịch', async ({ browser }) => {
@@ -54,6 +61,12 @@ test.describe('VIỆC 1 & 2: Bảng tạo nhân vật & Khắc phục dứt đi�
       isMobile: true,
     });
     const page = await ctx.newPage();
+    await page.addInitScript(() => {
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch {}
+    });
     await page.goto('/');
 
     await expect(page.locator('#landing-primary')).toBeVisible();
@@ -173,5 +186,6 @@ test.describe('VIỆC 1 & 2: Bảng tạo nhân vật & Khắc phục dứt đi�
 
     expect(scheduleRes.isMoving).toBe(true);
     await page.screenshot({ path: 'screenshots/npc-schedule-change.png' });
+    await ctx.close();
   });
 });
