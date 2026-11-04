@@ -286,6 +286,27 @@ export function getDynamicNpcBark(npcId: NpcId, g: GameLogic): NpcBarkResult {
     }
   }
 
+  // ───────────────────── BIẾN CỐ SINH HOẠT ĐANG DIỄN RA ─────────────────────
+  const incident = g.s.daily.incident;
+  if (incident && incident.status === 'active' && g.s.minute >= incident.startMinute && g.s.minute <= incident.endMinute) {
+    if (incident.id === 'workshop_blackout') {
+      if (npcId === 'tung') return { text: 'Xưởng đang ngắt điện an toàn, phạm nhân giữ trật tự chờ kiểm tra aptomat!', priority: 2, category: 'quest' };
+      if (npcId === 'bay') return { text: 'Cầu dao tổng lại nhảy rồi, dây điện tải nặng quá đây mà.', priority: 2, category: 'quest' };
+      if (npcId === 'huy') return { text: 'Mất điện thế này nghỉ tay chút cũng đỡ mệt anh nhỉ.', priority: 2, category: 'quest' };
+      if (npcId === 'lam') return { text: 'Tối như hũ nút, đứng im coi chừng va quẹt bây giờ.', priority: 2, category: 'quest' };
+    } else if (incident.id === 'heavy_rain') {
+      if (npcId === 'bay') return { text: `Mưa dầm sân trơn lắm, vận động nhẹ trong buồng giam cho an toàn nghen ${pName}.`, priority: 2, category: 'quest' };
+      if (npcId === 'huy') return { text: 'Trời đổ mưa to quá, ra sân ướt như chuột lột.', priority: 2, category: 'quest' };
+      if (npcId === 'tung') return { text: 'Trời mưa lớn đường trơn, các phạm nhân di chuyển cẩn thận!', priority: 2, category: 'quest' };
+      if (npcId === 'lan') return { text: 'Mưa to ngập sân, các buồng chú ý đóng then cửa sổ tránh tạt nước.', priority: 2, category: 'quest' };
+    } else if (incident.id === 'cell_inspection') {
+      if (npcId === 'lan') return { text: 'Hôm nay kiểm tra nội vụ, buồng nào chăn màn chưa gấp gọn gàng sẽ bị nhắc nhở.', priority: 2, category: 'quest' };
+      if (npcId === 'tung') return { text: 'Kiểm tra nội vụ buồng giam định kỳ, xếp chăn màn phẳng phiu đúng điều lệnh!', priority: 2, category: 'quest' };
+      if (npcId === 'bay') return { text: `Cháu dọn giường gấp chăn vuông góc đi ${pName}, cán bộ sắp đi kiểm tra nội vụ buồng rồi đó.`, priority: 2, category: 'quest' };
+      if (npcId === 'huy') return { text: 'Để em vuốt lại góc chiếu cho thẳng, cán bộ đi kiểm tra nội vụ kìa.', priority: 2, category: 'quest' };
+    }
+  }
+
   // ───────────────────── MẶC ĐỊNH (AMBIENT) ─────────────────────
   const def = NPCS[npcId];
   const ambientLines = def?.barks ?? ['...'];

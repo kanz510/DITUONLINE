@@ -127,6 +127,9 @@ export function migrate(raw: any, storage?: StorageLike | null): GameState | nul
     flags: { ...def.flags, ...st.flags },
     version: SAVE_VERSION,
   };
+  if (merged.daily && merged.daily.incident === undefined) {
+    merged.daily.incident = null;
+  }
   if (sentenceExtendedDays > 0) {
     merged.flags.sentence_extended_for_reform = sentenceExtendedDays;
     merged.sentence.additions.push({

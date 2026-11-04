@@ -966,9 +966,11 @@ class App {
       this.g.s.day,
       p.x,
       p.z,
+      Boolean(this.g.s.daily.incident?.id === 'heavy_rain' && this.g.s.daily.incident.status === 'active'),
     );
 
-    const weather = weatherForDay(this.g.s.day, this.g.s.minute);
+    const isIncidentRain = Boolean(this.g.s.daily.incident?.id === 'heavy_rain' && this.g.s.daily.incident.status === 'active');
+    const weather = weatherForDay(this.g.s.day, this.g.s.minute, isIncidentRain);
     this.sfx.setRain(weather === 'rain');
 
     const camMode = this.g.s.settings.cameraMode ?? 'third';
@@ -1088,6 +1090,20 @@ class App {
               g.giveItem('chan_man');
               g.completeObjective('nhap_trai', 'chan_man');
             },
+          };
+        }
+        if (g.activeIncident?.id === 'cell_inspection' && !g.activeIncident.rewardClaimed) {
+          return {
+            id,
+            label: `${label}: Dọn dẹp nội vụ & gấp chăn màn (Kiểm tra nội vụ)`,
+            run: () => this.ui.showCellInspectionModal(),
+          };
+        }
+        if (g.activeIncident?.id === 'heavy_rain' && g.exerciseReason() === null) {
+          return {
+            id,
+            label: `${label}: Tập thể lực trong buồng giam (tránh mưa ngoài sân)`,
+            run: () => this.ui.showIndoorExerciseMinigame(),
           };
         }
         const sl = g.canSleep();
@@ -1403,6 +1419,16 @@ class App {
             this.ui.toast('Đã nhặt lọ thuốc hen của Chú Bảy! Hãy mang về phòng y tế đưa cho Y sĩ An.', 'good');
           },
         };
+      }
+      case 'workshop_breaker': {
+        if (g.activeIncident?.id === 'workshop_blackout' && g.activeIncident.status === 'active') {
+          return {
+            id,
+            label: `${label}: Khắc phục sự cố mất điện xưởng`,
+            run: () => this.ui.showWorkshopBreakerModal(),
+          };
+        }
+        return null;
       }
     }
     return null;

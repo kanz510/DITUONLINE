@@ -335,6 +335,7 @@ export const SPOTS: SpotDef[] = [
   { id: 'library_shelf', x: -25.5, z: 16.5, r: 1.4, label: 'Giá sách thư viện (Mượn cẩm nang)' },
   { id: 'visit_booth', x: -22.5, z: -8.8, r: 1.4, label: 'Vách kính thăm gặp (Gặp Chị Mai)' },
   { id: 'asthma_spot', x: 22.5, z: 13, r: 1.3, label: 'Góc tường sau xưởng (Nhặt lọ thuốc hen suyễn)' },
+  { id: 'workshop_breaker', x: 13.5, z: -4.5, r: 1.5, label: 'Tủ cầu dao xưởng' },
 ];
 
 // ───────── Đồ thị đường đi cho NPC ─────────

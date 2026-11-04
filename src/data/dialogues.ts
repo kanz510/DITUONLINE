@@ -1309,6 +1309,47 @@ function tungDialogue(g: GameLogic): DNode {
   const pName = g.s.profile.name || 'Minh';
   const choices: DChoice[] = [];
 
+  // Biến cố mất điện xưởng: đối thoại với Cán bộ Tùng
+  if (g.activeIncident?.id === 'workshop_blackout' && g.activeIncident.status === 'active') {
+    if (g.canRepairBreaker()) {
+      choices.push({
+        label: 'Báo cáo cán bộ, tôi có tay nghề điện, xin phép kiểm tra aptomat xưởng.',
+        important: true,
+        run: () => {
+          const res = g.resolveIncident('repair');
+          if (res.ok) {
+            return {
+              speaker: 'Cán bộ Tùng',
+              role: 'Cán bộ trật tự & xưởng',
+              text: `Khá lắm ${pName}! Đúng là thợ cơ điện, xử lý nhanh gọn và an toàn. Cán bộ ghi nhận tinh thần trách nhiệm của anh (+1 điểm cải tạo, +30 XP).`,
+              choices: [{ label: 'Cảm ơn cán bộ, tôi xin phép tiếp tục lao động.', run: () => null }],
+            };
+          }
+          return {
+            speaker: 'Cán bộ Tùng',
+            role: 'Cán bộ trật tự & xưởng',
+            text: res.reason || 'Anh đứng lại vị trí, để thợ bảo trì xử lý.',
+            choices: [{ label: 'Rõ, thưa cán bộ.', run: () => null }],
+          };
+        },
+      });
+    } else {
+      choices.push({
+        label: 'Báo cáo cán bộ, tôi xin phép đứng chờ thợ bảo trì đến xử lý điện.',
+        important: false,
+        run: () => {
+          g.resolveIncident('wait');
+          return {
+            speaker: 'Cán bộ Tùng',
+            role: 'Cán bộ trật tự & xưởng',
+            text: 'Được rồi, toàn xưởng giữ trật tự. Thợ bảo trì đã tới và khắc phục xong sự cố.',
+            choices: [{ label: 'Rõ, thưa cán bộ.', run: () => null }],
+          };
+        },
+      });
+    }
+  }
+
   // Bắt đầu xử lý bẫy vật cấm: ghi nhận kiểm tra, không bỏ qua bước lên gặp Lan.
   if (g.qStatus('bay_vat_cam') === 'active' && !g.qObj('bay_vat_cam', 'phat_hien_bay')) {
     choices.push({

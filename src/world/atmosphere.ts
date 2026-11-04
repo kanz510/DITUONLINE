@@ -20,8 +20,9 @@ function sequence(seed: number): number {
   return (n >>> 0) / 4294967296;
 }
 
-export function weatherForDay(day: number, minute: number): 'clear' | 'rain' | 'haze' {
+export function weatherForDay(day: number, minute: number, isIncidentRain = false): 'clear' | 'rain' | 'haze' {
   const h = minute / 60;
+  if (isIncidentRain && h >= 6 && h <= 18) return 'rain';
   if ((day * 37 + 11) % 5 < 2 && h >= 9 && h < 19.5) return 'rain';
   if (h >= 5 && h <= 7.2) return 'haze';
   return 'clear';
@@ -122,8 +123,8 @@ export class PrisonAtmosphere {
     } else this.puddles.visible = true;
   }
 
-  update(dt: number, day: number, minute: number, playerX: number, playerZ: number): void {
-    const weather = weatherForDay(day, minute);
+  update(dt: number, day: number, minute: number, playerX: number, playerZ: number, isIncidentRain = false): void {
+    const weather = weatherForDay(day, minute, isIncidentRain);
     const outdoor = outsideBuildings(playerX, playerZ);
     const rainTarget = weather === 'rain' ? 1 : 0;
     this.wetness += (rainTarget - this.wetness) * Math.min(1, Math.max(0, dt) * 1.8);

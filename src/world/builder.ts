@@ -975,7 +975,7 @@ export class PrisonWorld {
 
   /** Cập nhật góc quét camera & ánh sáng bầu trời theo giờ trong ngày. */
   update(dt: number, minute: number, hasSheet: boolean, hasDrill: boolean,
-    hasSandals: boolean, hasAsthmaBottle = false, day = 1, playerX = 0, playerZ = 0) {
+    hasSandals: boolean, hasAsthmaBottle = false, day = 1, playerX = 0, playerZ = 0, isIncidentRain = false) {
     this.camSweep += dt * 0.85;
     // Quét từ hướng Tây-Nam sang Đông-Bắc của kho
     this.camAngle = -1.1 + Math.sin(this.camSweep) * 0.75;
@@ -1017,8 +1017,8 @@ export class PrisonWorld {
     this.indoorLight.intensity = this.visualQuality === 'low' || !indoors ? 0
       : (this.visualQuality === 'high' ? 1.65 : 0.85) * (0.42 + night * .8);
 
-    this.atmosphere.update(dt, day, minute, playerX, playerZ);
-    const weather = weatherForDay(day, minute);
+    this.atmosphere.update(dt, day, minute, playerX, playerZ, isIncidentRain);
+    const weather = weatherForDay(day, minute, isIncidentRain);
     if (weather === 'rain') {
       // Overcast, not sunset-pink: overcast sky and fog stay consistent with wet asphalt.
       (this.scene.background as THREE.Color).lerp(this.overcastSky, .46 * this.atmosphere.wetness);

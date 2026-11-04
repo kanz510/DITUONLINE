@@ -2703,6 +2703,110 @@ export class UIManager {
     });
   }
 
+  showIndoorExerciseMinigame() {
+    const reason = this.g.exerciseReason();
+    if (reason) { this.toast(reason, 'warn'); return; }
+    let reps = 0;
+    this.showModal(`
+      <h2>Tập thể lực trong buồng giam</h2>
+      <div class="hud-sub">Trời mưa lớn ngoài sân — thực hiện chống đẩy & gập bụng trong buồng (3 hiệp).</div>
+      <div class="card-row" id="exercise-progress">Hiệp 0/3</div>
+      <button class="btn btn-accent" id="exercise-rep">Thực hiện hiệp tiếp theo</button>
+      <button class="btn" data-close>Thoát</button>
+    `, (el) => {
+      el.querySelector('#exercise-rep')?.addEventListener('click', () => {
+        reps++;
+        this.sfx.workout();
+        const status = el.querySelector('#exercise-progress');
+        if (status) status.textContent = `Hiệp ${reps}/3`;
+        if (reps >= 3) {
+          this.g.resolveIncident('indoor_workout');
+          this.g.completeObjective('ren_luyen_the_chat', 'tap_the_duc');
+          this.closeModal();
+        }
+      });
+    });
+  }
+
+  showCellInspectionModal() {
+    this.showModal(`
+      <h2>KIỂM TRA NỘI VỤ BUỒNG GIAM</h2>
+      <div class="hud-sub">Yêu cầu điều lệnh vệ sinh & trật tự phòng giam</div>
+      <div class="card-row">
+        <p>Cán bộ đang kiểm tra nề nếp buồng giam. Vuốt phẳng nếp chiếu, gấp chăn màn vuông vức đúng điều lệnh.</p>
+        <div style="color:#22c55e;margin-top:6px">• Thưởng hoàn thành: <b>+1 điểm Cải tạo</b>, <b>+15 XP</b>.</div>
+        <div style="color:#94a3b8;font-size:12px;margin-top:4px">Nếu bỏ qua, chỉ lỡ thưởng, tuyệt đối không bị phạt.</div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button class="btn btn-accent" id="btn-tidy-bed">Gấp chăn màn & dọn nội vụ</button>
+        <button class="btn" data-close>Bỏ qua</button>
+      </div>
+    `, (el) => {
+      el.querySelector('#btn-tidy-bed')?.addEventListener('click', () => {
+        const res = this.g.resolveIncident('tidy');
+        if (res.ok) {
+          this.toast('Đã dọn dẹp nội vụ buồng giam ngăn nắp (+1 điểm cải tạo, +15 XP)', 'good');
+        } else {
+          this.toast(res.reason || 'Không thể dọn nội vụ', 'warn');
+        }
+        this.closeModal();
+      });
+    });
+  }
+
+  showWorkshopBreakerModal() {
+    const canRepair = this.g.canRepairBreaker();
+    if (canRepair) {
+      this.showModal(`
+        <h2>TỦ ĐIỆN XƯỞNG LAO ĐỘNG</h2>
+        <div class="hud-sub">Sự cố mất điện tạm thời trong ca lao động</div>
+        <div class="card-row">
+          <p>Aptomat pha 2 bị nhảy do quá tải đường quạt hút bụi. Bạn có đủ kỹ năng cơ điện để xử lý an toàn.</p>
+          <div style="color:#22c55e;margin-top:6px">• Thưởng sửa chữa: <b>+1 điểm Cải tạo</b>, <b>+30 XP</b>, <b>Cán bộ Tùng +5</b>.</div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <button class="btn btn-accent" id="btn-fix-breaker">⚡ Khắc phục sự cố & Gạt cầu dao</button>
+          <button class="btn" id="btn-wait-breaker">Chờ thợ bảo trì</button>
+          <button class="btn" data-close>Đóng</button>
+        </div>
+      `, (el) => {
+        el.querySelector('#btn-fix-breaker')?.addEventListener('click', () => {
+          const res = this.g.resolveIncident('repair');
+          if (res.ok) {
+            this.toast('Đã sửa xong aptomat và đóng điện xưởng thành công!', 'good');
+          } else {
+            this.toast(res.reason || 'Không thể sửa cầu dao', 'warn');
+          }
+          this.closeModal();
+        });
+        el.querySelector('#btn-wait-breaker')?.addEventListener('click', () => {
+          this.g.resolveIncident('wait');
+          this.toast('Bạn đứng vị trí chờ bảo trì. Điện xưởng đã được khôi phục.', 'info');
+          this.closeModal();
+        });
+      });
+    } else {
+      this.showModal(`
+        <h2>TỦ ĐIỆN XƯỞNG LAO ĐỘNG</h2>
+        <div class="hud-sub">Sự cố mất điện tạm thời trong ca lao động</div>
+        <div class="card-row">
+          <p>Aptomat bị chập và ngắt điện. Cần người có chuyên môn điện để thao tác an toàn.</p>
+          <p style="color:#facc15;font-size:12.5px;margin-top:6px">Yêu cầu sửa: Xuất thân Thợ máy, Trực giác ≥ 2, Khéo léo ≥ 2 hoặc đã học nghề.</p>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <button class="btn btn-accent" id="btn-wait-breaker">Đứng vị trí chờ thợ bảo trì</button>
+          <button class="btn" data-close>Đóng</button>
+        </div>
+      `, (el) => {
+        el.querySelector('#btn-wait-breaker')?.addEventListener('click', () => {
+          this.g.resolveIncident('wait');
+          this.toast('Bạn đứng vị trí chờ bảo trì. Điện xưởng đã được khôi phục.', 'info');
+          this.closeModal();
+        });
+      });
+    }
+  }
+
   showVocationalMinigame(onDone?: () => void) {
     if (this.g.qObj('lop_nghe_dau', 'thao_tac')) {
       this.toast('Đã thực hành xong. Hãy gặp Thầy Phúc để nghe nhận xét.', 'info');

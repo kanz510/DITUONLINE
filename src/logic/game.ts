@@ -8,6 +8,7 @@ import {
 import { generateDailyTasks, getQuestOverdueStatus } from './daily-plan';
 import { addSentence, serveDay } from './sentence';
 import { healStuckQuests } from './save';
+import { generateDailyIncident, type IncidentState } from './incidents';
 import { VIOLATIONS } from '../data/violations';
 import { ITEMS, itemName } from '../data/items';
 import { QUESTS, QUEST_ORDER } from '../data/quests';
@@ -65,6 +66,122 @@ export class GameLogic {
     if (!this.s.daily.tasks || this.s.daily.tasks.length === 0) {
       this.s.daily.tasks = generateDailyTasks(this.s);
     }
+    if (this.s.day >= 2 && this.s.daily.incident === undefined) {
+      this.initDailyIncident();
+    }
+  }
+
+  get activeIncident(): IncidentState | null {
+    const inc = this.s.daily.incident;
+    return inc && inc.status === 'active' ? inc : null;
+  }
+
+  get incident(): IncidentState | null {
+    return this.s.daily.incident ?? null;
+  }
+
+  initDailyIncident(seedOverride?: number): IncidentState | null {
+    if (this.s.daily.incident) return this.s.daily.incident;
+    const inc = generateDailyIncident(this.s, seedOverride);
+    this.s.daily.incident = inc;
+    if (inc && this.s.minute >= inc.startMinute && !inc.notified) {
+      inc.notified = true;
+      this.notifyIncidentStart(inc);
+    }
+    return inc;
+  }
+
+  canRepairBreaker(): boolean {
+    const bg = this.s.profile?.background;
+    const attrs = this.s.progression?.attrs;
+    const exam = this.s.skills?.vocationalExam ?? 0;
+    return bg === 'mechanic' || (attrs?.perception ?? 1) >= 2 || (attrs?.agility ?? 1) >= 2 || exam > 0;
+  }
+
+  private notifyIncidentStart(inc: IncidentState) {
+    if (inc.id === 'workshop_blackout') {
+      this.notify('⚡ SỰ CỐ: Xưởng mộc bị chập aptomat và mất điện! Hãy kiểm tra tủ cầu dao hoặc chờ cán bộ xử lý.', 'warn');
+      this.event('08:30 Sự cố mất điện tại xưởng mộc');
+    } else if (inc.id === 'heavy_rain') {
+      this.notify('🌧️ THỜI TIẾT: Trời mưa lớn ngoài sân. Bạn có thể vận động tập thể lực trong buồng giam.', 'info');
+      this.event('06:00 Mưa lớn kéo dài');
+    } else if (inc.id === 'cell_inspection') {
+      this.notify('📋 NỘI VỤ: Cán bộ thông báo kiểm tra trật tự, vệ sinh buồng giam trước 08:00.', 'info');
+      this.event('06:10 Thông báo kiểm tra nội vụ buồng giam');
+    }
+    this.emit('incidentStarted', inc);
+  }
+
+  resolveIncident(choice: 'repair' | 'wait' | 'tidy' | 'indoor_workout' | 'dismiss'): { ok: boolean; reason?: string; reward?: any } {
+    const inc = this.s.daily.incident;
+    if (!inc) {
+      return { ok: false, reason: 'Không có biến cố nào đang diễn ra.' };
+    }
+    if (inc.rewardClaimed || inc.status === 'resolved') {
+      return { ok: false, reason: 'Biến cố này đã nhận thưởng rồi.' };
+    }
+    if (inc.status !== 'active') {
+      return { ok: false, reason: 'Không có biến cố nào đang diễn ra.' };
+    }
+
+    if (inc.id === 'workshop_blackout') {
+      if (choice === 'repair') {
+        if (!this.canRepairBreaker()) {
+          return {
+            ok: false,
+            reason: 'Bạn chưa đủ kiến thức điện hoặc kỹ năng (Cần Xuất thân Thợ máy, Trực giác ≥ 2, Khéo léo ≥ 2 hoặc đã qua thi nghề).',
+          };
+        }
+        inc.status = 'resolved';
+        inc.choice = 'repair';
+        inc.rewardClaimed = true;
+        this.addReform(1, 'Hỗ trợ sửa chữa aptomat xưởng');
+        this.gainXp(30, 'Sửa sự cố điện xưởng');
+        this.changeRel('tung', 5, 'Minh sửa giúp sự cố điện xưởng');
+        this.notify('Đã đóng điện xưởng thành công! (+1 điểm cải tạo, +30 XP, Quan hệ Cán bộ Tùng +5)', 'good');
+        this.event('Sửa thành công aptomat xưởng mộc');
+        this.commit();
+        return { ok: true, reward: { reform: 1, xp: 30, relationTung: 5 } };
+      } else if (choice === 'wait') {
+        inc.status = 'resolved';
+        inc.choice = 'wait';
+        inc.rewardClaimed = true;
+        this.notify('Bạn giữ trật tự chờ thợ bảo trì. Xưởng đã có điện trở lại.', 'info');
+        this.event('Chờ thợ bảo trì sửa điện xưởng');
+        this.commit();
+        return { ok: true };
+      }
+    } else if (inc.id === 'cell_inspection') {
+      if (choice === 'tidy') {
+        inc.status = 'resolved';
+        inc.choice = 'tidy';
+        inc.rewardClaimed = true;
+        this.addReform(1, 'Dọn dẹp nội vụ buồng giam ngăn nắp');
+        this.gainXp(15, 'Dọn dẹp nội vụ buồng giam');
+        this.notify('Đã dọn dẹp nội vụ buồng giam ngăn nắp! (+1 điểm cải tạo, +15 XP)', 'good');
+        this.event('Dọn dẹp nội vụ buồng giam trước kiểm tra');
+        this.commit();
+        return { ok: true, reward: { reform: 1, xp: 15 } };
+      }
+    } else if (inc.id === 'heavy_rain') {
+      if (choice === 'indoor_workout') {
+        const err = this.exerciseReason();
+        if (err) return { ok: false, reason: err };
+        this.exercise(1);
+        inc.choice = 'indoor_workout';
+        this.event('Tập thể lực trong buồng giam (tránh mưa ngoài sân)');
+        this.commit();
+        return { ok: true };
+      }
+    }
+
+    if (choice === 'dismiss') {
+      inc.status = 'dismissed';
+      this.commit();
+      return { ok: true };
+    }
+
+    return { ok: false, reason: 'Lựa chọn không hợp lệ cho biến cố hiện tại.' };
   }
 
   checkDailyTasks(opts: { category?: DailyTaskCategory; taskId?: string; npcId?: NpcId }) {
@@ -1455,6 +1572,7 @@ export class GameLogic {
 
   private checkWindows(prev: number, now: number, ctx: TickCtx) {
     const d = this.s.daily;
+    this.checkIncident(prev, now);
     for (const b of SCHEDULE) {
       if (b.start > prev && b.start <= now) this.emit('block', b);
     }
@@ -1486,6 +1604,28 @@ export class GameLogic {
       }
     }
     if (prev < DAY_END && now >= DAY_END) this.emit('forceSleep');
+  }
+
+  private checkIncident(prev: number, now: number) {
+    const inc = this.s.daily.incident;
+    if (!inc) return;
+
+    if (now >= inc.startMinute && now <= inc.endMinute && !inc.notified) {
+      inc.notified = true;
+      this.notifyIncidentStart(inc);
+      this.commit();
+    }
+
+    if (now > inc.endMinute && inc.status === 'active') {
+      inc.status = 'expired';
+      if (inc.id === 'workshop_blackout') {
+        this.event('11:30 Thợ bảo trì đã sửa xong điện xưởng');
+      } else if (inc.id === 'cell_inspection') {
+        this.event('08:00 Hết giờ kiểm tra nội vụ buổi sáng');
+      }
+      this.emit('incidentExpired', inc);
+      this.commit();
+    }
   }
 
   private resolveWork() {
@@ -1616,6 +1756,13 @@ export class GameLogic {
     };
     s.history.push(summary);
 
+    // Ghi nhận lịch sử biến cố sinh hoạt hôm nay
+    if (d.incident) {
+      if (d.incident.status === 'active') d.incident.status = 'expired';
+      s.flags.last_incident_day = s.day;
+      s.flags.last_incident_type = d.incident.id;
+    }
+
     // Qua đêm
     this.addStat('stamina', 100);
     this.addStat('morale', inBed ? 15 : 5);
@@ -1627,6 +1774,7 @@ export class GameLogic {
     s.minute = DAY_START;
     s.daily = makeDaily(s.stats, s.relations);
     s.daily.tasks = generateDailyTasks(s);
+    this.initDailyIncident();
     s.player = { x: -14.25, z: -27.6, rot: 0 };
     this.morningStory();
     this.commit();

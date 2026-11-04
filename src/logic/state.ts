@@ -1,4 +1,6 @@
 import { BACKGROUNDS, DAY_START, START_SENTENCE, type BackgroundId, type Difficulty } from './constants';
+import type { IncidentState } from './incidents';
+export type { IncidentState, IncidentType } from './incidents';
 
 export const SAVE_VERSION = 3;
 
@@ -122,6 +124,7 @@ export interface DailyRecord {
   startStats: Stats;
   startRelations: Record<string, number>;
   events: string[];
+  incident?: IncidentState | null;
 }
 
 export interface DaySummary {
@@ -228,6 +231,7 @@ export function makeDaily(stats: Stats, relations: Record<string, Relation>): Da
     startStats: { ...stats },
     startRelations,
     events: [],
+    incident: null,
   };
 }
 
